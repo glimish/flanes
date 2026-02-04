@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(chcp 6500)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(python -X utf8 -m tests.test_integration:*)",
+      "Bash(python -X utf8 -m pytest tests/ -v)",
+      "Bash(python:*)",
+      "Bash(dir:*)",
+      "Bash(find:*)",
+      "Bash(bc:*)",
+      "Bash(grep:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)"
+    ]
+  }
+}
