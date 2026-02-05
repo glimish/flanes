@@ -530,10 +530,38 @@ Add evaluators to `.vex/config.json`:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | (required) | Display name for the evaluator |
-| `command` | string | (required) | Shell command to execute |
+| `command` | string | — | Shell command to execute (OS-dependent parsing) |
+| `args` | array | — | Explicit argument list (cross-platform, recommended) |
 | `working_directory` | string | `null` | Working directory for the command. If `null`, uses the workspace directory. |
 | `required` | bool | `true` | If `true`, failure blocks acceptance. If `false`, failure is recorded but doesn't block. |
 | `timeout_seconds` | int | `300` | Maximum execution time before the evaluator is killed |
+
+**Note:** Either `command` or `args` must be provided. If both are given, `args` takes precedence.
+
+### Cross-Platform Evaluators
+
+The `command` field uses OS-dependent parsing:
+- **Windows:** Passed as a single string to CreateProcess
+- **POSIX:** Split using `shlex.split()`
+
+For consistent cross-platform behavior, use the `args` array instead:
+
+```json
+{
+  "evaluators": [
+    {
+      "name": "pytest",
+      "args": ["python", "-m", "pytest", "tests/", "-x"],
+      "required": true
+    },
+    {
+      "name": "ruff",
+      "args": ["ruff", "check", "."],
+      "required": true
+    }
+  ]
+}
+```
 
 ### Running Evaluators
 
@@ -667,6 +695,25 @@ vex remote status
 
 Remote sync operates at the CAS object level. Each blob and tree is an independently addressable object identified by its SHA-256 hash. Push uploads objects that exist locally but not remotely. Pull downloads objects that exist remotely but not locally. The content-addressed design means objects are naturally deduplicated — the same file content is only stored once regardless of how many states reference it.
 
+### Integrity Verification
+
+When pulling objects from remote storage, Vex verifies the SHA-256 hash of each downloaded payload matches the expected object key. This protects against:
+
+- **Corrupted storage** — Bit rot or transfer errors
+- **Malicious backends** — Tampered data on shared or untrusted storage
+
+Objects that fail integrity verification are logged and skipped. The pull result includes an `integrity_failures` count:
+
+```json
+{
+  "pulled": 42,
+  "skipped": 100,
+  "errors": 0,
+  "integrity_failures": 1,
+  "total": 143
+}
+```
+
 ---
 
 ## Git Bridge
@@ -735,11 +782,12 @@ vex gc --confirm --older-than 60
 
 ```
 Garbage collection results:
-  Reachable objects: 1,234
-  Deleted objects:   56
-  Deleted bytes:     12,345,678
-  Deleted states:    8
-  Deleted transitions: 12
+  Reachable objects:     1,234
+  Deleted objects:       56
+  Deleted bytes:         12,345,678
+  Deleted states:        8
+  Deleted transitions:   12
+  Pruned cache entries:  23
   Elapsed:           150 ms
 ```
 
@@ -749,6 +797,7 @@ Garbage collection results:
 - World states not reachable from any lane head or non-rejected transition
 - CAS objects (blobs, trees) not referenced by any reachable state
 - Superseded states that are no longer part of any lane's history
+- Stale stat cache entries referencing deleted blobs (prevents unbounded cache growth)
 
 ### What Is Always Preserved
 
@@ -1090,3 +1139,64 @@ During workspace materialization and update operations:
 - If the process dies mid-operation, the marker persists
 - `vex doctor` detects and cleans up dirty workspaces
 - Prevents using a workspace that may be in an inconsistent state
+
+### .vexignore Patterns
+
+Create a `.vexignore` file in your workspace root to exclude files from snapshots:
+
+```
+# Exact filename matches
+.env
+credentials.json
+
+# Glob patterns (basename only)
+*.pyc
+*.log
+test_*
+
+# Path patterns (matches relative path)
+build/output/*
+docs/generated/*
+node_modules/
+
+# Directory patterns (trailing slash)
+__pycache__/
+.pytest_cache/
+
+# Negation (re-include a previously ignored file)
+!important.log
+```
+
+**Pattern matching rules:**
+
+| Pattern | Matches |
+|---------|---------|
+| `*.log` | Any file ending in `.log` (basename match) |
+| `build/output/*` | Files directly in `build/output/` (path match) |
+| `test_*` | Files starting with `test_` (basename match) |
+| `!keep.log` | Re-includes `keep.log` even if `*.log` is ignored |
+| `cache/` | Directories named `cache` (directory pattern) |
+
+**Default ignores** (always excluded):
+- `.vex`, `.git`, `.svn`, `.hg`
+- `__pycache__`, `node_modules`
+- `.DS_Store`, `Thumbs.db`
+
+### Symlink Handling
+
+Symlinks are **skipped** during snapshot to prevent:
+
+- Reading files outside the workspace (security risk)
+- Non-deterministic snapshots (symlink targets may change)
+- Circular references causing infinite loops
+
+If you need symlinked content, copy it into the workspace instead.
+
+### File Permissions
+
+File permissions (mode bits) are preserved during snapshot and restored on materialize:
+
+- Executable scripts remain executable after restore
+- Mode is stored as the third element in tree entries: `(type, hash, mode)`
+- Default mode: `0o644` for files, `0o755` for directories
+- Note: `chmod` may silently fail on some filesystems (FAT32, some network mounts)
