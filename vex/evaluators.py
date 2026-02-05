@@ -31,7 +31,7 @@ class EvaluatorConfig:
     timeout_seconds: int = 300
 
     def to_dict(self) -> dict:
-        d = {
+        d: dict = {
             "name": self.name,
             "working_directory": self.working_directory,
             "required": self.required,
@@ -107,6 +107,7 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
     start = time.monotonic()
     try:
         # Fix #6: Use explicit args if provided, otherwise parse command
+        cmd: str | list[str]
         if evaluator.args:
             # Explicit args list — cross-platform, no parsing needed
             cmd = evaluator.args

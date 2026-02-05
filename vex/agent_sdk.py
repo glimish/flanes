@@ -88,7 +88,7 @@ class AgentSession:
         """Get the filesystem path of the current workspace."""
         return self.repo.workspace_path(self.workspace_name)
 
-    def begin(self, from_state: str | None = None) -> str:
+    def begin(self, from_state: str | None = None) -> str | None:
         """
         Begin a work session.
 

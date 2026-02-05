@@ -208,7 +208,7 @@ class MCPServer:
             },
         }
 
-    def _call_tool(self, name: str, args: dict) -> dict:
+    def _call_tool(self, name: str, args: dict) -> dict | list:
         """Dispatch tool call to the appropriate repo method."""
         if name == "vex_status":
             return self.repo.status()

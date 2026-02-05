@@ -53,8 +53,8 @@ def _build_tree_from_flat(store, files: dict) -> str:
     bottom-up. Returns root tree hash.
     """
     # Separate files at this level vs subdirectories
-    direct = {}      # name -> content bytes
-    subdirs = {}     # dirname -> {subpath: content}
+    direct: dict[str, bytes] = {}      # name -> content bytes
+    subdirs: dict[str, dict[str, bytes]] = {}     # dirname -> {subpath: content}
 
     for path, content in files.items():
         parts = path.split("/", 1)

@@ -300,6 +300,9 @@ class VexHandler(BaseHTTPRequestHandler):
 class VexServer(HTTPServer):
     """HTTP server that holds a reference to a Vex Repository."""
 
+    repo: Repository | None
+    _repo_path: str | None
+
     def __init__(self, repo_or_path, host: str = "127.0.0.1", port: int = 7654):
         if isinstance(repo_or_path, Repository):
             self.repo = repo_or_path
