@@ -21,6 +21,7 @@ Comprehensive guide for Vex — version control for agentic AI systems.
 15. [REST API](#rest-api)
 16. [Repository Health](#repository-health)
 17. [Limits & Safety](#limits--safety)
+18. [Thread Safety](#thread-safety)
 
 ---
 
@@ -1200,3 +1201,33 @@ File permissions (mode bits) are preserved during snapshot and restored on mater
 - Mode is stored as the third element in tree entries: `(type, hash, mode)`
 - Default mode: `0o644` for files, `0o755` for directories
 - Note: `chmod` may silently fail on some filesystems (FAT32, some network mounts)
+
+### Thread Safety
+
+Vex is safe to use from multiple threads, enabling multi-threaded agent orchestrators:
+
+```python
+from concurrent.futures import ThreadPoolExecutor
+from vex.repo import Repository
+
+# Option 1: Share one Repository across threads
+repo = Repository.open("./my-project")
+with ThreadPoolExecutor(max_workers=4) as executor:
+    # Multiple threads can call repo methods concurrently
+    futures = [executor.submit(repo.status) for _ in range(4)]
+
+# Option 2: One Repository per thread (best performance)
+def worker():
+    repo = Repository.open("./my-project")  # Each thread gets its own
+    # ... do work ...
+    repo.close()
+```
+
+**Implementation details:**
+
+- SQLite connection uses `check_same_thread=False`
+- WAL mode enables concurrent reads
+- 30-second busy timeout handles write contention
+- Writes are serialized via SQLite's internal locking
+
+For highest throughput, create one `Repository` instance per thread — they safely share the same database file.
