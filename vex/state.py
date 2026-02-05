@@ -35,7 +35,7 @@ DEFAULT_FILE_MODE = 0o644
 # Mask for executable bits
 EXEC_BITS = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
-from .cas import ContentStore, ObjectType
+from .cas import ContentStore, ObjectType  # noqa: E402
 
 
 class TreeDepthLimitError(ValueError):
@@ -75,7 +75,7 @@ class AgentIdentity:
 class Intent:
     """
     Why a change was made. This is the key innovation over git.
-    
+
     Git commit messages are free-text afterthoughts. Intents are
     structured, searchable records of the *instruction* that caused
     a change, not just a description of the change itself.
@@ -116,7 +116,7 @@ class Intent:
 class EvaluationResult:
     """
     The result of evaluating a proposed state transition.
-    
+
     This is a first-class concept, not a bolted-on CI check.
     Every transition carries its evaluation result permanently.
     """
@@ -235,15 +235,15 @@ class WorldStateManager:
                 FOREIGN KEY (fork_base) REFERENCES world_states(id)
             );
 
-            CREATE INDEX IF NOT EXISTS idx_transitions_lane 
+            CREATE INDEX IF NOT EXISTS idx_transitions_lane
                 ON transitions(lane);
-            CREATE INDEX IF NOT EXISTS idx_transitions_status 
+            CREATE INDEX IF NOT EXISTS idx_transitions_status
                 ON transitions(status);
-            CREATE INDEX IF NOT EXISTS idx_transitions_from 
+            CREATE INDEX IF NOT EXISTS idx_transitions_from
                 ON transitions(from_state);
-            CREATE INDEX IF NOT EXISTS idx_transitions_to 
+            CREATE INDEX IF NOT EXISTS idx_transitions_to
                 ON transitions(to_state);
-            CREATE INDEX IF NOT EXISTS idx_intents_tags 
+            CREATE INDEX IF NOT EXISTS idx_intents_tags
                 ON intents(tags);
             CREATE INDEX IF NOT EXISTS idx_world_states_parent
                 ON world_states(parent_id);
@@ -379,7 +379,8 @@ class WorldStateManager:
                     content = item.read_bytes()
                     blob_hash = self.store.store_blob(content)
                     if use_cache:
-                        self.store.update_stat_cache(str(item), st.st_mtime_ns, st.st_size, blob_hash)
+                        self.store.update_stat_cache(
+                            str(item), st.st_mtime_ns, st.st_size, blob_hash)
 
                 # Fix #2: Capture file mode (especially executable bit)
                 file_mode = st.st_mode & 0o777
@@ -470,8 +471,8 @@ class WorldStateManager:
         state_id = self.store.hash_content(state_content, ObjectType.STATE)
 
         self.conn.execute(
-            """INSERT OR IGNORE INTO world_states 
-               (id, root_tree, parent_id, created_at, metadata) 
+            """INSERT OR IGNORE INTO world_states
+               (id, root_tree, parent_id, created_at, metadata)
                VALUES (?, ?, ?, ?, ?)""",
             (state_id, root_tree, parent_id, now, json.dumps(metadata or {}))
         )
@@ -492,8 +493,8 @@ class WorldStateManager:
     def record_intent(self, intent: Intent) -> str:
         """Store an intent record."""
         self.conn.execute(
-            """INSERT OR IGNORE INTO intents 
-               (id, prompt, agent_json, context_refs, tags, metadata, created_at) 
+            """INSERT OR IGNORE INTO intents
+               (id, prompt, agent_json, context_refs, tags, metadata, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 intent.id,
@@ -510,7 +511,8 @@ class WorldStateManager:
 
     def get_intent(self, intent_id: str) -> Intent | None:
         row = self.conn.execute(
-            "SELECT id, prompt, agent_json, context_refs, tags, metadata, created_at FROM intents WHERE id = ?",
+            """SELECT id, prompt, agent_json, context_refs, tags, metadata, created_at
+               FROM intents WHERE id = ?""",
             (intent_id,)
         ).fetchone()
         if row is None:
@@ -537,11 +539,11 @@ class WorldStateManager:
     ) -> str:
         """
         Propose a state transition.
-        
+
         This is the primary way agents interact with the system.
         An agent says "I want to move from state X to state Y,
         and here's why (intent)."
-        
+
         The transition starts as PROPOSED and must be evaluated
         before it can be accepted.
         """
@@ -551,8 +553,9 @@ class WorldStateManager:
         now = time.time()
 
         self.conn.execute(
-            """INSERT INTO transitions 
-               (id, from_state, to_state, intent_id, lane, status, cost_json, created_at, updated_at) 
+            """INSERT INTO transitions
+               (id, from_state, to_state, intent_id, lane, status,
+                cost_json, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 transition_id,
@@ -569,7 +572,8 @@ class WorldStateManager:
 
         # Ensure lane exists
         self.conn.execute(
-            "INSERT OR IGNORE INTO lanes (name, head_state, fork_base, created_at) VALUES (?, ?, ?, ?)",
+            """INSERT OR IGNORE INTO lanes
+               (name, head_state, fork_base, created_at) VALUES (?, ?, ?, ?)""",
             (lane, from_state, from_state, now)
         )
 
@@ -693,7 +697,8 @@ class WorldStateManager:
         self._validate_lane_name(name)
         now = time.time()
         self.conn.execute(
-            "INSERT INTO lanes (name, head_state, fork_base, created_at, metadata) VALUES (?, ?, ?, ?, ?)",
+            """INSERT INTO lanes (name, head_state, fork_base, created_at, metadata)
+               VALUES (?, ?, ?, ?, ?)""",
             (name, base_state, base_state, now, json.dumps(metadata or {}))
         )
         self.conn.commit()
@@ -718,7 +723,8 @@ class WorldStateManager:
     def list_lanes(self) -> list[dict]:
         """List all lanes with their current state."""
         rows = self.conn.execute(
-            "SELECT name, head_state, fork_base, created_at, metadata FROM lanes ORDER BY created_at"
+            """SELECT name, head_state, fork_base, created_at, metadata
+               FROM lanes ORDER BY created_at"""
         ).fetchall()
         return [
             {
@@ -757,7 +763,7 @@ class WorldStateManager:
     ) -> list[dict]:
         """
         Get the transition history for a lane.
-        
+
         Returns transitions in reverse chronological order with
         their full intent and evaluation records.
         """
@@ -800,7 +806,7 @@ class WorldStateManager:
     def trace(self, state_id: str, max_depth: int = 50) -> list[dict]:
         """
         Trace the lineage of a world state back through its history.
-        
+
         Returns the chain of transitions that led to this state,
         giving you full causal provenance — not just "what changed"
         but "why it changed and who changed it."
@@ -843,7 +849,7 @@ class WorldStateManager:
     def search_intents(self, query: str, limit: int = 20) -> list[dict]:
         """
         Search intents by prompt text or tags.
-        
+
         This is the basic text search. In production, you'd layer
         embedding-based semantic search on top of this for queries
         like "show me everything related to authentication."
@@ -908,7 +914,7 @@ class WorldStateManager:
     def diff_states(self, state_a: str, state_b: str) -> dict:
         """
         Compute the difference between two world states.
-        
+
         Returns added, removed, and modified files. This is available
         on-demand (unlike git where diffs are the primary interface).
         Agents don't need diffs — they produced the new state. Humans
@@ -965,7 +971,9 @@ class WorldStateManager:
 
         return result
 
-    def _flatten_tree_with_modes(self, tree_hash: str, prefix: str = "") -> dict[str, tuple[str, int]]:
+    def _flatten_tree_with_modes(
+        self, tree_hash: str, prefix: str = ""
+    ) -> dict[str, tuple[str, int]]:
         """Flatten a tree into {path: (blob_hash, mode)} mapping.
 
         Fix #2 from audit: Include file modes for proper permission restoration.
@@ -989,7 +997,7 @@ class WorldStateManager:
     def materialize(self, state_id: str, target_dir: Path):
         """
         Reconstruct a world state on disk.
-        
+
         This is the equivalent of `git checkout` — take a world state
         and write its contents to a directory. Used for:
         - Giving agents a working directory

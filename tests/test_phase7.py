@@ -128,11 +128,10 @@ class TestBudgets:
         config = BudgetConfig(max_tokens_in=100)
         set_lane_budget(repo.wsm, "main", config)
 
-        head = repo.head()
         agent = AgentIdentity(agent_id="test", agent_type="test")
 
         # First commit uses up the budget
-        result = repo.quick_commit(
+        repo.quick_commit(
             workspace="main",
             prompt="first",
             agent=agent,

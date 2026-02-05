@@ -33,8 +33,8 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from .repo import Repository
-from .state import AgentIdentity, CostRecord, TransitionStatus
+from .repo import Repository  # noqa: E402
+from .state import AgentIdentity, CostRecord, TransitionStatus  # noqa: E402
 
 
 class AgentSession:
@@ -223,7 +223,9 @@ class AgentSession:
         try:
             self.repo.workspace_release(self.workspace_name)
         except Exception:
-            logger.warning("Failed to release workspace '%s' during create_lane", self.workspace_name, exc_info=True)
+            logger.warning(
+                "Failed to release workspace '%s' during create_lane",
+                self.workspace_name, exc_info=True)
         self.repo.create_lane(name, self.base_state)
         self.lane = name
         self.workspace_name = name
@@ -237,7 +239,9 @@ class AgentSession:
         try:
             self.repo.workspace_release(self.workspace_name)
         except Exception:
-            logger.warning("Failed to release workspace '%s' during switch_lane", self.workspace_name, exc_info=True)
+            logger.warning(
+                "Failed to release workspace '%s' during switch_lane",
+                self.workspace_name, exc_info=True)
 
         self.lane = name
         self.workspace_name = name
@@ -280,7 +284,8 @@ class AgentSession:
                             tags=(tags or []) + ["failed"],
                             metadata=ctx.metadata,
                         )
-                        self.repo.reject(tid, evaluator="auto", summary=str(ctx.metadata.get("error")))
+                        err_msg = str(ctx.metadata.get("error"))
+                        self.repo.reject(tid, evaluator="auto", summary=err_msg)
                     except Exception:
                         logger.warning("Failed to propose/reject after agent error", exc_info=True)
                 else:

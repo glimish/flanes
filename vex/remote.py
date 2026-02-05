@@ -169,7 +169,9 @@ class GCSBackend(RemoteBackend):
 class LocalCacheLayer:
     """Local disk cache in front of a remote backend."""
 
-    def __init__(self, backend: RemoteBackend, cache_dir: Path, max_cache_bytes: int = 1_073_741_824):
+    def __init__(
+        self, backend: RemoteBackend, cache_dir: Path, max_cache_bytes: int = 1_073_741_824
+    ):
         self.backend = backend
         self.cache_dir = cache_dir
         self.max_cache_bytes = max_cache_bytes

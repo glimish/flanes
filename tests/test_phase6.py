@@ -228,7 +228,7 @@ class TestGitExport:
             ["git", "log", "--oneline"],
             cwd=str(target), capture_output=True, text=True,
         )
-        commits = [l for l in result.stdout.strip().split("\n") if l]
+        commits = [line for line in result.stdout.strip().split("\n") if line]
         assert len(commits) >= 2
 
 
@@ -407,7 +407,7 @@ class TestRESTServer:
     def test_lanes_endpoint(self):
         data = self._get("/lanes")
         assert isinstance(data, list)
-        names = [l["name"] for l in data]
+        names = [lane["name"] for lane in data]
         assert "main" in names
 
     def test_history_endpoint(self):
@@ -530,7 +530,7 @@ class TestMCPServer:
         content = resp["result"]["content"]
         data = json.loads(content[0]["text"])
         assert isinstance(data, list)
-        names = [l["name"] for l in data]
+        names = [lane["name"] for lane in data]
         assert "main" in names
 
     def test_unknown_tool(self):

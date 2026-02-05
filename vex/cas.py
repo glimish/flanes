@@ -175,7 +175,9 @@ class ContentStore:
             self._write_fs_blob(content_hash, content)
             try:
                 self.conn.execute(
-                    "INSERT OR IGNORE INTO objects (hash, type, data, size, created_at, location) VALUES (?, ?, ?, ?, ?, ?)",
+                    """INSERT OR IGNORE INTO objects
+                       (hash, type, data, size, created_at, location)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
                     (content_hash, obj_type.value, b"", len(content), time.time(), "fs")
                 )
             except Exception:
@@ -184,7 +186,8 @@ class ContentStore:
                 raise
         else:
             self.conn.execute(
-                "INSERT OR IGNORE INTO objects (hash, type, data, size, created_at) VALUES (?, ?, ?, ?, ?)",
+                """INSERT OR IGNORE INTO objects
+                   (hash, type, data, size, created_at) VALUES (?, ?, ?, ?, ?)""",
                 (content_hash, obj_type.value, content, len(content), time.time())
             )
         if not self._in_batch:
@@ -295,7 +298,8 @@ class ContentStore:
     def update_stat_cache(self, path: str, mtime_ns: int, size: int, blob_hash: str):
         """Upsert a stat cache entry."""
         self.conn.execute(
-            "INSERT OR REPLACE INTO stat_cache (path, mtime_ns, size, blob_hash) VALUES (?, ?, ?, ?)",
+            """INSERT OR REPLACE INTO stat_cache
+               (path, mtime_ns, size, blob_hash) VALUES (?, ?, ?, ?)""",
             (path, mtime_ns, size, blob_hash)
         )
         if not self._in_batch:

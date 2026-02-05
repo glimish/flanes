@@ -68,7 +68,8 @@ def _mark_phase(conn, store, max_age_days):
     # Also keep states from recent rejected transitions (within age threshold)
     cutoff = time.time() - (max_age_days * 86400)
     for row in conn.execute(
-        "SELECT from_state, to_state FROM transitions WHERE status = 'rejected' AND created_at >= ?",
+        """SELECT from_state, to_state FROM transitions
+           WHERE status = 'rejected' AND created_at >= ?""",
         (cutoff,)
     ):
         if row[0]:

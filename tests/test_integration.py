@@ -116,8 +116,6 @@ def test_full_workflow():
         print(f"Accepted: {status1.value}")
         print(f"New head: {repo.head()[:12]}")
 
-        head_after_auth = repo.head()
-
         # ── Phase 3: Agent 2 in separate workspace ────────────────
         divider("Phase 3: Agent 2 — Bugfix in Isolated Workspace")
 

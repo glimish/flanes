@@ -370,10 +370,13 @@ def test_concurrent_accept_reject(repo):
                 )
 
             with lock:
+                expected = (
+                    TransitionStatus.ACCEPTED if should_accept else TransitionStatus.REJECTED
+                )
                 results.append({
                     "tid": tid,
                     "status": status,
-                    "expected": TransitionStatus.ACCEPTED if should_accept else TransitionStatus.REJECTED,
+                    "expected": expected,
                 })
         except Exception as e:
             with lock:

@@ -17,7 +17,9 @@ from .state import AgentIdentity, EvaluationResult, Intent
 GIT_TIMEOUT_SECONDS = 60
 
 
-def _git(args: list, cwd: Path, env: dict | None = None, timeout: int | None = None) -> subprocess.CompletedProcess:
+def _git(
+    args: list, cwd: Path, env: dict | None = None, timeout: int | None = None
+) -> subprocess.CompletedProcess:
     """Run git command, raise RuntimeError on failure or timeout."""
     full_env = dict(os.environ)
     if env:
@@ -143,7 +145,8 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
         date_str = str(int(created_at))
 
         # Sanitize agent_id for use in git author/committer fields
-        safe_agent_id = agent_id.replace("<", "").replace(">", "").replace("\n", "").replace("\r", "")
+        safe_agent_id = (agent_id.replace("<", "").replace(">", "")
+                         .replace("\n", "").replace("\r", ""))
 
         # Set both author and committer info (needed for CI environments without global git config)
         env = {
@@ -191,7 +194,7 @@ def import_from_git(source_dir: Path, repo: Repository, lane: str = "main") -> d
         return {"commits_imported": 0, "lane": lane}
 
     # Ensure lane exists
-    existing_lanes = {l["name"] for l in repo.wsm.list_lanes()}
+    existing_lanes = {ln["name"] for ln in repo.wsm.list_lanes()}
     if lane not in existing_lanes:
         repo.wsm.create_lane(lane, repo.head())
 
@@ -208,7 +211,7 @@ def import_from_git(source_dir: Path, repo: Repository, lane: str = "main") -> d
 
         subject = meta_parts[0] if len(meta_parts) > 0 else "Imported commit"
         author_name = meta_parts[1] if len(meta_parts) > 1 else "unknown"
-        author_email = meta_parts[2] if len(meta_parts) > 2 else "unknown@git"
+        _author_email = meta_parts[2] if len(meta_parts) > 2 else "unknown@git"  # noqa: F841
         timestamp_str = meta_parts[3] if len(meta_parts) > 3 else "0"
         try:
             timestamp = float(timestamp_str)

@@ -49,7 +49,7 @@ def run_benchmark(num_files: int, num_dirs: int, rounds: int):
     project.mkdir()
 
     print(f"Generating {num_files} files across {num_dirs} directories...")
-    files = generate_files(project, num_files, num_dirs)
+    generate_files(project, num_files, num_dirs)
 
     print("Initializing vex repo...")
     repo = Repository.init(project)

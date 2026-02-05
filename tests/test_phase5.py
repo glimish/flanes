@@ -245,14 +245,14 @@ class TestGarbageCollection:
     def test_gc_preserves_accepted_blobs(self, tmp_path):
         store, wsm, state1, _state2 = self._setup_repo_with_transitions(tmp_path)
 
-        result = collect_garbage(store, wsm, dry_run=False, max_age_days=30)
+        collect_garbage(store, wsm, dry_run=False, max_age_days=30)
 
         # Accepted state's blobs should still be retrievable
         s = wsm.get_state(state1)
         assert s is not None
         entries = store.read_tree(s["root_tree"])
-        for name, entry in entries.items():
-            typ, h = entry[0], entry[1]  # Handle (type, hash, mode) tuples
+        for _name, entry in entries.items():
+            _typ, h = entry[0], entry[1]  # Handle (type, hash, mode) tuples
             assert store.retrieve(h) is not None
         store.close()
 

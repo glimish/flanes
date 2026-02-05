@@ -54,7 +54,7 @@ from .workspace import WorkspaceInfo, WorkspaceManager
 REPO_DIR_NAME = ".vex"
 
 
-class NotARepository(ValueError):
+class NotARepository(ValueError):  # noqa: N818
     """Raised when a command is run outside a Vex repository."""
     def __init__(self, start_path):
         super().__init__(
@@ -101,8 +101,10 @@ class Repository:
                 f"  Set to very large value (e.g., 10000) for effectively unlimited"
             )
 
-        self.store = ContentStore(self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size)
-        self.wsm = WorldStateManager(self.store, self.db_path, max_tree_depth=max_tree_depth)
+        self.store = ContentStore(
+            self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size)
+        self.wsm = WorldStateManager(
+            self.store, self.db_path, max_tree_depth=max_tree_depth)
         self.wm = WorkspaceManager(self.vex_dir, self.wsm)
 
     @classmethod
@@ -191,7 +193,7 @@ class Repository:
         lane = lane or name
 
         # Ensure lane exists
-        existing_lanes = {l["name"] for l in self.wsm.list_lanes()}
+        existing_lanes = {ln["name"] for ln in self.wsm.list_lanes()}
         if lane not in existing_lanes:
             base = state_id or self.head()
             self.wsm.create_lane(lane, base)

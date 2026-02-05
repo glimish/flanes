@@ -91,7 +91,7 @@ class TestExportToGit:
             text=True,
         )
         assert log.returncode == 0
-        lines = [l for l in log.stdout.strip().split("\n") if l]
+        lines = [line for line in log.stdout.strip().split("\n") if line]
         assert len(lines) == result["commits"]
 
     def test_export_preserves_agent_info(self, vex_repo, tmp_path):
@@ -138,13 +138,23 @@ class TestImportFromGit:
         subprocess.run(["git", "init"], cwd=str(path), capture_output=True, check=True, env=env)
 
         (path / "file1.txt").write_text("content1\n")
-        subprocess.run(["git", "add", "-A"], cwd=str(path), capture_output=True, check=True, env=env)
-        subprocess.run(["git", "commit", "-m", "First commit"], cwd=str(path), capture_output=True, check=True, env=env)
+        subprocess.run(
+            ["git", "add", "-A"], cwd=str(path), capture_output=True, check=True, env=env
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "First commit"],
+            cwd=str(path), capture_output=True, check=True, env=env
+        )
 
         (path / "file2.txt").write_text("content2\n")
         (path / "file1.txt").write_text("content1 updated\n")
-        subprocess.run(["git", "add", "-A"], cwd=str(path), capture_output=True, check=True, env=env)
-        subprocess.run(["git", "commit", "-m", "Second commit"], cwd=str(path), capture_output=True, check=True, env=env)
+        subprocess.run(
+            ["git", "add", "-A"], cwd=str(path), capture_output=True, check=True, env=env
+        )
+        subprocess.run(
+            ["git", "commit", "-m", "Second commit"],
+            cwd=str(path), capture_output=True, check=True, env=env
+        )
 
     def test_import_creates_transitions(self, tmp_path):
         from vex.git_bridge import import_from_git

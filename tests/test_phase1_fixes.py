@@ -248,7 +248,7 @@ class TestFix7WorkExceptionShadowing:
         # The agent raises ValueError; propose() in cleanup raises RuntimeError.
         # We must see ValueError, not RuntimeError.
         with pytest.raises(ValueError, match="agent broke"):
-            with real_session.work("test prompt") as w:
+            with real_session.work("test prompt"):
                 raise ValueError("agent broke")
 
         repo.close()

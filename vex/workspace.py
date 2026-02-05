@@ -359,7 +359,8 @@ class WorkspaceManager:
         }))
 
         try:
-            result = self._apply_update(ws_path, old_state, new_state_id, is_main=self._is_main(name))
+            result = self._apply_update(
+                ws_path, old_state, new_state_id, is_main=self._is_main(name))
         except Exception:
             # Leave dirty marker so recovery can detect partial state
             raise
@@ -595,7 +596,7 @@ class WorkspaceManager:
             try:
                 import ctypes
                 kernel32 = ctypes.windll.kernel32
-                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                PROCESS_QUERY_LIMITED_INFORMATION = 0x1000  # noqa: N806
                 handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
                 if handle:
                     kernel32.CloseHandle(handle)

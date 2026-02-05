@@ -59,7 +59,7 @@ class TestRestore:
 
         # Modify a file, commit
         (ws / "hello.txt").write_text("modified")
-        result = repo.quick_commit(
+        repo.quick_commit(
             workspace="main",
             prompt="modify hello",
             agent=_agent(),
@@ -75,7 +75,6 @@ class TestRestore:
 class TestFind:
     def test_find_walks_up(self, repo_with_files):
         repo = repo_with_files
-        ws = repo.workspace_path("main")
         # Create a nested dir inside the repo root
         nested = repo.root / "deep" / "nested"
         nested.mkdir(parents=True)

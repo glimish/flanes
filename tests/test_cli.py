@@ -280,13 +280,17 @@ class TestCLIErrorPaths:
         assert rc == 1
 
     def test_lane_create_invalid_name_json(self, repo_dir):
-        rc, out, err = run_vex("--json", "lane", "create", "../escape", cwd=repo_dir, expect_fail=True)
+        rc, out, err = run_vex(
+            "--json", "lane", "create", "../escape", cwd=repo_dir, expect_fail=True
+        )
         assert rc == 1
         data = json.loads(out)
         assert "error" in data
 
     def test_workspace_remove_nonexistent(self, repo_dir):
-        rc, out, err = run_vex("workspace", "remove", "no-such-workspace", cwd=repo_dir, expect_fail=True)
+        rc, out, err = run_vex(
+            "workspace", "remove", "no-such-workspace", cwd=repo_dir, expect_fail=True
+        )
         assert rc == 1
 
     def test_gc_dry_run_default(self, repo_dir):
@@ -306,7 +310,10 @@ class TestCLIErrorPaths:
         """commit without --prompt should fail with argparse error."""
         # First init a repo
         run_vex("init", cwd=empty_dir)
-        rc, out, err = run_vex("commit", "--agent-id", "x", "--agent-type", "y", cwd=empty_dir, expect_fail=True)
+        rc, out, err = run_vex(
+            "commit", "--agent-id", "x", "--agent-type", "y",
+            cwd=empty_dir, expect_fail=True
+        )
         assert rc != 0
         assert "required" in err.lower() or "prompt" in err.lower()
 

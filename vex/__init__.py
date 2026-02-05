@@ -54,9 +54,15 @@ def __getattr__(name):
             TreeDepthLimitError,
             WorldStateManager,
         )
-        return {"WorldStateManager": WorldStateManager, "AgentIdentity": AgentIdentity,
-                "CostRecord": CostRecord, "EvaluationResult": EvaluationResult,
-                "TransitionStatus": TransitionStatus, "TreeDepthLimitError": TreeDepthLimitError}[name]
+        mapping = {
+            "WorldStateManager": WorldStateManager,
+            "AgentIdentity": AgentIdentity,
+            "CostRecord": CostRecord,
+            "EvaluationResult": EvaluationResult,
+            "TransitionStatus": TransitionStatus,
+            "TreeDepthLimitError": TreeDepthLimitError,
+        }
+        return mapping[name]
     if name in ("GCResult", "collect_garbage"):
         from .gc import GCResult, collect_garbage
         return GCResult if name == "GCResult" else collect_garbage

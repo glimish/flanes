@@ -381,7 +381,9 @@ def cmd_history(args):
                     ts = format_time(e["created_at"])
 
                     print(f"{icon} {_display_hash(e['id'], v)}  {ts}  [{e['status']}]")
-                    print(f"  {_display_hash(e['from_state'], v)} → {_display_hash(e['to_state'], v)}")
+                    from_h = _display_hash(e['from_state'], v)
+                    to_h = _display_hash(e['to_state'], v)
+                    print(f"  {from_h} → {to_h}")
                     print(f"  Agent: {e['agent']['agent_id']} ({e['agent']['agent_type']})")
                     print(f"  {e['intent_prompt'][:100]}")
                     if e.get("tags"):
@@ -482,8 +484,10 @@ def cmd_diff(args):
                         if lines is None:
                             print(f"    Binary file {path} differs")
                         else:
-                            for line in difflib.unified_diff([], lines, fromfile='/dev/null', tofile=f'b/{path}'):
-                                print(f"    {line}", end='' if line.endswith('\n') else '\n')
+                            diff = difflib.unified_diff(
+                            [], lines, fromfile='/dev/null', tofile=f'b/{path}')
+                        for line in diff:
+                            print(f"    {line}", end='' if line.endswith('\n') else '\n')
             if result["removed"]:
                 for path in sorted(result["removed"]):
                     print(f"  - {path}")
@@ -492,8 +496,10 @@ def cmd_diff(args):
                         if lines is None:
                             print(f"    Binary file {path} differs")
                         else:
-                            for line in difflib.unified_diff(lines, [], fromfile=f'a/{path}', tofile='/dev/null'):
-                                print(f"    {line}", end='' if line.endswith('\n') else '\n')
+                            diff = difflib.unified_diff(
+                            lines, [], fromfile=f'a/{path}', tofile='/dev/null')
+                        for line in diff:
+                            print(f"    {line}", end='' if line.endswith('\n') else '\n')
             if result["modified"]:
                 for path in sorted(result["modified"]):
                     print(f"  ~ {path}")
@@ -503,7 +509,10 @@ def cmd_diff(args):
                         if old_lines is None or new_lines is None:
                             print(f"    Binary file {path} differs")
                         else:
-                            for line in difflib.unified_diff(old_lines, new_lines, fromfile=f'a/{path}', tofile=f'b/{path}'):
+                            diff = difflib.unified_diff(
+                                old_lines, new_lines,
+                                fromfile=f'a/{path}', tofile=f'b/{path}')
+                            for line in diff:
                                 print(f"    {line}", end='' if line.endswith('\n') else '\n')
 
             if not result["added"] and not result["removed"] and not result["modified"]:

@@ -19,7 +19,7 @@ def test_deduplication_with_overlimit_blob():
 
         # Create repo with high limit, store a 1000-byte file
         (tmp_path / "test.txt").write_text("x" * 1000)
-        with Repository.init(tmp_path) as repo:
+        with Repository.init(tmp_path):
             pass  # init snapshots the file
 
         # Lower the limit
@@ -44,7 +44,7 @@ def test_new_large_blob_rejected_after_lowering():
         tmp_path = Path(tmpdir)
 
         (tmp_path / "small.txt").write_text("small")
-        with Repository.init(tmp_path) as repo:
+        with Repository.init(tmp_path):
             pass
 
         # Lower the limit
@@ -67,7 +67,7 @@ def test_explicit_zero_limits_use_defaults():
         tmp_path = Path(tmpdir)
 
         (tmp_path / "test.txt").write_text("small")
-        with Repository.init(tmp_path) as repo:
+        with Repository.init(tmp_path):
             pass
 
         # Set limits to 0
@@ -89,7 +89,7 @@ def test_negative_limits_rejected():
         tmp_path = Path(tmpdir)
 
         (tmp_path / "test.txt").write_text("test")
-        with Repository.init(tmp_path) as repo:
+        with Repository.init(tmp_path):
             pass
 
         # Set negative limits
@@ -127,7 +127,7 @@ def test_exact_limit_boundary():
         tmp_path = Path(tmpdir)
 
         (tmp_path / "dummy.txt").write_text("x")
-        with Repository.init(tmp_path) as repo:
+        with Repository.init(tmp_path):
             pass
 
         # Set limit to exactly 1000 bytes
