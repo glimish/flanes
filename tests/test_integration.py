@@ -75,7 +75,8 @@ def test_full_workflow():
         # Git-style main: files stay at repo root, main workspace IS the repo root
         main_ws_path = repo.workspace_path("main")
         assert main_ws_path is not None, "Main workspace should exist"
-        assert main_ws_path == test_dir, "Main workspace should BE the repo root"
+        # Use resolve() to handle Windows 8.3 short path names (e.g., RUNNER~1 vs runneradmin)
+        assert main_ws_path.resolve() == test_dir.resolve(), "Main workspace should BE the repo root"
         assert (test_dir / "main.py").exists(), "Files should stay at repo root"
         assert (main_ws_path / "main.py").exists(), "Files accessible via workspace path"
         print(f"✓ Main workspace is repo root (git-style): {main_ws_path}")
