@@ -112,7 +112,7 @@ class TestExportToGit:
         assert log.stdout.strip() != ""
 
     def test_export_empty_lane(self, tmp_path):
-        """Exporting a lane with no accepted transitions produces 0 commits."""
+        """Exporting a lane with only the initial .vexignore commit."""
         from vex.git_bridge import export_to_git
         from vex.repo import Repository
 
@@ -123,7 +123,8 @@ class TestExportToGit:
         target = tmp_path / "export"
         result = export_to_git(repo, target, lane="main")
 
-        assert result["commits"] == 0
+        # .vexignore auto-creation causes one initial commit
+        assert result["commits"] == 1
         repo.close()
 
 

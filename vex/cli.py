@@ -309,6 +309,11 @@ def cmd_commit(args):
     with open_repo(args) as repo:
         ws_name = detect_workspace(repo, args.workspace)
 
+        # Warn about auto-accept behavior
+        if args.auto_accept and v > 0 and not args.json:
+            print("Note: --auto-accept will run evaluators but won't block on failures",
+                  file=sys.stderr)
+
         agent = AgentIdentity(
             agent_id=args.agent_id,
             agent_type=args.agent_type,
@@ -347,6 +352,10 @@ def cmd_commit(args):
             print(f"  To:        {_display_hash(result['to_state'], v)}")
             print(f"  Status:    {result['status']}")
             print(f"  Prompt:    {args.prompt[:80]}")
+            if result.get('evaluation'):
+                ev = result['evaluation']
+                ev_icon = "✓" if ev['passed'] else "✗"
+                print(f"  Eval:      {ev_icon} {ev['summary']}")
             if v >= 2 and result.get('cost'):
                 print(f"  Cost:      {result['cost']}")
 
@@ -712,23 +721,57 @@ def cmd_promote(args):
             agent=agent,
             auto_accept=args.auto_accept,
             evaluator=args.evaluator or "auto",
+            force=getattr(args, 'force', False),
         )
 
         if args.json:
             print_json(result)
         elif result["status"] == "conflicts":
-            print(f"✗ Conflicts detected — cannot promote '{ws_name}' into '{result['target_lane']}'")
-            print(f"  Fork base: {_display_hash(result['fork_base'], v)}")
-            print("\n  Conflicting files:")
+            target_lane = result['target_lane']
+            source_lane = result.get('source_lane', ws_name)
+            fork_base = result['fork_base']
+            target_head = repo.head(target_lane)
+
+            print(f"✗ Conflicts detected — cannot promote '{ws_name}' into '{target_lane}'")
+            print()
+            print(f"  Fork base:   {_display_hash(fork_base, v)}")
+            print(f"  Your head:   {_display_hash(repo.head(source_lane), v)}")
+            print(f"  Target head: {_display_hash(target_head, v)}")
+            print()
+            print(f"  Conflicting files ({len(result['conflicts'])}):")
             for c in result["conflicts"]:
-                print(f"    {c['path']}  (lane: {c['lane_action']}, target: {c['target_action']})")
-            print(f"\n  Lane-only changes ({len(result['lane_only'])}):")
-            for p in result["lane_only"][:10]:
-                print(f"    {p}")
-            print(f"\n  Target-only changes ({len(result['target_only'])}):")
-            for p in result["target_only"][:10]:
-                print(f"    {p}")
-            print("\n  To resolve: update the workspace, fix conflicts, then re-promote.")
+                print(f"    {c['path']}")
+                print(f"      Your change:   {c['lane_action']}")
+                print(f"      Their change:  {c['target_action']}")
+
+            if result['lane_only']:
+                print(f"\n  Lane-only changes ({len(result['lane_only'])}):")
+                for p in result["lane_only"][:5]:
+                    print(f"    {p}")
+                if len(result['lane_only']) > 5:
+                    print(f"    ... and {len(result['lane_only']) - 5} more")
+
+            if result['target_only']:
+                print(f"\n  Target-only changes ({len(result['target_only'])}):")
+                for p in result["target_only"][:5]:
+                    print(f"    {p}")
+                if len(result['target_only']) > 5:
+                    print(f"    ... and {len(result['target_only']) - 5} more")
+
+            print("\n  How to resolve:")
+            print()
+            print("    Option 1: Update workspace to target and manually fix")
+            print(f"      vex workspace update {ws_name} --state {_display_hash(target_head, v)}")
+            print("      # Edit conflicting files in workspace")
+            print("      vex commit -m 'Resolve conflicts' --agent-id <agent> --agent-type <type>")
+            print(f"      vex promote -w {ws_name} --target {target_lane}")
+            print()
+            print("    Option 2: Re-run agent from updated base")
+            print(f"      vex lane create {ws_name}-v2 --base {_display_hash(target_head, v)}")
+            print("      # Run agent again on new lane")
+            print()
+            print("    Option 3: Force promote (overwrites their changes)")
+            print(f"      vex promote -w {ws_name} --target {target_lane} --force")
         elif v == 0:
             print(result.get('transition_id', ''))
         else:
@@ -1539,6 +1582,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", default=None)
     p.add_argument("--auto-accept", "-a", action="store_true")
     p.add_argument("--evaluator", default=None)
+    p.add_argument("--force", "-f", action="store_true",
+                   help="Force promote, overwriting conflicting changes in target")
     p.set_defaults(func=cmd_promote)
 
     # show

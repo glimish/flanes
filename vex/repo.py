@@ -107,6 +107,32 @@ class Repository:
             self.store, self.db_path, max_tree_depth=max_tree_depth)
         self.wm = WorkspaceManager(self.vex_dir, self.wsm)
 
+    # Template for .vexignore file created on init
+    VEXIGNORE_TEMPLATE = """\
+# Vex ignore patterns (like .gitignore)
+# Lines starting with # are comments
+# Patterns ending with / match directories only
+# Patterns starting with ! negate a previous match
+
+# Environment files (uncomment as needed)
+# .env
+# .env.*
+
+# Credentials (uncomment as needed)
+# *.pem
+# *.key
+# credentials.json
+
+# Build artifacts
+# dist/
+# build/
+# *.pyc
+
+# Logs
+# *.log
+# logs/
+"""
+
     @classmethod
     def init(cls, path: Path, initial_lane: str = "main") -> "Repository":
         """
@@ -132,6 +158,11 @@ class Repository:
             "max_blob_size": 100 * 1024 * 1024,  # 100 MB default
             "max_tree_depth": 100,  # 100 levels default
         }, indent=2))
+
+        # Auto-create .vexignore if it doesn't exist
+        vexignore_path = root / ".vexignore"
+        if not vexignore_path.exists():
+            vexignore_path.write_text(cls.VEXIGNORE_TEMPLATE)
 
         repo = cls(root)
         repo.wsm.create_lane(initial_lane)
@@ -379,7 +410,15 @@ class Repository:
     ) -> dict:
         """
         Convenience: snapshot workspace + propose (+ optionally accept).
+
+        When auto_accept=True, evaluators are still run but failures
+        only produce warnings (they don't block the accept). This ensures
+        evaluation data is captured even for auto-accepted commits.
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         info = self.wm.get(workspace)
         if info is None:
             raise ValueError(f"Workspace '{workspace}' not found")
@@ -399,17 +438,45 @@ class Repository:
         )
 
         status = TransitionStatus.PROPOSED
+        eval_result = None
+        eval_summary = "Auto-accepted"
+
         if auto_accept:
-            status = self.accept(tid, evaluator=evaluator, summary="Auto-accepted")
+            # Run evaluators even with auto-accept to capture evaluation data
+            try:
+                eval_result = self.run_evaluators(workspace)
+                if eval_result and not eval_result.passed:
+                    logger.warning(
+                        "Evaluators failed but auto-accepting: %s",
+                        eval_result.summary,
+                    )
+                    eval_summary = f"Auto-accepted (eval failed: {eval_result.summary})"
+                elif eval_result and eval_result.passed:
+                    eval_summary = f"Auto-accepted (eval passed: {eval_result.summary})"
+            except Exception as e:
+                logger.warning("Evaluator error during auto-accept: %s", e)
+                eval_summary = f"Auto-accepted (eval error: {e})"
+
+            status = self.accept(tid, evaluator=evaluator, summary=eval_summary)
             # Update workspace base state to track the new head
             self.wm._update_meta(workspace, base_state=new_state)
 
-        return {
+        result = {
             "transition_id": tid,
             "from_state": head,
             "to_state": new_state,
             "status": status.value,
         }
+
+        # Include evaluation info if we ran evaluators
+        if eval_result:
+            result["evaluation"] = {
+                "passed": eval_result.passed,
+                "summary": eval_result.summary,
+                "checks": eval_result.checks,
+            }
+
+        return result
 
     # ── Lane Operations ───────────────────────────────────────────
 
@@ -497,6 +564,7 @@ class Repository:
         tags: list[str] | None = None,
         auto_accept: bool = False,
         evaluator: str = "auto",
+        force: bool = False,
     ) -> dict:
         """
         Promote a workspace's work into a target lane.
@@ -565,8 +633,11 @@ class Repository:
             lane_delta, target_delta, fork_base, source_lane, target_lane,
         )
 
-        if conflict_info["has_conflicts"]:
+        if conflict_info["has_conflicts"] and not force:
             return conflict_info
+
+        # If force=True, we ignore conflicts and just use lane's version
+        # (the agent's work overwrites target changes on conflicting paths)
 
         # No conflicts — apply target's delta onto the workspace.
         # This writes only files that changed on the target side.

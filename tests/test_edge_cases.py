@@ -91,6 +91,12 @@ class TestDeeplyNestedDirectory:
 
 class TestEmptyDirectory:
     def test_empty_dir_snapshot(self, repo):
+        # Remove auto-created .vexignore to test truly empty workspace
+        ws = repo.workspace_path("main")
+        vexignore = ws / ".vexignore"
+        if vexignore.exists():
+            vexignore.unlink()
+
         # Empty workspace (no files) should produce a valid state
         state_id = repo.snapshot("main")
         state = repo.wsm.get_state(state_id)
@@ -102,6 +108,11 @@ class TestEmptyDirectory:
 class TestDuplicateContentDeduplication:
     def test_duplicate_files_single_blob(self, repo):
         ws = repo.workspace_path("main")
+
+        # Count blobs before adding files (may include .vexignore from init)
+        stats_before = repo.store.stats()
+        blobs_before = stats_before.get("by_type", {}).get("blob", {}).get("count", 0)
+
         content = "identical content across files"
         (ws / "file_a.txt").write_text(content)
         (ws / "file_b.txt").write_text(content)
@@ -114,8 +125,9 @@ class TestDuplicateContentDeduplication:
             auto_accept=True,
         )
         stats = repo.store.stats()
-        # Should have 1 blob for the content (deduplicated), plus tree objects
-        assert stats["by_type"]["blob"]["count"] == 1
+        # Should have exactly 1 new blob for the content (deduplicated)
+        blobs_after = stats["by_type"]["blob"]["count"]
+        assert blobs_after == blobs_before + 1
 
 
 class TestLargeFile:

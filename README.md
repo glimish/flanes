@@ -132,13 +132,20 @@ vex promote --workspace feature-auth --target main --auto-accept
 
 # If files conflict (same path modified on both sides):
 # ✗ Conflicts detected — cannot promote 'feature-auth' into 'main'
-#   Conflicting files:
-#     README.md  (lane: modified, target: modified)
 #
-#   To resolve: update the workspace, fix conflicts, then re-promote.
+#   Conflicting files (1):
+#     README.md
+#       Your change:   modified
+#       Their change:  modified
+#
+#   How to resolve:
+#     Option 1: Update workspace to target and manually fix
+#     Option 2: Re-run agent from updated base
+#     Option 3: Force promote (overwrites their changes)
+#       vex promote -w feature-auth --target main --force
 ```
 
-Promote does NOT merge file contents. It detects path-level conflicts and stops. The orchestrator decides what to do: re-run the agent from updated main, manual fix, or LLM-assisted resolution. Vex is the mechanism, not the policy.
+Promote does NOT merge file contents. It detects path-level conflicts and provides resolution guidance. Use `--force` to overwrite conflicting changes when needed (e.g., automated pipelines). The orchestrator decides what to do: re-run the agent from updated main, manual fix, or LLM-assisted resolution. Vex is the mechanism, not the policy.
 
 ### Query Operations
 
@@ -179,7 +186,7 @@ vex budget set feature-auth --max-tokens-in 100000 --max-tokens-out 50000
 - **Git Bridge** — `vex export-git` / `vex import-git` to sync with git repos for CI integration
 - **Remote Storage** — `vex remote push` / `vex remote pull` for S3/GCS-backed team collaboration
 - **MCP Server** — `vex mcp` exposes Vex operations as tools for LLM integration via Model Context Protocol
-- **REST API** — `vex serve` starts an HTTP API server for programmatic access
+- **REST API** — `vex serve` starts a multi-threaded HTTP API server for concurrent programmatic access (includes `/health` endpoint)
 - **Multi-repo Projects** — `vex project init` coordinates snapshots across multiple Vex repositories
 - **Templates** — `vex template create` / `vex template list` for reusable workspace scaffolding
 - **Repository Health** — `vex doctor` detects and fixes stale locks, dirty workspaces, orphaned metadata

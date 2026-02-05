@@ -309,9 +309,20 @@ class WorldStateManager:
         return self._create_world_state(root_tree_hash, parent_id)
 
     # Paths to always ignore when snapshotting (matched against filename)
+    # Includes VCS dirs, build artifacts, OS noise, and security-sensitive files
     DEFAULT_IGNORE = frozenset({
+        # Version control
         ".vex", ".git", ".svn", ".hg",
+        # Build artifacts and caches
         "__pycache__", "node_modules", ".DS_Store", "Thumbs.db",
+        # Environment and secrets (prevent accidental exposure)
+        ".env", ".env.local", ".env.development", ".env.production",
+        ".env.test", ".env.staging",
+        # Credentials and keys
+        "*.pem", "*.key", "*.p12", "*.pfx",
+        "credentials.json", "service-account.json",
+        # IDE and editor
+        ".idea", ".vscode",
     })
 
     def _hash_directory(

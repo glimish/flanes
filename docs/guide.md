@@ -165,9 +165,14 @@ Promote copies accepted work from a source lane into a target lane. It:
 1. Finds the common ancestor state
 2. Diffs both sides against the ancestor
 3. If no file paths collide, applies the source changes to the target
-4. If paths collide, reports conflicts and stops
+4. If paths collide, reports conflicts with detailed resolution guidance
 
-Promote never merges file contents. Conflict resolution is a policy decision for the orchestration layer.
+Promote never merges file contents. When conflicts occur, it provides three resolution options:
+- Update workspace to target and manually fix conflicts
+- Re-run agent from updated base
+- Use `--force` to overwrite target changes (for automation)
+
+The `--force` flag is useful in CI/CD pipelines where the agent's changes should always win.
 
 ---
 
@@ -232,7 +237,7 @@ vex lane create experiment-v2 --base abc123
 | `vex workspace remove NAME [--force]` | Remove a workspace |
 | `vex workspace update NAME [--state STATE_ID]` | Update workspace to a state |
 | `vex restore STATE_ID [--workspace NAME]` | Restore workspace to any historical state |
-| `vex promote --workspace NAME --target LANE [--auto-accept]` | Promote workspace into target lane |
+| `vex promote --workspace NAME --target LANE [--auto-accept] [--force]` | Promote workspace into target lane |
 
 ```bash
 # Update feature workspace to latest main
@@ -578,6 +583,19 @@ vex commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-acc
 
 - **Required** evaluators must pass for a transition to be accepted. If any required evaluator fails, the transition is rejected.
 - **Optional** evaluators record their results but don't block acceptance. Useful for advisory checks (e.g., code coverage, style suggestions).
+
+### Auto-Accept Behavior
+
+When using `--auto-accept`, evaluators still run but failures produce warnings instead of blocking:
+
+```bash
+vex commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-accept
+# Note: --auto-accept will run evaluators but won't block on failures
+# ✓ Committed: abc123def456
+#   Eval: ✗ pytest failed: 2 tests failed
+```
+
+This ensures evaluation data is always captured, even for automated commits. The evaluation result is stored in the transition metadata.
 
 ---
 
@@ -988,12 +1006,13 @@ vex serve
 vex serve --host 0.0.0.0 --port 8080
 ```
 
-The server is single-threaded (stdlib `http.server`) to avoid SQLite threading issues.
+The server uses `ThreadingHTTPServer` for concurrent request handling. A lock serializes SQLite access to ensure thread safety.
 
 ### GET Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
+| `GET /health` | Health check (no repo lock, fast) |
 | `GET /status` | Repository status |
 | `GET /head?lane=LANE` | Head state for a lane |
 | `GET /lanes` | List all lanes |
@@ -1179,9 +1198,14 @@ __pycache__/
 | `cache/` | Directories named `cache` (directory pattern) |
 
 **Default ignores** (always excluded):
-- `.vex`, `.git`, `.svn`, `.hg`
-- `__pycache__`, `node_modules`
-- `.DS_Store`, `Thumbs.db`
+- Version control: `.vex`, `.git`, `.svn`, `.hg`
+- Build artifacts: `__pycache__`, `node_modules`
+- OS noise: `.DS_Store`, `Thumbs.db`
+- Environment files: `.env`, `.env.local`, `.env.development`, `.env.production`, `.env.test`, `.env.staging`
+- Credentials: `*.pem`, `*.key`, `*.p12`, `*.pfx`, `credentials.json`, `service-account.json`
+- IDE: `.idea`, `.vscode`
+
+A `.vexignore` template file is auto-created on `vex init` with common patterns commented out for easy customization.
 
 ### Symlink Handling
 

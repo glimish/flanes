@@ -94,18 +94,22 @@ class TestInit:
         with pytest.raises(ValueError, match="already exists"):
             Repository.init(repo_with_files.root)
 
-    def test_init_empty_dir_no_snapshot(self, tmp_path):
+    def test_init_empty_dir_creates_vexignore(self, tmp_path):
         project = tmp_path / "empty_project"
         project.mkdir()
         repo = Repository.init(project)
-        # Head should be None for empty repo (no initial snapshot)
-        assert repo.head() is None
-        # Workspace should exist but be empty
+        # .vexignore is auto-created, so there's an initial snapshot
+        assert repo.head() is not None
+        # Workspace should exist with .vexignore
         ws = repo.workspace_path("main")
         assert ws is not None
-        # No user files in workspace
-        user_files = [f for f in ws.iterdir() if not f.name.startswith(".vex")]
-        assert len(user_files) == 0
+        # .vexignore should exist (it starts with . so is a dotfile)
+        assert (ws / ".vexignore").exists()
+        # Only .vex dir and .vexignore should exist
+        all_files = list(ws.iterdir())
+        names = {f.name for f in all_files}
+        assert ".vexignore" in names
+        assert ".vex" in names
         repo.close()
 
 
