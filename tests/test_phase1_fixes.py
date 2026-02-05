@@ -225,7 +225,7 @@ class TestFix6BusyTimeout:
     def test_busy_timeout_is_set(self, repo_with_files):
         repo = repo_with_files
         row = repo.store.conn.execute("PRAGMA busy_timeout").fetchone()
-        assert row[0] == 5000, f"busy_timeout should be 5000, got {row[0]}"
+        assert row[0] == 30000, f"busy_timeout should be 30000, got {row[0]}"
 
 
 # ── Fix 7: work() propagates original exception ─────────────────────
