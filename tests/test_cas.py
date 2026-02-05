@@ -60,7 +60,17 @@ class TestStoreTreeDeterministic:
 
 class TestReadTree:
     def test_read_tree_round_trip(self, store):
+        # Input can be 2-tuples or 3-tuples
         entries = {"file.txt": ("blob", "abc"), "dir": ("tree", "def")}
+        h = store.store_tree(entries)
+        result = store.read_tree(h)
+        # Output is always 3-tuples with default modes (0o644 for blobs, 0o755 for trees)
+        expected = {"file.txt": ("blob", "abc", 0o644), "dir": ("tree", "def", 0o755)}
+        assert result == expected
+
+    def test_read_tree_preserves_explicit_modes(self, store):
+        # Test that explicit modes are preserved
+        entries = {"script.sh": ("blob", "abc", 0o755), "data": ("tree", "def", 0o700)}
         h = store.store_tree(entries)
         result = store.read_tree(h)
         assert result == entries

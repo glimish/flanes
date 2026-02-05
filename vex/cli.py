@@ -975,14 +975,21 @@ def cmd_cat_file(args):
                 import json as _json
                 entries = _json.loads(obj.data.decode())
                 if args.json:
+                    result_entries = []
+                    for name, entry in entries:
+                        typ, h = entry[0], entry[1]
+                        mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else 0o644)
+                        result_entries.append({"name": name, "type": typ, "hash": h, "mode": oct(mode)})
                     print_json({
                         "hash": obj.hash,
                         "type": "tree",
-                        "entries": [{"name": name, "type": typ, "hash": h} for name, (typ, h) in entries],
+                        "entries": result_entries,
                     })
                 else:
-                    for name, (typ, h) in entries:
-                        print(f"{typ} {h} {name}")
+                    for name, entry in entries:
+                        typ, h = entry[0], entry[1]
+                        mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else 0o644)
+                        print(f"{oct(mode)} {typ} {h} {name}")
             else:
                 if args.json:
                     print_json({

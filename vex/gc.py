@@ -24,6 +24,7 @@ class GCResult:
     deleted_bytes: int
     deleted_states: int
     deleted_transitions: int
+    pruned_cache_entries: int  # Fix #4: Track pruned stat cache entries
     dry_run: bool
     elapsed_ms: float
 
@@ -34,6 +35,7 @@ class GCResult:
             "deleted_bytes": self.deleted_bytes,
             "deleted_states": self.deleted_states,
             "deleted_transitions": self.deleted_transitions,
+            "pruned_cache_entries": self.pruned_cache_entries,
             "dry_run": self.dry_run,
             "elapsed_ms": self.elapsed_ms,
         }
@@ -118,7 +120,9 @@ def _mark_phase(conn, store, max_age_days):
             entries = json.loads(obj.data.decode())
         except (json.JSONDecodeError, UnicodeDecodeError):
             continue
-        for _name, (typ, h) in entries:
+        for _name, entry in entries:
+            # Handle both old (type, hash) and new (type, hash, mode) formats
+            typ, h = entry[0], entry[1]
             reachable_hashes.add(h)
             if typ == "tree":
                 tree_frontier.append(h)
@@ -181,6 +185,12 @@ def collect_garbage(
     all_state_ids = {row[0] for row in conn.execute("SELECT id FROM world_states")}
     orphan_states = all_state_ids - all_live_states
 
+    # Fix #4: Count stale cache entries for dry run
+    stale_cache_dry_run = 0
+    for row in conn.execute("SELECT blob_hash FROM stat_cache"):
+        if row[0] in unreachable:
+            stale_cache_dry_run += 1
+
     if dry_run:
         elapsed = (time.monotonic() - start) * 1000
         return GCResult(
@@ -189,9 +199,17 @@ def collect_garbage(
             deleted_bytes=deleted_bytes,
             deleted_states=len(orphan_states),
             deleted_transitions=len(deletable_transition_ids),
+            pruned_cache_entries=stale_cache_dry_run,
             dry_run=True,
             elapsed_ms=elapsed,
         )
+
+    # Fix #4: Prune stat cache entries for deleted blobs
+    # Count entries whose blob_hash is no longer in the store
+    stale_cache_count = 0
+    for row in conn.execute("SELECT path, blob_hash FROM stat_cache"):
+        if row[1] in unreachable:
+            stale_cache_count += 1
 
     # Actually delete — DB changes in batch, filesystem after commit
     # Collect fs blobs to delete after DB transaction succeeds
@@ -221,6 +239,15 @@ def collect_garbage(
         for sid in orphan_states:
             conn.execute("DELETE FROM world_states WHERE id = ?", (sid,))
 
+        # Fix #4: Prune stale stat cache entries
+        # Delete entries whose blob_hash references a deleted object
+        if unreachable:
+            placeholders = ",".join("?" for _ in unreachable)
+            conn.execute(
+                f"DELETE FROM stat_cache WHERE blob_hash IN ({placeholders})",
+                list(unreachable)
+            )
+
     # Delete filesystem blobs after DB transaction committed successfully
     for h in fs_blobs_to_delete:
         store.delete_fs_blob(h)
@@ -232,6 +259,7 @@ def collect_garbage(
         deleted_bytes=deleted_bytes,
         deleted_states=len(orphan_states),
         deleted_transitions=len(deletable_transition_ids),
+        pruned_cache_entries=stale_cache_count,
         dry_run=False,
         elapsed_ms=elapsed,
     )

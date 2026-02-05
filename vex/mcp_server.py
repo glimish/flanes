@@ -163,7 +163,7 @@ class MCPServer:
                     },
                     "serverInfo": {
                         "name": "vex-mcp",
-                        "version": "0.2.0",
+                        "version": "0.3.0",
                     },
                 },
             }

@@ -131,11 +131,20 @@ class TestFix3VexignoreFnmatch:
 
     def test_should_ignore_static_method(self):
         ignore = frozenset({"exact_match", "*.log", "test_*"})
-        assert WorldStateManager._should_ignore("exact_match", ignore) is True
-        assert WorldStateManager._should_ignore("foo.log", ignore) is True
-        assert WorldStateManager._should_ignore("test_something", ignore) is True
-        assert WorldStateManager._should_ignore("production.py", ignore) is False
-        assert WorldStateManager._should_ignore("log", ignore) is False
+        # Updated signature: _should_ignore(name, rel_path, ignore, negate)
+        assert WorldStateManager._should_ignore("exact_match", "exact_match", ignore) is True
+        assert WorldStateManager._should_ignore("foo.log", "foo.log", ignore) is True
+        assert WorldStateManager._should_ignore("test_something", "test_something", ignore) is True
+        assert WorldStateManager._should_ignore("production.py", "production.py", ignore) is False
+        assert WorldStateManager._should_ignore("log", "log", ignore) is False
+
+    def test_should_ignore_path_patterns(self):
+        """Test Fix #3: Path-based ignore patterns."""
+        ignore = frozenset({"build/output/*", "docs/generated/*"})
+        # Path patterns should match relative paths
+        assert WorldStateManager._should_ignore("file.json", "build/output/file.json", ignore) is True
+        assert WorldStateManager._should_ignore("file.json", "src/file.json", ignore) is False
+        assert WorldStateManager._should_ignore("readme.md", "docs/generated/readme.md", ignore) is True
 
 
 # ── Fix 4: _atomic_write retries on Windows PermissionError ─────────

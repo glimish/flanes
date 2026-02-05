@@ -254,7 +254,8 @@ class TestGarbageCollection:
         s = wsm.get_state(state1)
         assert s is not None
         entries = store.read_tree(s["root_tree"])
-        for name, (typ, h) in entries.items():
+        for name, entry in entries.items():
+            typ, h = entry[0], entry[1]  # Handle (type, hash, mode) tuples
             assert store.retrieve(h) is not None
         store.close()
 

@@ -301,15 +301,17 @@ class WorkspaceManager:
         Materialize a state into the main workspace (repo root).
 
         This is like regular materialize but MUST protect the .vex directory.
+        Fix #2: Now restores file modes.
         """
         state = self.wsm.get_state(state_id)
         if not state:
             raise ValueError(f"State not found: {state_id}")
 
-        files = self.wsm._flatten_tree(state["root_tree"])
+        # Fix #2: Use _flatten_tree_with_modes to get file modes
+        files = self.wsm._flatten_tree_with_modes(state["root_tree"])
 
         # Write all files from the state
-        for path, blob_hash in files.items():
+        for path, (blob_hash, mode) in files.items():
             # CRITICAL: Never touch .vex directory
             if path.startswith(".vex") or path.startswith(".vex/"):
                 continue
@@ -321,6 +323,13 @@ class WorkspaceManager:
             file_path = ws_path / path
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_bytes(obj.data)
+
+            # Fix #2: Restore file mode
+            try:
+                file_path.chmod(mode)
+            except OSError:
+                # chmod may fail on some filesystems
+                pass
 
     # ── Smart Update ──────────────────────────────────────────────
 
@@ -378,12 +387,13 @@ class WorkspaceManager:
         # Get the diff between old and new states
         diff = self.wsm.diff_states(old_state, new_state_id)
 
-        # Get the new state's tree for reading new content
+        # Get the new state's tree for reading new content (with file modes)
         new_state = self.wsm.get_state(new_state_id)
         if not new_state:
             raise ValueError(f"State not found: {new_state_id}")
 
-        new_files = self.wsm._flatten_tree(new_state["root_tree"])
+        # Fix #2: Use _flatten_tree_with_modes to get file modes
+        new_files = self.wsm._flatten_tree_with_modes(new_state["root_tree"])
 
         # Apply removals
         for path in diff["removed"]:
@@ -392,8 +402,11 @@ class WorkspaceManager:
                 continue
 
             file_path = ws_path / path
-            if file_path.exists():
+            # Fix #5: Handle both files and directories properly
+            if file_path.is_symlink() or file_path.is_file():
                 file_path.unlink()
+            elif file_path.is_dir():
+                shutil.rmtree(file_path)
             # Clean up empty parent directories
             self._cleanup_empty_parents(file_path.parent, ws_path)
 
@@ -403,17 +416,30 @@ class WorkspaceManager:
             if is_main and (path.startswith(".vex") or path.startswith(".vex/")):
                 continue
 
-            blob_hash = new_files.get(path)
-            if blob_hash is None:
+            file_info = new_files.get(path)
+            if file_info is None:
                 continue
 
+            blob_hash, mode = file_info
             obj = self.wsm.store.retrieve(blob_hash)
             if obj is None:
                 continue
 
             file_path = ws_path / path
+
+            # Fix #5: If a directory exists where a file should go, remove it first
+            if file_path.is_dir():
+                shutil.rmtree(file_path)
+
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_bytes(obj.data)
+
+            # Fix #2: Restore file mode
+            try:
+                file_path.chmod(mode)
+            except OSError:
+                # chmod may fail on some filesystems (e.g., FAT32, some network mounts)
+                pass
 
         return {
             "mode": "incremental",

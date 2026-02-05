@@ -221,27 +221,57 @@ class ContentStore:
         """Store raw file content."""
         return self.store(content, ObjectType.BLOB)
 
-    def store_tree(self, entries: dict[str, tuple[str, str]]) -> str:
+    def store_tree(self, entries: dict) -> str:
         """
         Store a directory tree.
 
-        entries: {name: (type, hash)} where type is 'blob' or 'tree'
+        entries: {name: (type, hash, mode)} where type is 'blob' or 'tree'
+                 mode is optional (defaults to 0o644 for blobs, 0o755 for trees)
 
         Entries are sorted for deterministic hashing — the same set of
         files always produces the same tree hash regardless of insertion order.
+
+        Fix #2 from audit: Tree entries now include file mode as third element.
         """
+        # Normalize entries to always have 3 elements (type, hash, mode)
+        normalized = {}
+        for name, entry in entries.items():
+            if len(entry) == 2:
+                typ, h = entry
+                # Default mode: 0o644 for files, 0o755 for directories
+                mode = 0o755 if typ == "tree" else 0o644
+                normalized[name] = (typ, h, mode)
+            else:
+                normalized[name] = tuple(entry)
+
         # Sort for deterministic hashing
-        sorted_entries = sorted(entries.items())
+        sorted_entries = sorted(normalized.items())
         data = json.dumps(sorted_entries).encode()
         return self.store(data, ObjectType.TREE)
 
-    def read_tree(self, tree_hash: str) -> dict[str, tuple[str, str]]:
-        """Read a tree back into its entries."""
+    def read_tree(self, tree_hash: str) -> dict[str, tuple]:
+        """Read a tree back into its entries.
+
+        Returns {name: (type, hash, mode)} where mode defaults to 0o644/0o755
+        for backward compatibility with trees that don't have mode stored.
+        """
         obj = self.retrieve(tree_hash)
         if obj is None or obj.type != ObjectType.TREE:
             raise ValueError(f"Not a tree: {tree_hash}")
         entries_list = json.loads(obj.data.decode())
-        return {name: (typ, h) for name, (typ, h) in entries_list}
+
+        result = {}
+        for name, entry in entries_list:
+            if len(entry) == 2:
+                # Old format without mode — use defaults
+                typ, h = entry
+                mode = 0o755 if typ == "tree" else 0o644
+                result[name] = (typ, h, mode)
+            else:
+                typ, h, mode = entry
+                result[name] = (typ, h, mode)
+
+        return result
 
     # ── Stat Cache ────────────────────────────────────────────────
 

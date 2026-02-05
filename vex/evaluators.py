@@ -18,27 +18,38 @@ from .state import EvaluationResult
 
 @dataclass
 class EvaluatorConfig:
-    """Configuration for a single evaluator."""
+    """Configuration for a single evaluator.
+
+    Fix #6 from audit: Supports both `command` (string, OS-dependent parsing)
+    and `args` (explicit list, cross-platform). If both are provided, `args`
+    takes precedence.
+    """
     name: str
-    command: str
+    command: str = ""
+    args: Optional[list[str]] = None  # Fix #6: Explicit args list for cross-platform
     working_directory: Optional[str] = None
     required: bool = True
     timeout_seconds: int = 300
 
     def to_dict(self) -> dict:
-        return {
+        d = {
             "name": self.name,
-            "command": self.command,
             "working_directory": self.working_directory,
             "required": self.required,
             "timeout_seconds": self.timeout_seconds,
         }
+        if self.args:
+            d["args"] = self.args
+        if self.command:
+            d["command"] = self.command
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "EvaluatorConfig":
         return cls(
             name=d["name"],
-            command=d["command"],
+            command=d.get("command", ""),
+            args=d.get("args"),
             working_directory=d.get("working_directory"),
             required=d.get("required", True),
             timeout_seconds=d.get("timeout_seconds", 300),
@@ -73,7 +84,11 @@ def load_evaluators(config: dict) -> list:
 
 
 def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> EvaluatorResult:
-    """Run a single evaluator command in the workspace directory."""
+    """Run a single evaluator command in the workspace directory.
+
+    Fix #6 from audit: If `args` is provided, uses it directly (cross-platform).
+    Otherwise falls back to OS-dependent command parsing.
+    """
     cwd = workspace_path
     if evaluator.working_directory:
         cwd = workspace_path / evaluator.working_directory
@@ -92,9 +107,24 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
 
     start = time.monotonic()
     try:
-        # On Windows, pass command as string (CreateProcess handles it natively).
-        # On POSIX, split into list to avoid shell interpretation.
-        cmd = evaluator.command if os.name == "nt" else shlex.split(evaluator.command)
+        # Fix #6: Use explicit args if provided, otherwise parse command
+        if evaluator.args:
+            # Explicit args list — cross-platform, no parsing needed
+            cmd = evaluator.args
+        elif evaluator.command:
+            # Legacy: On Windows, pass command as string (CreateProcess handles it natively).
+            # On POSIX, split into list to avoid shell interpretation.
+            cmd = evaluator.command if os.name == "nt" else shlex.split(evaluator.command)
+        else:
+            return EvaluatorResult(
+                name=evaluator.name,
+                passed=False,
+                returncode=-1,
+                stdout="",
+                stderr=f"Evaluator '{evaluator.name}' has no command or args specified",
+                duration_ms=0.0,
+            )
+
         result = subprocess.run(
             cmd,
             shell=False,

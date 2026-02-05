@@ -5,12 +5,16 @@ Abstract backend + S3/GCS (optional deps, lazy import) + local cache.
 Provides sync between a local ContentStore and a remote backend.
 """
 
+import hashlib
+import logging
 import os
 import tempfile
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 class RemoteBackend(ABC):
@@ -245,7 +249,11 @@ class RemoteSyncManager:
         return {"pushed": pushed, "skipped": skipped, "total": len(hashes)}
 
     def pull(self, hashes: Optional[list] = None) -> dict:
-        """Pull objects from remote to local store."""
+        """Pull objects from remote to local store.
+
+        Fix #7 from audit: Verifies downloaded payload hash matches expected key
+        before storing, preventing silent corruption from malicious/broken backends.
+        """
         from .cas import ObjectType
 
         if hashes is None:
@@ -254,6 +262,8 @@ class RemoteSyncManager:
         pulled = 0
         skipped = 0
         errors = 0
+        integrity_failures = 0
+
         for h in hashes:
             if self.store.exists(h):
                 skipped += 1
@@ -273,12 +283,31 @@ class RemoteSyncManager:
                     # Legacy format (no type prefix) — assume blob
                     data = payload
                     obj_type = ObjectType.BLOB
+
+                # Fix #7: Verify hash before storing
+                # Compute expected hash using same algorithm as ContentStore
+                computed_hash = self.store.hash_content(data, obj_type)
+                if computed_hash != h:
+                    logger.warning(
+                        "Integrity check failed for %s: expected hash %s, got %s. "
+                        "Payload corrupted or malicious — skipping.",
+                        h[:12], h[:12], computed_hash[:12]
+                    )
+                    integrity_failures += 1
+                    continue
+
                 self.store.store(data, obj_type)
                 pulled += 1
             else:
                 errors += 1
 
-        return {"pulled": pulled, "skipped": skipped, "errors": errors, "total": len(hashes)}
+        return {
+            "pulled": pulled,
+            "skipped": skipped,
+            "errors": errors,
+            "integrity_failures": integrity_failures,
+            "total": len(hashes),
+        }
 
     def status(self) -> dict:
         """Compare local and remote objects."""

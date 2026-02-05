@@ -21,14 +21,21 @@ what changed."
 import fnmatch
 import json
 import logging
+import os
+import stat
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
+
+# Default file mode for files without stored mode (backward compatibility)
+DEFAULT_FILE_MODE = 0o644
+# Mask for executable bits
+EXEC_BITS = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
 from .cas import ContentStore, ObjectType
 
@@ -317,6 +324,7 @@ class WorldStateManager:
         negate: frozenset = frozenset(),
         use_cache: bool = True,
         current_depth: int = 0,
+        relative_prefix: str = "",
     ) -> str:
         """
         Recursively hash a directory into the CAS.
@@ -327,6 +335,15 @@ class WorldStateManager:
 
         When use_cache is True, checks the stat cache (mtime_ns + size)
         before reading file contents. Cache hits skip read_bytes + store_blob.
+
+        Symlinks are skipped by default to prevent reading files outside
+        the workspace (Fix #1 from audit).
+
+        File modes (especially executable bit) are preserved in tree entries
+        as a third element: (type, hash, mode) (Fix #2 from audit).
+
+        Ignore patterns support both basename and relative path matching
+        (Fix #3 from audit).
 
         Raises TreeDepthLimitError if current_depth exceeds max_tree_depth.
         """
@@ -339,13 +356,22 @@ class WorldStateManager:
         entries = {}
 
         for item in sorted(path.iterdir()):
+            # Fix #1: Skip symlinks to prevent reading files outside workspace
+            if item.is_symlink():
+                logger.debug(f"Skipping symlink: {item}")
+                continue
+
+            # Compute relative path for path-based ignore matching (Fix #3)
+            rel_path = f"{relative_prefix}{item.name}" if relative_prefix else item.name
+
             if item.is_file():
-                if self._should_ignore(item.name, ignore_names, negate):
+                if self._should_ignore(item.name, rel_path, ignore_names, negate):
                     continue
 
                 blob_hash = None
+                st = item.stat()
+
                 if use_cache:
-                    st = item.stat()
                     cache_key = str(item)
                     cached = self.store.check_stat_cache(cache_key, st.st_mtime_ns, st.st_size)
                     if cached is not None:
@@ -355,39 +381,63 @@ class WorldStateManager:
                     content = item.read_bytes()
                     blob_hash = self.store.store_blob(content)
                     if use_cache:
-                        st = item.stat()
                         self.store.update_stat_cache(str(item), st.st_mtime_ns, st.st_size, blob_hash)
 
-                entries[item.name] = ("blob", blob_hash)
+                # Fix #2: Capture file mode (especially executable bit)
+                file_mode = st.st_mode & 0o777
+                entries[item.name] = ("blob", blob_hash, file_mode)
 
             elif item.is_dir():
                 # Directories check both ignore_names and ignore_dirs
-                if self._should_ignore(item.name, ignore_names | ignore_dirs, negate):
+                if self._should_ignore(item.name, rel_path, ignore_names | ignore_dirs, negate):
                     continue
                 subtree_hash = self._hash_directory(
-                    item, ignore_names, ignore_dirs, negate, use_cache, current_depth + 1
+                    item, ignore_names, ignore_dirs, negate, use_cache, current_depth + 1,
+                    relative_prefix=f"{rel_path}/",
                 )
-                entries[item.name] = ("tree", subtree_hash)
+                entries[item.name] = ("tree", subtree_hash, 0o755)
 
         return self.store.store_tree(entries)
 
     @staticmethod
-    def _should_ignore(name: str, ignore: frozenset, negate: frozenset = frozenset()) -> bool:
-        """Check if a filename should be ignored.
+    def _should_ignore(
+        name: str,
+        rel_path: str,
+        ignore: frozenset,
+        negate: frozenset = frozenset(),
+    ) -> bool:
+        """Check if a file/directory should be ignored.
+
+        Fix #3 from audit: Now supports both basename and relative path matching.
+        Patterns containing '/' are matched against the relative path,
+        patterns without '/' are matched against just the basename.
 
         Fast-path exact match via ``in``, then falls back to
-        fnmatch for patterns containing glob characters.  If the name
+        fnmatch for patterns containing glob characters. If the name/path
         also matches a *negate* pattern it is re-included (not ignored).
         """
         matched = False
+
+        def matches_pattern(pattern: str, check_name: str, check_path: str) -> bool:
+            """Check if pattern matches name or path."""
+            # If pattern contains '/', match against relative path
+            # Otherwise match against basename only
+            target = check_path if '/' in pattern else check_name
+            if target == pattern:
+                return True
+            if any(c in pattern for c in ("*", "?", "[")):
+                if fnmatch.fnmatch(target, pattern):
+                    return True
+            return False
+
+        # Check ignore patterns
         if name in ignore:
             matched = True
         else:
             for pattern in ignore:
-                if any(c in pattern for c in ("*", "?", "[")):
-                    if fnmatch.fnmatch(name, pattern):
-                        matched = True
-                        break
+                if matches_pattern(pattern, name, rel_path):
+                    matched = True
+                    break
 
         if not matched:
             return False
@@ -397,9 +447,8 @@ class WorldStateManager:
             if name in negate:
                 return False
             for pattern in negate:
-                if any(c in pattern for c in ("*", "?", "[")):
-                    if fnmatch.fnmatch(name, pattern):
-                        return False
+                if matches_pattern(pattern, name, rel_path):
+                    return False
 
         return True
 
@@ -903,16 +952,37 @@ class WorldStateManager:
         }
 
     def _flatten_tree(self, tree_hash: str, prefix: str = "") -> dict[str, str]:
-        """Flatten a tree into {path: blob_hash} mapping."""
+        """Flatten a tree into {path: blob_hash} mapping (without modes)."""
         entries = self.store.read_tree(tree_hash)
         result = {}
 
-        for name, (typ, hash_val) in entries.items():
+        for name, entry in entries.items():
+            # Handle both old (type, hash) and new (type, hash, mode) formats
+            typ, hash_val = entry[0], entry[1]
             full_path = f"{prefix}/{name}" if prefix else name
             if typ == "blob":
                 result[full_path] = hash_val
             elif typ == "tree":
                 result.update(self._flatten_tree(hash_val, full_path))
+
+        return result
+
+    def _flatten_tree_with_modes(self, tree_hash: str, prefix: str = "") -> dict[str, tuple[str, int]]:
+        """Flatten a tree into {path: (blob_hash, mode)} mapping.
+
+        Fix #2 from audit: Include file modes for proper permission restoration.
+        """
+        entries = self.store.read_tree(tree_hash)
+        result = {}
+
+        for name, entry in entries.items():
+            typ, hash_val = entry[0], entry[1]
+            mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else DEFAULT_FILE_MODE)
+            full_path = f"{prefix}/{name}" if prefix else name
+            if typ == "blob":
+                result[full_path] = (hash_val, mode)
+            elif typ == "tree":
+                result.update(self._flatten_tree_with_modes(hash_val, full_path))
 
         return result
 
@@ -939,6 +1009,8 @@ class WorldStateManager:
         """
         Recursively write a tree to disk.
 
+        Fix #2 from audit: Now restores file modes (especially executable bit).
+
         Raises TreeDepthLimitError if current_depth exceeds max_tree_depth.
         """
         if current_depth >= self.max_tree_depth:
@@ -948,13 +1020,22 @@ class WorldStateManager:
 
         entries = self.store.read_tree(tree_hash)
 
-        for name, (typ, hash_val) in entries.items():
+        for name, entry in entries.items():
+            # Handle both old (type, hash) and new (type, hash, mode) formats
+            typ, hash_val = entry[0], entry[1]
+            mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else DEFAULT_FILE_MODE)
             target = target_dir / name
 
             if typ == "blob":
                 obj = self.store.retrieve(hash_val)
                 if obj:
                     target.write_bytes(obj.data)
+                    # Fix #2: Restore file mode
+                    try:
+                        target.chmod(mode)
+                    except OSError:
+                        # chmod may fail on some filesystems (e.g., FAT32, some network mounts)
+                        pass
                 else:
                     logger.warning(
                         "Missing blob %s for file %s during materialization",
