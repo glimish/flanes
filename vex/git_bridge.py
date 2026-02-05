@@ -17,17 +17,29 @@ from .state import AgentIdentity, EvaluationResult, Intent, TransitionStatus
 import uuid
 
 
-def _git(args: list, cwd: Path, env: dict = None) -> subprocess.CompletedProcess:
-    """Run git command, raise RuntimeError on failure."""
+GIT_TIMEOUT_SECONDS = 60
+
+
+def _git(args: list, cwd: Path, env: dict = None, timeout: int = None) -> subprocess.CompletedProcess:
+    """Run git command, raise RuntimeError on failure or timeout."""
     full_env = dict(os.environ)
     if env:
         full_env.update(env)
-    result = subprocess.run(
-        ["git"] + args,
-        cwd=str(cwd),
-        capture_output=True,
-        env=full_env,
-    )
+    if timeout is None:
+        timeout = GIT_TIMEOUT_SECONDS
+    try:
+        result = subprocess.run(
+            ["git"] + args,
+            cwd=str(cwd),
+            capture_output=True,
+            env=full_env,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(
+            f"git {' '.join(args)} timed out after {timeout}s. "
+            "This may indicate a hung git hook, network issue, or filesystem problem."
+        )
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
         raise RuntimeError(f"git {' '.join(args)} failed: {stderr}")

@@ -51,6 +51,13 @@ class ContentStore:
     Uses SQLite for simplicity and portability. In production you'd
     want a proper blob store, but SQLite handles surprisingly large
     workloads and keeps the system self-contained.
+
+    Thread Safety:
+        This class is safe to use from multiple threads. Each thread can call
+        methods concurrently. SQLite WAL mode handles concurrent reads, and
+        writes are serialized via SQLite's internal locking. For best performance
+        in multi-threaded orchestrators, consider creating one Repository per
+        thread (they safely share the same database file).
     """
 
     # Default: 100 MB max blob size
@@ -64,7 +71,9 @@ class ContentStore:
         # If max_blob_size is 0 or not provided, use default
         self.max_blob_size = max_blob_size if max_blob_size > 0 else self.DEFAULT_MAX_BLOB_SIZE
         self._blobs_dir = db_path.parent / "blobs" if blob_threshold > 0 else None
-        self.conn = sqlite3.connect(str(db_path))
+        # check_same_thread=False allows multi-threaded orchestrators to share
+        # a Repository instance. SQLite WAL mode + busy_timeout handle concurrency.
+        self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
         self.conn.execute("PRAGMA busy_timeout = 5000")
         self.conn.execute("PRAGMA synchronous=NORMAL")
