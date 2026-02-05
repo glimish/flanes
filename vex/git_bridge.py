@@ -8,19 +8,16 @@ No gitpython dependency required.
 import os
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
-from typing import Optional
 
 from .repo import Repository
-from .state import AgentIdentity, EvaluationResult, Intent, TransitionStatus
-
-import uuid
-
+from .state import AgentIdentity, EvaluationResult, Intent
 
 GIT_TIMEOUT_SECONDS = 60
 
 
-def _git(args: list, cwd: Path, env: dict = None, timeout: int = None) -> subprocess.CompletedProcess:
+def _git(args: list, cwd: Path, env: dict | None = None, timeout: int | None = None) -> subprocess.CompletedProcess:
     """Run git command, raise RuntimeError on failure or timeout."""
     full_env = dict(os.environ)
     if env:

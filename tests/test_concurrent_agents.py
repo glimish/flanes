@@ -11,18 +11,21 @@ Tests multiple agents working concurrently with:
 Run with: pytest tests/test_concurrent_agents.py -v
 """
 
-import pytest
-import tempfile
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from pathlib import Path
 
-from vex.repo import Repository
-from vex.state import AgentIdentity, CostRecord, EvaluationResult, TransitionStatus
-from vex.cas import ContentStoreLimitError
-from vex.state import TreeDepthLimitError
+import pytest
+
 from vex.agent_sdk import AgentSession
+from vex.cas import ContentStoreLimitError
+from vex.repo import Repository
+from vex.state import (
+    AgentIdentity,
+    CostRecord,
+    TransitionStatus,
+    TreeDepthLimitError,
+)
 
 
 @pytest.fixture
@@ -150,7 +153,7 @@ def test_concurrent_workspace_locking(repo):
             # Clean up
             session._workspace_lock.release()
 
-        except Exception as e:
+        except Exception:
             with lock:
                 lock_failed_count += 1
 
@@ -178,7 +181,6 @@ def test_concurrent_file_size_limit_violations(repo):
     lock = threading.Lock()
 
     # Get the max blob size from config
-    from vex.cas import ContentStore
     max_blob_size = repo.store.max_blob_size
 
     def agent_with_large_file(agent_num, file_size):

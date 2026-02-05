@@ -8,16 +8,15 @@ under the "budget" key — no schema change required.
 
 import json
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
 class BudgetConfig:
     """Budget limits for a lane."""
-    max_tokens_in: Optional[int] = None
-    max_tokens_out: Optional[int] = None
-    max_api_calls: Optional[int] = None
-    max_wall_time_ms: Optional[float] = None
+    max_tokens_in: int | None = None
+    max_tokens_out: int | None = None
+    max_api_calls: int | None = None
+    max_wall_time_ms: float | None = None
     alert_threshold_pct: float = 80.0
 
     def to_dict(self) -> dict:
@@ -68,7 +67,7 @@ class BudgetError(Exception):
     pass
 
 
-def get_lane_budget(wsm, lane: str) -> Optional[BudgetConfig]:
+def get_lane_budget(wsm, lane: str) -> BudgetConfig | None:
     """Get the budget config for a lane, if any."""
     row = wsm.conn.execute(
         "SELECT metadata FROM lanes WHERE name = ?", (lane,)
@@ -98,7 +97,7 @@ def set_lane_budget(wsm, lane: str, config: BudgetConfig) -> None:
     wsm.conn.commit()
 
 
-def compute_budget_status(wsm, lane: str) -> Optional[BudgetStatus]:
+def compute_budget_status(wsm, lane: str) -> BudgetStatus | None:
     """Compute current budget usage for a lane."""
     config = get_lane_budget(wsm, lane)
     if config is None:
@@ -146,7 +145,7 @@ def compute_budget_status(wsm, lane: str) -> Optional[BudgetStatus]:
     return status
 
 
-def check_budget(wsm, lane: str, additional_cost: Optional[dict] = None) -> Optional[BudgetStatus]:
+def check_budget(wsm, lane: str, additional_cost: dict | None = None) -> BudgetStatus | None:
     """Check budget and raise BudgetError if any limit is exceeded.
 
     If additional_cost is provided, it is added to the totals before checking.

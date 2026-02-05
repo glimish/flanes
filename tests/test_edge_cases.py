@@ -1,11 +1,10 @@
 """Edge case tests."""
 
-import os
 import random
 
 import pytest
 
-from vex.cas import ContentStore, ObjectType
+from vex.cas import ContentStore
 from vex.repo import Repository
 from vex.state import AgentIdentity
 

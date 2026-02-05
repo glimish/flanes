@@ -21,14 +21,12 @@ what changed."
 import fnmatch
 import json
 import logging
-import os
 import stat
 import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +55,8 @@ class AgentIdentity:
     """Who made this change."""
     agent_id: str
     agent_type: str          # e.g. "coder", "reviewer", "refactorer"
-    model: Optional[str] = None  # e.g. "claude-sonnet-4-20250514"
-    session_id: Optional[str] = None
+    model: str | None = None  # e.g. "claude-sonnet-4-20250514"
+    session_id: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -264,7 +262,7 @@ class WorldStateManager:
     # ── World State Creation ──────────────────────────────────────
 
     def snapshot_directory(
-        self, path: Path, parent_id: Optional[str] = None, use_cache: bool = True,
+        self, path: Path, parent_id: str | None = None, use_cache: bool = True,
     ) -> str:
         """
         Create a world state from a directory on disk.
@@ -319,7 +317,7 @@ class WorldStateManager:
     def _hash_directory(
         self,
         path: Path,
-        ignore_names: Optional[frozenset] = None,
+        ignore_names: frozenset | None = None,
         ignore_dirs: frozenset = frozenset(),
         negate: frozenset = frozenset(),
         use_cache: bool = True,
@@ -455,8 +453,8 @@ class WorldStateManager:
     def _create_world_state(
         self,
         root_tree: str,
-        parent_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        parent_id: str | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """Create a world state record."""
         # State ID is hash of (root_tree, parent_id, timestamp, nonce) for uniqueness
@@ -483,8 +481,8 @@ class WorldStateManager:
     def create_state_from_tree(
         self,
         tree_hash: str,
-        parent_id: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        parent_id: str | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """Create a world state from an already-stored tree hash."""
         return self._create_world_state(tree_hash, parent_id, metadata)
@@ -510,7 +508,7 @@ class WorldStateManager:
         self.conn.commit()
         return intent.id
 
-    def get_intent(self, intent_id: str) -> Optional[Intent]:
+    def get_intent(self, intent_id: str) -> Intent | None:
         row = self.conn.execute(
             "SELECT id, prompt, agent_json, context_refs, tags, metadata, created_at FROM intents WHERE id = ?",
             (intent_id,)
@@ -531,11 +529,11 @@ class WorldStateManager:
 
     def propose(
         self,
-        from_state: Optional[str],
+        from_state: str | None,
         to_state: str,
         intent: Intent,
         lane: str = "main",
-        cost: Optional[CostRecord] = None,
+        cost: CostRecord | None = None,
     ) -> str:
         """
         Propose a state transition.
@@ -679,8 +677,8 @@ class WorldStateManager:
     def create_lane(
         self,
         name: str,
-        base_state: Optional[str] = None,
-        metadata: Optional[dict] = None,
+        base_state: str | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         Create a new lane (isolated workstream).
@@ -701,7 +699,7 @@ class WorldStateManager:
         self.conn.commit()
         return name
 
-    def get_lane_head(self, lane: str = "main") -> Optional[str]:
+    def get_lane_head(self, lane: str = "main") -> str | None:
         """Get the current head state of a lane."""
         row = self.conn.execute(
             "SELECT head_state FROM lanes WHERE name = ?",
@@ -709,7 +707,7 @@ class WorldStateManager:
         ).fetchone()
         return row[0] if row else None
 
-    def get_lane_fork_base(self, lane: str) -> Optional[str]:
+    def get_lane_fork_base(self, lane: str) -> str | None:
         """Get the fork base of a lane — the state it was forked from."""
         row = self.conn.execute(
             "SELECT fork_base FROM lanes WHERE name = ?",
@@ -735,7 +733,7 @@ class WorldStateManager:
 
     # ── Querying ──────────────────────────────────────────────────
 
-    def get_state(self, state_id: str) -> Optional[dict]:
+    def get_state(self, state_id: str) -> dict | None:
         """Get a world state by ID."""
         row = self.conn.execute(
             "SELECT id, root_tree, parent_id, created_at, metadata FROM world_states WHERE id = ?",
@@ -755,7 +753,7 @@ class WorldStateManager:
         self,
         lane: str = "main",
         limit: int = 50,
-        status_filter: Optional[TransitionStatus] = None,
+        status_filter: TransitionStatus | None = None,
     ) -> list[dict]:
         """
         Get the transition history for a lane.

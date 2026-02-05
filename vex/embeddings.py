@@ -8,9 +8,8 @@ Cosine similarity search over stored intent embeddings.
 import json
 import math
 import struct
-import urllib.request
 import urllib.error
-from typing import Optional
+import urllib.request
 
 
 class EmbeddingError(Exception):
@@ -109,7 +108,7 @@ def bytes_to_embedding(data: bytes) -> list:
     return list(struct.unpack(f"{count}f", data))
 
 
-def get_embedding_client(config: dict) -> Optional[EmbeddingClient]:
+def get_embedding_client(config: dict) -> EmbeddingClient | None:
     """Create an EmbeddingClient from config, or None if not configured."""
     api_url = config.get("embedding_api_url")
     api_key = config.get("embedding_api_key")

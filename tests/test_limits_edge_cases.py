@@ -3,13 +3,13 @@ Edge case tests for file size and tree depth limits.
 """
 
 import json
-import pytest
 import tempfile
 from pathlib import Path
 
-from vex.repo import Repository
+import pytest
+
 from vex.cas import ContentStoreLimitError
-from vex.state import TreeDepthLimitError
+from vex.repo import Repository
 
 
 def test_deduplication_with_overlimit_blob():

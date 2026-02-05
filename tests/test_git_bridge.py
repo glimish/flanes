@@ -3,10 +3,7 @@ Tests for Git Bridge — export/import between Vex and Git repositories.
 """
 
 import os
-import shutil
 import subprocess
-import sys
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -116,8 +113,8 @@ class TestExportToGit:
 
     def test_export_empty_lane(self, tmp_path):
         """Exporting a lane with no accepted transitions produces 0 commits."""
-        from vex.repo import Repository
         from vex.git_bridge import export_to_git
+        from vex.repo import Repository
 
         project_dir = tmp_path / "empty_project"
         project_dir.mkdir()
@@ -150,8 +147,8 @@ class TestImportFromGit:
         subprocess.run(["git", "commit", "-m", "Second commit"], cwd=str(path), capture_output=True, check=True, env=env)
 
     def test_import_creates_transitions(self, tmp_path):
-        from vex.repo import Repository
         from vex.git_bridge import import_from_git
+        from vex.repo import Repository
 
         # Create git repo
         git_dir = tmp_path / "git_source"
@@ -172,8 +169,8 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_preserves_content(self, tmp_path):
-        from vex.repo import Repository
         from vex.git_bridge import import_from_git
+        from vex.repo import Repository
 
         git_dir = tmp_path / "git_source"
         self._make_git_repo(git_dir)
@@ -199,8 +196,8 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_not_a_git_repo(self, tmp_path):
-        from vex.repo import Repository
         from vex.git_bridge import import_from_git
+        from vex.repo import Repository
 
         vex_dir = tmp_path / "vex_target"
         vex_dir.mkdir()

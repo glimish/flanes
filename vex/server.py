@@ -7,13 +7,12 @@ Uses stdlib http.server. Single-threaded to avoid SQLite threading issues.
 import base64
 import json
 import logging
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from .repo import Repository
-from .state import AgentIdentity, CostRecord
+from .state import AgentIdentity
 
 logger = logging.getLogger(__name__)
 

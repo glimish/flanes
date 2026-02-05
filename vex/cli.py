@@ -43,19 +43,17 @@ import argparse
 import base64
 import difflib
 import json
-import os
 import shutil
 import sys
-import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-from contextlib import contextmanager
-
-from .repo import Repository, NotARepository, REPO_DIR_NAME
-from .state import AgentIdentity, CostRecord, TransitionStatus
-from .completions import BASH_COMPLETION, ZSH_COMPLETION, FISH_COMPLETION
 import vex as _vex_pkg
+
+from .completions import BASH_COMPLETION, FISH_COMPLETION, ZSH_COMPLETION
+from .repo import NotARepository, Repository
+from .state import AgentIdentity, CostRecord, TransitionStatus
 
 
 @contextmanager
@@ -100,7 +98,7 @@ def _display_hash(h: str, verbosity: int) -> str:
     return h[:12]
 
 
-def detect_workspace(repo: Repository, explicit: str = None) -> str:
+def detect_workspace(repo: Repository, explicit: str | None = None) -> str:
     """
     Detect which workspace the user is in.
 
@@ -189,12 +187,12 @@ def cmd_status(args):
             print(f"Pending:    {status['pending_proposals']} proposals")
             print(f"Storage:    {status['storage']['total_objects']} objects, "
                   f"{status['storage']['total_bytes']:,} bytes")
-            print(f"\nLanes:")
+            print("\nLanes:")
             for lane in status["lanes"]:
                 marker = "→" if lane["head_state"] == status["current_head"] else " "
                 print(f"  {marker} {lane['name']}: {_display_hash(lane['head_state'], v)}")
             if status.get("workspaces"):
-                print(f"\nWorkspaces:")
+                print("\nWorkspaces:")
                 for ws in status["workspaces"]:
                     lock = " [locked]" if ws["status"] == "active" else ""
                     print(f"  {ws['name']}: {ws['path']}{lock}")
@@ -712,7 +710,7 @@ def cmd_promote(args):
         elif result["status"] == "conflicts":
             print(f"✗ Conflicts detected — cannot promote '{ws_name}' into '{result['target_lane']}'")
             print(f"  Fork base: {_display_hash(result['fork_base'], v)}")
-            print(f"\n  Conflicting files:")
+            print("\n  Conflicting files:")
             for c in result["conflicts"]:
                 print(f"    {c['path']}  (lane: {c['lane_action']}, target: {c['target_action']})")
             print(f"\n  Lane-only changes ({len(result['lane_only'])}):")
@@ -721,7 +719,7 @@ def cmd_promote(args):
             print(f"\n  Target-only changes ({len(result['target_only'])}):")
             for p in result["target_only"][:10]:
                 print(f"    {p}")
-            print(f"\n  To resolve: update the workspace, fix conflicts, then re-promote.")
+            print("\n  To resolve: update the workspace, fix conflicts, then re-promote.")
         elif v == 0:
             print(result.get('transition_id', ''))
         else:
@@ -919,7 +917,7 @@ def cmd_gc(args):
             print(f"  Deletable transitions: {result.deleted_transitions}")
             print(f"  Elapsed:               {result.elapsed_ms:.1f}ms")
             if result.dry_run and (result.deleted_objects or result.deleted_transitions):
-                print(f"\n  Run 'vex gc --confirm' to actually delete.")
+                print("\n  Run 'vex gc --confirm' to actually delete.")
 
 
 def cmd_cat_file(args):
@@ -950,7 +948,7 @@ def cmd_cat_file(args):
                     "metadata": state["metadata"],
                 })
             else:
-                print(f"type: state")
+                print("type: state")
                 print(f"root_tree: {state['root_tree']}")
                 print(f"parent_id: {state['parent_id'] or 'none'}")
                 print(f"created_at: {format_time(state['created_at'])}")
@@ -1172,15 +1170,15 @@ def cmd_template_show(args):
             if template.description:
                 print(f"Description: {template.description}")
             if template.files:
-                print(f"Files:")
+                print("Files:")
                 for f in template.files:
                     print(f"  {f.path}")
             if template.directories:
-                print(f"Directories:")
+                print("Directories:")
                 for d in template.directories:
                     print(f"  {d}/")
             if template.vexignore_patterns:
-                print(f"Vexignore patterns:")
+                print("Vexignore patterns:")
                 for p in template.vexignore_patterns:
                     print(f"  {p}")
 
@@ -1279,7 +1277,7 @@ def cmd_project_status(args):
         print(f"Project: {status['project']}")
         print(f"Root:    {status['root']}")
         if status["repos"]:
-            print(f"\nRepos:")
+            print("\nRepos:")
             for name, info in status["repos"].items():
                 head_str = short_hash(info["head"]) if info["head"] else "none"
                 print(f"  {name}: {head_str} [{info['status']}]")
@@ -1362,7 +1360,7 @@ def cmd_remote_status(args):
         if args.json:
             print_json(status)
         else:
-            print(f"Remote sync status:")
+            print("Remote sync status:")
             print(f"  Local only:  {len(status['local_only'])}")
             print(f"  Remote only: {len(status['remote_only'])}")
             print(f"  Synced:      {len(status['synced'])}")

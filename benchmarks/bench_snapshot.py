@@ -11,7 +11,6 @@ Usage:
 """
 
 import argparse
-import os
 import random
 import shutil
 import sys
@@ -52,7 +51,7 @@ def run_benchmark(num_files: int, num_dirs: int, rounds: int):
     print(f"Generating {num_files} files across {num_dirs} directories...")
     files = generate_files(project, num_files, num_dirs)
 
-    print(f"Initializing vex repo...")
+    print("Initializing vex repo...")
     repo = Repository.init(project)
     ws_path = repo.workspace_path("main")
 
@@ -115,7 +114,7 @@ def run_benchmark(num_files: int, num_dirs: int, rounds: int):
     print(f"{'='*60}")
     for name, timing in results.items():
         if name == "storage":
-            print(f"\nStorage:")
+            print("\nStorage:")
             print(f"  Objects: {timing['total_objects']}")
             print(f"  Bytes:   {timing['total_bytes']:,}")
             if timing.get("by_type"):

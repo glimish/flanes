@@ -2,12 +2,12 @@
 Tests for Phase 2: ignore patterns, context managers, deferred fork_base fix.
 """
 
-import pytest
-from pathlib import Path
 
+import pytest
+
+from vex.agent_sdk import AgentSession
 from vex.repo import Repository
 from vex.state import AgentIdentity, WorldStateManager
-from vex.agent_sdk import AgentSession
 
 
 @pytest.fixture
@@ -110,7 +110,6 @@ class TestRepositoryContextManager:
             conn = repo.store.conn
         # After exiting, the connection should be closed
         # Attempting to use it should raise
-        import sqlite3
         with pytest.raises(Exception):
             conn.execute("SELECT 1")
 
@@ -130,7 +129,6 @@ class TestAgentSessionContextManager:
         ) as session:
             conn = session.repo.store.conn
 
-        import sqlite3
         with pytest.raises(Exception):
             conn.execute("SELECT 1")
 

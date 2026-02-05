@@ -35,19 +35,25 @@ __all__ = [
 # Lazy imports — only resolve when accessed
 def __getattr__(name):
     if name in ("Repository", "NotARepository"):
-        from .repo import Repository, NotARepository
+        from .repo import NotARepository, Repository
         return Repository if name == "Repository" else NotARepository
     if name in ("AgentSession", "WorkContext"):
         from .agent_sdk import AgentSession, WorkContext
         return AgentSession if name == "AgentSession" else WorkContext
     if name in ("ContentStore", "CASObject", "ObjectType", "ContentStoreLimitError"):
-        from .cas import ContentStore, CASObject, ObjectType, ContentStoreLimitError
+        from .cas import CASObject, ContentStore, ContentStoreLimitError, ObjectType
         return {"ContentStore": ContentStore, "CASObject": CASObject,
                 "ObjectType": ObjectType, "ContentStoreLimitError": ContentStoreLimitError}[name]
     if name in ("WorldStateManager", "AgentIdentity", "CostRecord",
                 "EvaluationResult", "TransitionStatus", "TreeDepthLimitError"):
-        from .state import (WorldStateManager, AgentIdentity, CostRecord,
-                           EvaluationResult, TransitionStatus, TreeDepthLimitError)
+        from .state import (
+            AgentIdentity,
+            CostRecord,
+            EvaluationResult,
+            TransitionStatus,
+            TreeDepthLimitError,
+            WorldStateManager,
+        )
         return {"WorldStateManager": WorldStateManager, "AgentIdentity": AgentIdentity,
                 "CostRecord": CostRecord, "EvaluationResult": EvaluationResult,
                 "TransitionStatus": TransitionStatus, "TreeDepthLimitError": TreeDepthLimitError}[name]

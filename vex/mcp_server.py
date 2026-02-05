@@ -7,7 +7,6 @@ JSON-RPC 2.0 over stdio with Content-Length framing (LSP-style, per MCP spec).
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 from .repo import Repository
 from .state import AgentIdentity
@@ -142,7 +141,7 @@ class MCPServer:
             },
         ]
 
-    def handle_request(self, request: dict) -> Optional[dict]:
+    def handle_request(self, request: dict) -> dict | None:
         """Handle a JSON-RPC 2.0 request. Returns response dict or None for notifications."""
         method = request.get("method", "")
         params = request.get("params", {})
@@ -284,7 +283,7 @@ class MCPServer:
         else:
             raise ValueError(f"Unknown tool: {name}")
 
-    def _read_message(self) -> Optional[str]:
+    def _read_message(self) -> str | None:
         """Read a Content-Length framed message from stdin."""
         headers = {}
         while True:

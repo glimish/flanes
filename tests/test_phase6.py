@@ -7,14 +7,12 @@ Covers cat-file, git bridge (export/import), REST server, and MCP server.
 import base64
 import json
 import os
-import shutil
 import subprocess
 import sys
-import tempfile
 import threading
 import time
-import urllib.request
 import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -445,8 +443,8 @@ class TestRESTServer:
 class TestMCPServer:
     @pytest.fixture(autouse=True)
     def setup_mcp(self, tmp_path):
-        from vex.repo import Repository
         from vex.mcp_server import MCPServer
+        from vex.repo import Repository
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         self.repo = Repository.init(tmp_path)

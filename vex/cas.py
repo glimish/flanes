@@ -19,10 +19,9 @@ import sqlite3
 import tempfile
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class ObjectType(Enum):
@@ -193,7 +192,7 @@ class ContentStore:
 
         return content_hash
 
-    def retrieve(self, content_hash: str) -> Optional[CASObject]:
+    def retrieve(self, content_hash: str) -> CASObject | None:
         """Retrieve an object by its hash."""
         row = self.conn.execute(
             "SELECT hash, type, data, size, location FROM objects WHERE hash = ?",
@@ -285,7 +284,7 @@ class ContentStore:
 
     # ── Stat Cache ────────────────────────────────────────────────
 
-    def check_stat_cache(self, path: str, mtime_ns: int, size: int) -> Optional[str]:
+    def check_stat_cache(self, path: str, mtime_ns: int, size: int) -> str | None:
         """Returns cached blob hash if stat matches, else None."""
         row = self.conn.execute(
             "SELECT blob_hash FROM stat_cache WHERE path = ? AND mtime_ns = ? AND size = ?",

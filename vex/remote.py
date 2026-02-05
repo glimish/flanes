@@ -5,14 +5,11 @@ Abstract backend + S3/GCS (optional deps, lazy import) + local cache.
 Provides sync between a local ContentStore and a remote backend.
 """
 
-import hashlib
 import logging
 import os
 import tempfile
-import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +22,7 @@ class RemoteBackend(ABC):
         """Upload data to the remote backend."""
 
     @abstractmethod
-    def download(self, key: str) -> Optional[bytes]:
+    def download(self, key: str) -> bytes | None:
         """Download data from the remote backend. Returns None if not found."""
 
     @abstractmethod
@@ -50,7 +47,7 @@ class InMemoryBackend(RemoteBackend):
     def upload(self, key: str, data: bytes) -> None:
         self.data[key] = data
 
-    def download(self, key: str) -> Optional[bytes]:
+    def download(self, key: str) -> bytes | None:
         return self.data.get(key)
 
     def exists(self, key: str) -> bool:
@@ -86,7 +83,7 @@ class S3Backend(RemoteBackend):
     def upload(self, key: str, data: bytes) -> None:
         self.s3.put_object(Bucket=self.bucket, Key=self._key(key), Body=data)
 
-    def download(self, key: str) -> Optional[bytes]:
+    def download(self, key: str) -> bytes | None:
         try:
             resp = self.s3.get_object(Bucket=self.bucket, Key=self._key(key))
             return resp["Body"].read()
@@ -142,7 +139,7 @@ class GCSBackend(RemoteBackend):
         blob = self.bucket_obj.blob(self._key(key))
         blob.upload_from_string(data)
 
-    def download(self, key: str) -> Optional[bytes]:
+    def download(self, key: str) -> bytes | None:
         from google.cloud import exceptions as gcs_exceptions
         blob = self.bucket_obj.blob(self._key(key))
         try:
@@ -182,7 +179,7 @@ class LocalCacheLayer:
         # Use first 2 chars as directory prefix to avoid too many files in one dir
         return self.cache_dir / key[:2] / key
 
-    def get(self, key: str) -> Optional[bytes]:
+    def get(self, key: str) -> bytes | None:
         """Get data, checking cache first then remote."""
         cached = self._cache_path(key)
         if cached.exists():
@@ -224,7 +221,7 @@ class RemoteSyncManager:
         self.backend = backend
         self.cache = LocalCacheLayer(backend, cache_dir)
 
-    def push(self, hashes: Optional[list] = None) -> dict:
+    def push(self, hashes: list | None = None) -> dict:
         """Push objects from local store to remote.
 
         Each remote object is stored as a type-prefixed payload:
@@ -248,7 +245,7 @@ class RemoteSyncManager:
 
         return {"pushed": pushed, "skipped": skipped, "total": len(hashes)}
 
-    def pull(self, hashes: Optional[list] = None) -> dict:
+    def pull(self, hashes: list | None = None) -> dict:
         """Pull objects from remote to local store.
 
         Fix #7 from audit: Verifies downloaded payload hash matches expected key

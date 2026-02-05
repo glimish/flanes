@@ -1,12 +1,10 @@
 """Repository unit tests."""
 
-import shutil
-import uuid
 
 import pytest
 
 from vex.repo import Repository
-from vex.state import AgentIdentity, CostRecord, EvaluationResult, Intent, TransitionStatus
+from vex.state import AgentIdentity, TransitionStatus
 
 
 def _agent():

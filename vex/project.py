@@ -9,8 +9,6 @@ import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-
 
 PROJECT_FILE = ".vex-project.json"
 
@@ -74,7 +72,7 @@ class Project:
         )
 
     @classmethod
-    def init(cls, path: Path, name: Optional[str] = None) -> "Project":
+    def init(cls, path: Path, name: str | None = None) -> "Project":
         """Initialize a new project at the given path."""
         root = Path(path).resolve()
         config_path = root / PROJECT_FILE
@@ -91,7 +89,7 @@ class Project:
         return cls(root)
 
     @classmethod
-    def find(cls, start_path: Optional[Path] = None) -> "Project":
+    def find(cls, start_path: Path | None = None) -> "Project":
         """Find a project by walking up from the given path."""
         path = (start_path or Path.cwd()).resolve()
         while path != path.parent:

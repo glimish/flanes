@@ -1,12 +1,9 @@
 """ContentStore unit tests."""
 
-import sqlite3
-import tempfile
-from pathlib import Path
 
 import pytest
 
-from vex.cas import CASObject, ContentStore, ObjectType
+from vex.cas import ContentStore, ObjectType
 
 
 @pytest.fixture

@@ -15,18 +15,15 @@ from pathlib import Path
 
 import pytest
 
-from vex.cas import ContentStore, ObjectType
-from vex.gc import collect_garbage, GCResult
+from vex.cas import ContentStore
+from vex.gc import collect_garbage
 from vex.repo import Repository
 from vex.state import (
     AgentIdentity,
-    CostRecord,
     EvaluationResult,
     Intent,
-    TransitionStatus,
     WorldStateManager,
 )
-
 
 # ── Helpers ──────────────────────────────────────────────────────
 

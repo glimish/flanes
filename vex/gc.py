@@ -11,7 +11,6 @@ GC is never automatic — it must be explicitly invoked.
 import json
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from .cas import ContentStore, ObjectType
 from .state import WorldStateManager

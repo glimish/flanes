@@ -4,8 +4,6 @@ and the stale-accept lane conflict detection.
 """
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -13,9 +11,9 @@ import pytest
 @pytest.fixture
 def repo_pair(tmp_path):
     """Two Vex repos sharing a remote backend — simulates push from one, pull into another."""
+    from vex.remote import InMemoryBackend, RemoteSyncManager
     from vex.repo import Repository
     from vex.state import AgentIdentity
-    from vex.remote import InMemoryBackend, RemoteSyncManager
 
     # Repo A: has content
     dir_a = tmp_path / "repo_a"
@@ -72,7 +70,6 @@ class TestRemotePushPull:
     def test_push_preserves_all_object_types(self, repo_pair):
         """Push uploads blobs, trees, and states with type prefixes."""
         repo_a, _, sync_a, _, backend = repo_pair
-        from vex.cas import ObjectType
 
         sync_a.push()
 
@@ -134,7 +131,7 @@ class TestStaleAccept:
     def repo_with_two_proposals(self, tmp_path):
         """A repo with two proposed transitions from the same from_state."""
         from vex.repo import Repository
-        from vex.state import AgentIdentity, EvaluationResult
+        from vex.state import AgentIdentity
 
         project_dir = tmp_path / "project"
         project_dir.mkdir()

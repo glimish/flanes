@@ -7,11 +7,8 @@ multi-repo projects, and remote storage.
 
 import json
 import os
-import struct
 import subprocess
 import sys
-import tempfile
-import time
 from pathlib import Path
 
 import pytest
@@ -85,9 +82,10 @@ class TestBudgets:
         assert loaded.max_api_calls == 20
 
     def test_compute_budget_status(self, repo):
-        from vex.budgets import BudgetConfig, set_lane_budget, compute_budget_status
-        from vex.state import AgentIdentity, CostRecord, Intent
         import uuid
+
+        from vex.budgets import BudgetConfig, compute_budget_status, set_lane_budget
+        from vex.state import AgentIdentity, CostRecord, Intent
 
         config = BudgetConfig(max_tokens_in=1000, max_tokens_out=500)
         set_lane_budget(repo.wsm, "main", config)
@@ -105,9 +103,10 @@ class TestBudgets:
         assert status.total_tokens_out == 100
 
     def test_budget_warning_at_threshold(self, repo):
-        from vex.budgets import BudgetConfig, set_lane_budget, compute_budget_status
-        from vex.state import AgentIdentity, CostRecord, Intent
         import uuid
+
+        from vex.budgets import BudgetConfig, compute_budget_status, set_lane_budget
+        from vex.state import AgentIdentity, CostRecord, Intent
 
         config = BudgetConfig(max_tokens_in=1000, alert_threshold_pct=80.0)
         set_lane_budget(repo.wsm, "main", config)
@@ -122,9 +121,9 @@ class TestBudgets:
         assert "tokens_in" in status.warnings
 
     def test_budget_exceeded_on_propose(self, repo):
+
         from vex.budgets import BudgetConfig, BudgetError, set_lane_budget
         from vex.state import AgentIdentity, CostRecord
-        import uuid
 
         config = BudgetConfig(max_tokens_in=100)
         set_lane_budget(repo.wsm, "main", config)
@@ -196,7 +195,7 @@ class TestBudgets:
 class TestTemplates:
 
     def test_template_save_and_load(self, repo):
-        from vex.templates import WorkspaceTemplate, TemplateFile, TemplateManager
+        from vex.templates import TemplateFile, TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         template = WorkspaceTemplate(
             name="python-basic",
@@ -214,7 +213,7 @@ class TestTemplates:
         assert loaded.files[0].content == "print('hello')"
 
     def test_template_list(self, repo):
-        from vex.templates import WorkspaceTemplate, TemplateManager
+        from vex.templates import TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         tm.save(WorkspaceTemplate(name="tmpl-a", description="A"))
         tm.save(WorkspaceTemplate(name="tmpl-b", description="B"))
@@ -224,7 +223,7 @@ class TestTemplates:
         assert "tmpl-b" in names
 
     def test_template_apply_creates_files(self, repo, tmp_path):
-        from vex.templates import WorkspaceTemplate, TemplateFile, TemplateManager
+        from vex.templates import TemplateFile, TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         template = WorkspaceTemplate(
             name="test-files",
@@ -240,7 +239,7 @@ class TestTemplates:
         assert (target / "src" / "app.py").read_text() == "app = True"
 
     def test_template_apply_creates_directories(self, repo, tmp_path):
-        from vex.templates import WorkspaceTemplate, TemplateManager
+        from vex.templates import TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         template = WorkspaceTemplate(
             name="test-dirs",
@@ -254,7 +253,7 @@ class TestTemplates:
         assert (target / "docs" / "api").is_dir()
 
     def test_template_apply_vexignore(self, repo, tmp_path):
-        from vex.templates import WorkspaceTemplate, TemplateManager
+        from vex.templates import TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         template = WorkspaceTemplate(
             name="test-ignore",
@@ -268,7 +267,7 @@ class TestTemplates:
         assert "*.pyc" in vexignore
 
     def test_workspace_create_with_template(self, repo):
-        from vex.templates import WorkspaceTemplate, TemplateFile, TemplateManager
+        from vex.templates import TemplateFile, TemplateManager, WorkspaceTemplate
         tm = TemplateManager(repo.vex_dir)
         template = WorkspaceTemplate(
             name="py-project",
@@ -399,7 +398,7 @@ class TestEmbeddings:
             cosine_similarity([1, 0], [1, 0, 0])
 
     def test_embedding_storage_retrieval(self, repo):
-        from vex.embeddings import embedding_to_bytes, bytes_to_embedding
+        from vex.embeddings import bytes_to_embedding, embedding_to_bytes
 
         embedding = [0.1, 0.2, 0.3, 0.4]
         emb_bytes = embedding_to_bytes(embedding)
@@ -425,8 +424,9 @@ class TestEmbeddings:
 
     def test_semantic_search_fallback(self, repo):
         """When no embedding API is configured, falls back to text search."""
-        from vex.state import AgentIdentity, Intent
         import uuid
+
+        from vex.state import AgentIdentity, Intent
 
         agent = AgentIdentity(agent_id="test", agent_type="test")
         intent = Intent(id=str(uuid.uuid4()), prompt="add authentication module", agent=agent)
@@ -635,12 +635,10 @@ class TestRemote:
     def test_s3_import_error(self):
         """S3Backend should raise ImportError with helpful message if boto3 missing."""
         # We can't easily test this without mocking, so just verify the class exists
-        from vex.remote import S3Backend
         # The actual import error would happen when instantiating without boto3
 
     def test_gcs_import_error(self):
         """GCSBackend should raise ImportError with helpful message."""
-        from vex.remote import GCSBackend
 
     def test_remote_cli_no_config(self, repo_dir):
         """Remote commands should error when no remote is configured."""

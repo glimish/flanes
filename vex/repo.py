@@ -29,19 +29,14 @@ modify another agent's work.
 """
 
 import json
-import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Optional
 
 from .budgets import (
     BudgetConfig,
-    BudgetError,
-    BudgetStatus,
     check_budget,
     compute_budget_status,
-    get_lane_budget,
     set_lane_budget,
 )
 from .cas import ContentStore
@@ -54,8 +49,7 @@ from .state import (
     TransitionStatus,
     WorldStateManager,
 )
-from .workspace import WorkspaceManager, WorkspaceInfo
-
+from .workspace import WorkspaceInfo, WorkspaceManager
 
 REPO_DIR_NAME = ".vex"
 
@@ -183,9 +177,9 @@ class Repository:
     def workspace_create(
         self,
         name: str,
-        lane: Optional[str] = None,
-        state_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        lane: str | None = None,
+        state_id: str | None = None,
+        agent_id: str | None = None,
     ) -> WorkspaceInfo:
         """
         Create a new workspace.
@@ -211,7 +205,7 @@ class Repository:
         """Remove a workspace."""
         self.wm.remove(name, force=force)
 
-    def workspace_update(self, name: str, state_id: Optional[str] = None) -> dict:
+    def workspace_update(self, name: str, state_id: str | None = None) -> dict:
         """
         Update a workspace to a new state (smart incremental update).
 
@@ -227,7 +221,7 @@ class Repository:
 
         return self.wm.update(name, state_id)
 
-    def workspace_path(self, name: str) -> Optional[Path]:
+    def workspace_path(self, name: str) -> Path | None:
         """Get the filesystem path for a workspace."""
         info = self.wm.get(name)
         return info.path if info else None
@@ -246,7 +240,7 @@ class Repository:
 
     # ── Core Operations ───────────────────────────────────────────
 
-    def snapshot(self, workspace: str, parent_id: Optional[str] = None) -> str:
+    def snapshot(self, workspace: str, parent_id: str | None = None) -> str:
         """
         Snapshot a workspace — capture its current files into the CAS.
 
@@ -264,15 +258,15 @@ class Repository:
 
     def propose(
         self,
-        from_state: Optional[str],
+        from_state: str | None,
         to_state: str,
         prompt: str,
         agent: AgentIdentity,
-        lane: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        cost: Optional[CostRecord] = None,
-        context_refs: Optional[list[str]] = None,
-        metadata: Optional[dict] = None,
+        lane: str | None = None,
+        tags: list[str] | None = None,
+        cost: CostRecord | None = None,
+        context_refs: list[str] | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         Propose a transition from one state to another.
@@ -307,7 +301,7 @@ class Repository:
         transition_id: str,
         evaluator: str = "manual",
         summary: str = "",
-        checks: Optional[dict[str, bool]] = None,
+        checks: dict[str, bool] | None = None,
     ) -> TransitionStatus:
         """Accept a proposed transition (evaluation passed).
 
@@ -359,7 +353,7 @@ class Repository:
         transition_id: str,
         evaluator: str = "manual",
         summary: str = "",
-        checks: Optional[dict[str, bool]] = None,
+        checks: dict[str, bool] | None = None,
     ) -> TransitionStatus:
         """Reject a proposed transition (evaluation failed)."""
         result = EvaluationResult(
@@ -375,9 +369,9 @@ class Repository:
         workspace: str,
         prompt: str,
         agent: AgentIdentity,
-        lane: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        cost: Optional[CostRecord] = None,
+        lane: str | None = None,
+        tags: list[str] | None = None,
+        cost: CostRecord | None = None,
         auto_accept: bool = False,
         evaluator: str = "auto",
     ) -> dict:
@@ -420,7 +414,7 @@ class Repository:
     def create_lane(
         self,
         name: str,
-        base: Optional[str] = None,
+        base: str | None = None,
         create_workspace: bool = True,
     ) -> str:
         """
@@ -443,23 +437,23 @@ class Repository:
 
     # ── Query Operations ──────────────────────────────────────────
 
-    def head(self, lane: Optional[str] = None) -> Optional[str]:
+    def head(self, lane: str | None = None) -> str | None:
         """Get the current head state of a lane."""
         lane = lane or self._default_lane()
         return self.wsm.get_lane_head(lane)
 
     def history(
         self,
-        lane: Optional[str] = None,
+        lane: str | None = None,
         limit: int = 50,
-        status: Optional[str] = None,
+        status: str | None = None,
     ) -> list[dict]:
         """Get transition history for a lane."""
         lane = lane or self._default_lane()
         status_filter = TransitionStatus(status) if status else None
         return self.wsm.history(lane, limit, status_filter)
 
-    def trace(self, state_id: Optional[str] = None, max_depth: int = 50) -> list[dict]:
+    def trace(self, state_id: str | None = None, max_depth: int = 50) -> list[dict]:
         """Trace the causal lineage of a state."""
         state_id = state_id or self.head()
         if state_id is None:
@@ -495,10 +489,10 @@ class Repository:
     def promote(
         self,
         workspace: str,
-        target_lane: Optional[str] = None,
-        prompt: Optional[str] = None,
-        agent: Optional[AgentIdentity] = None,
-        tags: Optional[list[str]] = None,
+        target_lane: str | None = None,
+        prompt: str | None = None,
+        agent: AgentIdentity | None = None,
+        tags: list[str] | None = None,
         auto_accept: bool = False,
         evaluator: str = "auto",
     ) -> dict:
@@ -677,11 +671,11 @@ class Repository:
         target_lane: str,
         target_head: str,
         new_state: str,
-        prompt: Optional[str],
-        agent: Optional[AgentIdentity],
+        prompt: str | None,
+        agent: AgentIdentity | None,
         source_lane: str,
         fork_base: str,
-        tags: Optional[list[str]],
+        tags: list[str] | None,
         auto_accept: bool,
         evaluator: str,
     ) -> dict:
@@ -781,9 +775,9 @@ class Repository:
     def semantic_search(self, query: str, limit: int = 10) -> list:
         """Search intents semantically. Falls back to text search if no API configured."""
         from .embeddings import (
-            get_embedding_client,
-            cosine_similarity,
             bytes_to_embedding,
+            cosine_similarity,
+            get_embedding_client,
         )
 
         config_path = self.vex_dir / "config.json"
@@ -824,7 +818,7 @@ class Repository:
 
     def get_remote_sync_manager(self):
         """Create a RemoteSyncManager from config."""
-        from .remote import create_backend, RemoteSyncManager
+        from .remote import RemoteSyncManager, create_backend
 
         config_path = self.vex_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
@@ -852,7 +846,7 @@ class Repository:
         return "main"
 
     @classmethod
-    def find(cls, start_path: Optional[Path] = None) -> "Repository":
+    def find(cls, start_path: Path | None = None) -> "Repository":
         """Find a repository by walking up from the given path."""
         path = (start_path or Path.cwd()).resolve()
         # Check the path itself and then walk up parents

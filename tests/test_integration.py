@@ -18,23 +18,19 @@ Run with: python -m tests.test_integration
 """
 
 import json
-import os
 import shutil
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from vex.agent_sdk import AgentSession
 from vex.repo import Repository
 from vex.state import (
     AgentIdentity,
     CostRecord,
-    EvaluationResult,
-    TransitionStatus,
 )
-from vex.agent_sdk import AgentSession
 
 
 def divider(title: str):
@@ -127,7 +123,7 @@ def test_full_workflow():
 
         # Create a new lane + workspace forked from the initial state
         repo.create_lane("bugfix-utils-edge-case", base=initial_head)
-        print(f"Created lane + workspace 'bugfix-utils-edge-case'")
+        print("Created lane + workspace 'bugfix-utils-edge-case'")
 
         ws_bugfix = repo.workspace_path("bugfix-utils-edge-case")
         assert ws_bugfix is not None, "Bugfix workspace should exist"
@@ -138,11 +134,11 @@ def test_full_workflow():
         main_main_content = (ws_main / "main.py").read_text()
         assert "authenticate" not in bugfix_main_content, "Bugfix should not see Agent 1's changes"
         assert "authenticate" in main_main_content, "Main should have Agent 1's changes"
-        print(f"✓ Workspaces are isolated:")
+        print("✓ Workspaces are isolated:")
         print(f"  main workspace:   {ws_main}")
         print(f"  bugfix workspace: {ws_bugfix}")
-        print(f"  main has auth:    True")
-        print(f"  bugfix has auth:  False")
+        print("  main has auth:    True")
+        print("  bugfix has auth:  False")
 
         agent2 = AgentIdentity(
             agent_id="debugger-beta",
@@ -173,12 +169,12 @@ def test_full_workflow():
             cost=CostRecord(tokens_in=900, tokens_out=450),
         )
         repo.accept(tid2, evaluator="test_suite_v2", summary="Edge case tests pass")
-        print(f"✓ Bugfix proposed and accepted")
+        print("✓ Bugfix proposed and accepted")
 
         # Verify main workspace was NOT affected by bugfix work
         main_utils = (ws_main / "lib" / "utils.py").read_text()
         assert "TypeError" not in main_utils, "Main workspace must be unaffected by bugfix"
-        print(f"✓ Main workspace unaffected by bugfix changes")
+        print("✓ Main workspace unaffected by bugfix changes")
 
         # ── Phase 4: Quick commit on main ─────────────────────────
         divider("Phase 4: Quick Commit on Main Workspace")
@@ -216,7 +212,7 @@ def test_full_workflow():
 
         # Verify bugfix workspace now has auth.py from main
         assert (ws_bugfix / "lib" / "auth.py").exists(), "Bugfix should now have auth.py"
-        print(f"✓ Bugfix workspace updated incrementally")
+        print("✓ Bugfix workspace updated incrementally")
 
         # ── Phase 6: Workspace locking ────────────────────────────
         divider("Phase 6: Workspace Locking")
@@ -224,18 +220,18 @@ def test_full_workflow():
         # Acquire lock
         locked = repo.workspace_acquire("main", "coder-alpha")
         assert locked, "Should acquire lock"
-        print(f"✓ Lock acquired by coder-alpha")
+        print("✓ Lock acquired by coder-alpha")
 
         # Try to acquire again — should fail
         locked2 = repo.workspace_acquire("main", "coder-beta")
         assert not locked2, "Should not acquire — already locked"
-        print(f"✓ Second lock correctly rejected")
+        print("✓ Second lock correctly rejected")
 
         # Release and re-acquire
         repo.workspace_release("main")
         locked3 = repo.workspace_acquire("main", "coder-beta")
         assert locked3, "Should acquire after release"
-        print(f"✓ Lock released and re-acquired by coder-beta")
+        print("✓ Lock released and re-acquired by coder-beta")
         repo.workspace_release("main")
 
         # ── Phase 7: Agent SDK with workspaces ────────────────────
@@ -291,7 +287,7 @@ def test_full_workflow():
         divider("Phase 9: Diff")
 
         diff = repo.diff(initial_head, repo.head())
-        print(f"Diff: initial → current\n")
+        print("Diff: initial → current\n")
         for path in sorted(diff.get("added", {})):
             print(f"  + {path}")
         for path in sorted(diff.get("modified", {})):
@@ -365,7 +361,7 @@ def test_full_workflow():
             auto_accept=True,
         )
         assert result["status"] == "accepted", f"Expected accepted, got {result['status']}"
-        print(f"✓ Promoted feature-logging → main")
+        print("✓ Promoted feature-logging → main")
         print(f"  Transition: {result['transition_id'][:12]}")
 
         # Verify main now has both README.md AND lib/logger.py
@@ -403,7 +399,7 @@ def test_full_workflow():
         # Now try to promote — README.md modified on both sides → conflict
         result = repo.promote(workspace="feature-docs", target_lane="main")
         assert result["status"] == "conflicts", f"Expected conflicts, got {result['status']}"
-        print(f"✓ Conflict correctly detected")
+        print("✓ Conflict correctly detected")
         print(f"  Fork base: {result['fork_base'][:12]}")
         for c in result["conflicts"]:
             print(f"  ✗ {c['path']}  (lane: {c['lane_action']}, target: {c['target_action']})")
@@ -422,7 +418,7 @@ def test_full_workflow():
         # ── Cleanup ───────────────────────────────────────────────
         repo.close()
         print(f"\n{'='*60}")
-        print(f"  ALL TESTS PASSED ✓")
+        print("  ALL TESTS PASSED ✓")
         print(f"{'='*60}")
 
     except Exception as e:

@@ -28,14 +28,13 @@ cleanup so agents only think about modifying files.
 import logging
 import time
 import uuid
-from pathlib import Path
-from typing import Optional
 from contextlib import contextmanager
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 from .repo import Repository
-from .state import AgentIdentity, CostRecord, EvaluationResult, TransitionStatus
+from .state import AgentIdentity, CostRecord, TransitionStatus
 
 
 class AgentSession:
@@ -53,10 +52,10 @@ class AgentSession:
         repo_path: str | Path,
         agent_id: str,
         agent_type: str,
-        model: Optional[str] = None,
-        lane: Optional[str] = None,
-        workspace: Optional[str] = None,
-        session_id: Optional[str] = None,
+        model: str | None = None,
+        lane: str | None = None,
+        workspace: str | None = None,
+        session_id: str | None = None,
     ):
         self.repo = Repository.find(Path(repo_path))
         self.agent = AgentIdentity(
@@ -67,8 +66,8 @@ class AgentSession:
         )
         self.lane = lane or "main"
         self.workspace_name = workspace or f"{self.lane}"
-        self.base_state: Optional[str] = None
-        self._start_time: Optional[float] = None
+        self.base_state: str | None = None
+        self._start_time: float | None = None
         self._token_count_in: int = 0
         self._token_count_out: int = 0
         self._api_calls: int = 0
@@ -85,11 +84,11 @@ class AgentSession:
         self.repo.close()
 
     @property
-    def workspace_path(self) -> Optional[Path]:
+    def workspace_path(self) -> Path | None:
         """Get the filesystem path of the current workspace."""
         return self.repo.workspace_path(self.workspace_name)
 
-    def begin(self, from_state: Optional[str] = None) -> str:
+    def begin(self, from_state: str | None = None) -> str:
         """
         Begin a work session.
 
@@ -146,9 +145,9 @@ class AgentSession:
     def propose(
         self,
         prompt: str,
-        tags: Optional[list[str]] = None,
-        context_refs: Optional[list[str]] = None,
-        metadata: Optional[dict] = None,
+        tags: list[str] | None = None,
+        context_refs: list[str] | None = None,
+        metadata: dict | None = None,
     ) -> str:
         """
         Snapshot the workspace and propose a transition.
@@ -184,7 +183,7 @@ class AgentSession:
         prompt: str,
         auto_accept: bool = False,
         evaluator: str = "auto",
-        tags: Optional[list[str]] = None,
+        tags: list[str] | None = None,
     ) -> dict:
         """
         Quick checkpoint: snapshot workspace + propose + optionally accept.
@@ -249,7 +248,7 @@ class AgentSession:
             self.repo.workspace_acquire(self.workspace_name, self.agent.agent_id)
 
     @contextmanager
-    def work(self, prompt: str, tags: Optional[list[str]] = None, auto_accept: bool = False):
+    def work(self, prompt: str, tags: list[str] | None = None, auto_accept: bool = False):
         """
         Context manager for a unit of work.
 
@@ -313,7 +312,7 @@ class WorkContext:
     def __init__(self, session: AgentSession):
         self._session = session
         self.metadata: dict = {}
-        self.result: Optional[dict] = None
+        self.result: dict | None = None
 
     @property
     def path(self) -> Path:

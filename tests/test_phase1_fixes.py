@@ -4,18 +4,14 @@ Tests for Phase 1 correctness & robustness fixes.
 One test per fix, verifying the specific behaviour each fix addresses.
 """
 
-import json
-import os
-import shutil
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from vex.repo import Repository
 from vex.state import AgentIdentity, WorldStateManager
-from vex.workspace import _replace_with_retry, _atomic_write
+from vex.workspace import _replace_with_retry
 
 
 @pytest.fixture
@@ -241,7 +237,7 @@ class TestFix7WorkExceptionShadowing:
         session.end = MagicMock()
         session.propose = MagicMock(side_effect=RuntimeError("cleanup kaboom"))
 
-        from vex.agent_sdk import AgentSession, WorkContext
+        from vex.agent_sdk import AgentSession
 
         real_session = AgentSession(
             repo_path=tmp_dir,

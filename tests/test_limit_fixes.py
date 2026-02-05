@@ -7,13 +7,12 @@ Tests for issues found during production readiness audit:
 3. Zero value behavior
 """
 
-import pytest
 import json
-from pathlib import Path
 
-from vex.repo import Repository
+import pytest
+
 from vex.cas import ContentStoreLimitError
-from vex.state import TreeDepthLimitError
+from vex.repo import Repository
 
 
 def test_reject_negative_blob_size(tmp_path):

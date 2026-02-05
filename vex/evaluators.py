@@ -11,7 +11,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .state import EvaluationResult
 
@@ -26,8 +25,8 @@ class EvaluatorConfig:
     """
     name: str
     command: str = ""
-    args: Optional[list[str]] = None  # Fix #6: Explicit args list for cross-platform
-    working_directory: Optional[str] = None
+    args: list[str] | None = None  # Fix #6: Explicit args list for cross-platform
+    working_directory: str | None = None
     required: bool = True
     timeout_seconds: int = 300
 

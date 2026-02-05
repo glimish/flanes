@@ -56,7 +56,6 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 def _hostname() -> str:
@@ -127,9 +126,9 @@ class WorkspaceInfo:
     name: str                    # Matches lane name by default
     lane: str                    # Which lane this workspace tracks
     path: Path                   # Physical directory path
-    base_state: Optional[str]    # State this workspace was materialized from
+    base_state: str | None    # State this workspace was materialized from
     status: str
-    agent_id: Optional[str]      # Agent currently using this workspace
+    agent_id: str | None      # Agent currently using this workspace
     created_at: float
     updated_at: float
 
@@ -201,8 +200,8 @@ class WorkspaceManager:
         self,
         name: str,
         lane: str,
-        state_id: Optional[str] = None,
-        agent_id: Optional[str] = None,
+        state_id: str | None = None,
+        agent_id: str | None = None,
     ) -> WorkspaceInfo:
         """
         Create a new workspace.
@@ -371,7 +370,7 @@ class WorkspaceManager:
             return result
 
     def _apply_update(
-        self, ws_path: Path, old_state: Optional[str], new_state_id: str,
+        self, ws_path: Path, old_state: str | None, new_state_id: str,
         is_main: bool = False
     ) -> dict:
         """Apply the actual file changes for an update."""
@@ -451,7 +450,7 @@ class WorkspaceManager:
 
     # ── Snapshot ───────────────────────────────────────────────────
 
-    def snapshot(self, name: str, parent_id: Optional[str] = None) -> str:
+    def snapshot(self, name: str, parent_id: str | None = None) -> str:
         """
         Snapshot a workspace — capture its current state into the CAS.
 
@@ -527,12 +526,12 @@ class WorkspaceManager:
         self._force_remove_lock(lock_dir)
         self._update_meta(name, agent_id=None, status=WorkspaceStatus.IDLE.value)
 
-    def lock_holder(self, name: str) -> Optional[dict]:
+    def lock_holder(self, name: str) -> dict | None:
         """Get info about who holds the lock, or None if unlocked."""
         lock_dir = self._lock_path(name)
         return self._read_lock_owner(lock_dir)
 
-    def _read_lock_owner(self, lock_dir: Path) -> Optional[dict]:
+    def _read_lock_owner(self, lock_dir: Path) -> dict | None:
         """Read the owner.json from a lock directory."""
         owner_path = lock_dir / "owner.json"
         if not owner_path.exists():
@@ -619,7 +618,7 @@ class WorkspaceManager:
 
     # ── Query ─────────────────────────────────────────────────────
 
-    def get(self, name: str) -> Optional[WorkspaceInfo]:
+    def get(self, name: str) -> WorkspaceInfo | None:
         """Get workspace info by name."""
         meta_path = self._meta_path(name)
         if not meta_path.exists():
@@ -629,7 +628,7 @@ class WorkspaceManager:
         data["path"] = Path(data["path"])
         return WorkspaceInfo(**data)
 
-    def is_dirty(self, name: str) -> Optional[dict]:
+    def is_dirty(self, name: str) -> dict | None:
         """
         Check if a workspace has a dirty marker from an interrupted operation.
 
@@ -678,7 +677,7 @@ class WorkspaceManager:
             workspaces.append(info)
         return workspaces
 
-    def _load_workspace_info(self, meta_path: Path) -> Optional[WorkspaceInfo]:
+    def _load_workspace_info(self, meta_path: Path) -> WorkspaceInfo | None:
         """Load workspace info from a metadata file, returning None if invalid."""
         try:
             data = json.loads(meta_path.read_text())

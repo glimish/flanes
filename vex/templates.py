@@ -10,7 +10,6 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +18,8 @@ logger = logging.getLogger(__name__)
 class TemplateFile:
     """A file in a template."""
     path: str
-    content: Optional[str] = None
-    source_hash: Optional[str] = None
+    content: str | None = None
+    source_hash: str | None = None
 
     def to_dict(self) -> dict:
         d = {"path": self.path}
@@ -98,7 +97,7 @@ class TemplateManager:
         path.write_text(json.dumps(template.to_dict(), indent=2))
         return path
 
-    def load(self, name: str) -> Optional[WorkspaceTemplate]:
+    def load(self, name: str) -> WorkspaceTemplate | None:
         """Load a template by name. Returns None if not found or corrupted."""
         _validate_name(name)
         path = self.templates_dir / f"{name}.json"
