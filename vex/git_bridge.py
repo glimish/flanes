@@ -132,13 +132,17 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
         # Set dates from created_at
         created_at = t.get("created_at", 0)
         date_str = str(int(created_at))
+
+        # Sanitize agent_id for use in git author/committer fields
+        safe_agent_id = agent_id.replace("<", "").replace(">", "").replace("\n", "").replace("\r", "")
+
+        # Set both author and committer info (needed for CI environments without global git config)
         env = {
             "GIT_AUTHOR_DATE": f"@{date_str}",
             "GIT_COMMITTER_DATE": f"@{date_str}",
+            "GIT_COMMITTER_NAME": safe_agent_id,
+            "GIT_COMMITTER_EMAIL": f"{safe_agent_id}@vex",
         }
-
-        # Sanitize agent_id for use in git author field
-        safe_agent_id = agent_id.replace("<", "").replace(">", "").replace("\n", "").replace("\r", "")
         author = f"{safe_agent_id} <{safe_agent_id}@vex>"
 
         try:
