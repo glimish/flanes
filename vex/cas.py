@@ -75,7 +75,8 @@ class ContentStore:
         # a Repository instance. SQLite WAL mode + busy_timeout handle concurrency.
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
-        self.conn.execute("PRAGMA busy_timeout = 5000")
+        # 30s timeout for multi-threaded scenarios on slow CI runners
+        self.conn.execute("PRAGMA busy_timeout = 30000")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self._in_batch = False
         self._init_tables()
