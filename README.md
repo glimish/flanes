@@ -226,6 +226,12 @@ The main workspace IS the repo root (git-style). Feature lanes get isolated dire
 
 **Cost tracking.** Every transition records token usage (in/out), wall time, and API calls. Essential for optimizing multi-agent workloads.
 
+**File permissions preserved.** Executable bits and file modes are captured during snapshot and restored on materialize. Scripts stay executable.
+
+**Symlinks skipped.** Symlinks are not followed during snapshot to prevent reading files outside the workspace — important for security in agent environments.
+
+**.vexignore support.** Exclude files from snapshots with glob patterns (`*.pyc`), path patterns (`build/output/*`), and negation (`!important.log`).
+
 ## File Structure
 
 ```
