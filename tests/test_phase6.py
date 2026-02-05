@@ -213,7 +213,8 @@ class TestGitExport:
 
     def test_export_multiple_commits(self, repo_with_commit, tmp_path):
         # Make a second commit
-        ws_path = repo_with_commit / ".vex" / "workspaces" / "main"
+        # Main workspace IS the repo root in git-style
+        ws_path = repo_with_commit
         (ws_path / "second.txt").write_text("Second file\n")
         run_vex(
             "commit", "-m", "add second file",

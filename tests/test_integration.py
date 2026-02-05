@@ -72,12 +72,13 @@ def test_full_workflow():
         initial_head = repo.head()
         assert initial_head is not None, "Should have an initial head"
 
-        # Verify files were moved out of repo root into workspace
-        assert not (test_dir / "main.py").exists(), "Files should be moved to workspace"
+        # Git-style main: files stay at repo root, main workspace IS the repo root
         main_ws_path = repo.workspace_path("main")
         assert main_ws_path is not None, "Main workspace should exist"
-        assert (main_ws_path / "main.py").exists(), "Files should be in workspace"
-        print(f"✓ Files moved from repo root to workspace: {main_ws_path}")
+        assert main_ws_path == test_dir, "Main workspace should BE the repo root"
+        assert (test_dir / "main.py").exists(), "Files should stay at repo root"
+        assert (main_ws_path / "main.py").exists(), "Files accessible via workspace path"
+        print(f"✓ Main workspace is repo root (git-style): {main_ws_path}")
 
         # ── Phase 2: Agent 1 works in main workspace ─────────────
         divider("Phase 2: Agent 1 — Feature in Main Workspace")

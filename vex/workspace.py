@@ -8,41 +8,40 @@ histories but agents share a single working directory and stomp on
 each other's files. Workspaces give each lane (or each agent) a
 physically isolated directory backed by the CAS.
 
-Design:
+Design (git-style main):
 
-    .vex/
-    └── workspaces/
-        ├── main/              ← working directory for main lane
-        │   ├── main.py
-        │   └── lib/
-        ├── feature-auth/      ← working directory for feature-auth lane
-        │   ├── main.py
-        │   └── lib/
-        └── bugfix-parser/     ← working directory for bugfix-parser lane
-            ├── main.py
-            └── lib/
+    my-project/
+    ├── .vex/
+    │   ├── store.db
+    │   ├── main.json          ← main workspace metadata
+    │   ├── main.lockdir/      ← main workspace lock
+    │   └── workspaces/
+    │       ├── feature-auth/  ← isolated feature lane
+    │       └── feature-auth.json
+    ├── app.py                 ← main lane files at repo root
+    └── models.py
 
-Each workspace is materialized from the CAS on creation, then lives
-as a normal directory that agents can read and write freely. When
-the agent is done, Vex snapshots the workspace — not the repo root.
+The "main" workspace is special: it IS the repo root (like git).
+Feature lanes get isolated subdirectories under .vex/workspaces/.
 
 Key properties:
+- Main workspace = repo root (feels like git)
+- Feature workspaces = isolated directories (parallel agent safety)
 - Creating a workspace is cheap: materialize from CAS
 - Workspaces are independent: modifying one can't affect another
-- Snapshots target the workspace directory, not the repo root
-- The repo root is NOT a working directory (avoids confusion)
-- Cleanup is just rm -rf on the workspace dir
+- Cleanup for feature lanes is just rm -rf on the workspace dir
 
 Smart materialization:
 - When creating a workspace from a state, we materialize the full tree
 - When updating a workspace to a new state (e.g., after acceptance),
   we diff the old and new trees and only write/delete what changed
 - This makes "rebase onto latest main" cheap for large repos
+- Main workspace materialization protects .vex/ directory
 
 Locking:
 - Uses atomic mkdir for cross-platform advisory locking (no fcntl/msvcrt)
-- acquire: mkdir(".vex/workspaces/<name>.lockdir") — atomic on all OSes
-- release: rmdir(lockdir)
+- Main lock: .vex/main.lockdir/
+- Feature lock: .vex/workspaces/<name>.lockdir/
 - Owner metadata stored in lockdir/owner.json
 """
 
@@ -158,11 +157,20 @@ class WorkspaceManager:
     - Cleanup of disposed workspaces
     - Cross-platform locking via atomic mkdir
 
-    Workspace layout:
-        .vex/workspaces/<n>/          ← the actual working files
-        .vex/workspaces/<n>.json      ← workspace metadata
-        .vex/workspaces/<n>.lockdir/  ← lock directory (exists = locked)
+    The "main" workspace is special — it IS the repo root (like git).
+    Feature workspaces live under .vex/workspaces/<name>/.
+
+    Layout:
+        repo_root/                    ← main workspace (the actual working files)
+        .vex/main.json                ← main workspace metadata
+        .vex/main.lockdir/            ← main workspace lock
+        .vex/workspaces/<n>/          ← feature workspace files
+        .vex/workspaces/<n>.json      ← feature workspace metadata
+        .vex/workspaces/<n>.lockdir/  ← feature workspace lock
     """
+
+    # The default/main workspace name — treated specially
+    MAIN_WORKSPACE = "main"
 
     def __init__(self, vex_dir: Path, wsm):
         """
@@ -171,6 +179,7 @@ class WorkspaceManager:
             wsm: WorldStateManager instance for CAS access
         """
         self.vex_dir = vex_dir
+        self.repo_root = vex_dir.parent  # The actual project root
         self.wsm = wsm
         self.workspaces_dir = vex_dir / "workspaces"
         self.workspaces_dir.mkdir(exist_ok=True)
@@ -202,6 +211,10 @@ class WorkspaceManager:
         into the workspace directory. If state_id is None (empty repo),
         creates an empty workspace directory.
 
+        The "main" workspace is special: it uses the repo root as its
+        working directory (like git). Feature workspaces get isolated
+        directories under .vex/workspaces/.
+
         Args:
             name:     Workspace name (typically matches lane name)
             lane:     Lane this workspace tracks
@@ -209,17 +222,27 @@ class WorkspaceManager:
             agent_id: Agent that will use this workspace (optional)
         """
         self._validate_workspace_name(name)
-        ws_path = self.workspaces_dir / name
+        ws_path = self._workspace_path(name)
         meta_path = self._meta_path(name)
 
-        if ws_path.exists():
-            raise ValueError(
-                f"Workspace '{name}' already exists at {ws_path}\n"
-                f"Use `vex workspace remove {name}` first, or choose a different name."
-            )
+        # For main workspace, check if metadata already exists (workspace already created)
+        # For feature workspaces, check if directory exists
+        if self._is_main(name):
+            if meta_path.exists():
+                raise ValueError(
+                    f"Workspace '{name}' already exists.\n"
+                    f"Use `vex workspace remove {name}` first, or choose a different name."
+                )
+            # Main workspace directory (repo root) always exists, that's fine
+        else:
+            if ws_path.exists():
+                raise ValueError(
+                    f"Workspace '{name}' already exists at {ws_path}\n"
+                    f"Use `vex workspace remove {name}` first, or choose a different name."
+                )
 
-        if state_id is not None:
-            # Mark workspace as materializing before starting
+        if state_id is not None and not self._is_main(name):
+            # Feature workspace: materialize into new directory
             ws_path.mkdir(parents=True, exist_ok=True)
             dirty_path = ws_path / ".vex_materializing"
             dirty_path.write_text(json.dumps({
@@ -235,9 +258,25 @@ class WorkspaceManager:
             else:
                 # Only remove marker on success
                 dirty_path.unlink(missing_ok=True)
-        else:
-            # Empty workspace — just create the directory
+        elif state_id is not None and self._is_main(name):
+            # Main workspace with state: materialize into repo root
+            # This happens during update, not typically during init
+            dirty_path = ws_path / ".vex_materializing"
+            dirty_path.write_text(json.dumps({
+                "state_id": state_id,
+                "started_at": time.time(),
+            }))
+
+            try:
+                self._materialize_to_main(state_id, ws_path)
+            except Exception:
+                raise
+            else:
+                dirty_path.unlink(missing_ok=True)
+        elif not self._is_main(name):
+            # Empty feature workspace — create the directory
             ws_path.mkdir(parents=True, exist_ok=True)
+        # For main with no state_id: repo root already exists, nothing to create
 
         # Write metadata — ensure parent dirs exist for nested names
         meta_path.parent.mkdir(parents=True, exist_ok=True)
@@ -256,6 +295,32 @@ class WorkspaceManager:
         _atomic_write(meta_path, json.dumps(info.to_dict(), indent=2))
 
         return info
+
+    def _materialize_to_main(self, state_id: str, ws_path: Path):
+        """
+        Materialize a state into the main workspace (repo root).
+
+        This is like regular materialize but MUST protect the .vex directory.
+        """
+        state = self.wsm.get_state(state_id)
+        if not state:
+            raise ValueError(f"State not found: {state_id}")
+
+        files = self.wsm._flatten_tree(state["root_tree"])
+
+        # Write all files from the state
+        for path, blob_hash in files.items():
+            # CRITICAL: Never touch .vex directory
+            if path.startswith(".vex") or path.startswith(".vex/"):
+                continue
+
+            obj = self.wsm.store.retrieve(blob_hash)
+            if obj is None:
+                continue
+
+            file_path = ws_path / path
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_bytes(obj.data)
 
     # ── Smart Update ──────────────────────────────────────────────
 
@@ -286,7 +351,7 @@ class WorkspaceManager:
         }))
 
         try:
-            result = self._apply_update(ws_path, old_state, new_state_id)
+            result = self._apply_update(ws_path, old_state, new_state_id, is_main=self._is_main(name))
         except Exception:
             # Leave dirty marker so recovery can detect partial state
             raise
@@ -297,12 +362,17 @@ class WorkspaceManager:
             return result
 
     def _apply_update(
-        self, ws_path: Path, old_state: Optional[str], new_state_id: str
+        self, ws_path: Path, old_state: Optional[str], new_state_id: str,
+        is_main: bool = False
     ) -> dict:
         """Apply the actual file changes for an update."""
         if old_state is None:
-            self._clean_workspace_contents(ws_path)
-            self.wsm.materialize(new_state_id, ws_path)
+            if is_main:
+                self._clean_workspace_contents(ws_path, protect_vex=True)
+                self._materialize_to_main(new_state_id, ws_path)
+            else:
+                self._clean_workspace_contents(ws_path)
+                self.wsm.materialize(new_state_id, ws_path)
             return {"mode": "full_materialize"}
 
         # Get the diff between old and new states
@@ -317,6 +387,10 @@ class WorkspaceManager:
 
         # Apply removals
         for path in diff["removed"]:
+            # CRITICAL: Never touch .vex directory in main workspace
+            if is_main and (path.startswith(".vex") or path.startswith(".vex/")):
+                continue
+
             file_path = ws_path / path
             if file_path.exists():
                 file_path.unlink()
@@ -325,6 +399,10 @@ class WorkspaceManager:
 
         # Apply additions and modifications
         for path in list(diff["added"].keys()) + list(diff["modified"].keys()):
+            # CRITICAL: Never touch .vex directory in main workspace
+            if is_main and (path.startswith(".vex") or path.startswith(".vex/")):
+                continue
+
             blob_hash = new_files.get(path)
             if blob_hash is None:
                 continue
@@ -549,6 +627,16 @@ class WorkspaceManager:
     def list(self) -> list[WorkspaceInfo]:
         """List all workspaces."""
         workspaces = []
+
+        # Check for main workspace (special location)
+        main_meta = self._meta_path(self.MAIN_WORKSPACE)
+        if main_meta.exists():
+            info = self._load_workspace_info(main_meta)
+            if info is not None:
+                # Main workspace path is repo root, always exists
+                workspaces.append(info)
+
+        # Check for feature workspaces
         for meta_file in sorted(self.workspaces_dir.rglob("*.json")):
             # Skip files inside .lockdir directories (lock owner metadata)
             if any(part.endswith(".lockdir") for part in meta_file.parts):
@@ -584,8 +672,9 @@ class WorkspaceManager:
         """
         Remove a workspace.
 
-        Deletes the working directory and metadata. If the workspace
-        is locked (active agent), requires force=True.
+        For feature workspaces: deletes the working directory and metadata.
+        For main workspace: clears files (protecting .vex) and removes metadata.
+        If the workspace is locked (active agent), requires force=True.
         """
         info = self.get(name)
         if info is None:
@@ -600,10 +689,14 @@ class WorkspaceManager:
         # Release any locks
         self.release(name)
 
-        # Remove workspace directory
-        ws_path = self.workspaces_dir / name
-        if ws_path.exists():
-            shutil.rmtree(ws_path)
+        if self._is_main(name):
+            # Main workspace: clear files but protect .vex, remove metadata
+            self._clean_workspace_contents(self.repo_root, protect_vex=True)
+        else:
+            # Feature workspace: remove the entire directory
+            ws_path = self._workspace_path(name)
+            if ws_path.exists():
+                shutil.rmtree(ws_path)
 
         # Remove metadata
         meta_path = self._meta_path(name)
@@ -629,10 +722,26 @@ class WorkspaceManager:
 
     # ── Helpers ────────────────────────────────────────────────────
 
+    def _is_main(self, name: str) -> bool:
+        """Check if this is the main workspace (special: lives at repo root)."""
+        return name == self.MAIN_WORKSPACE
+
+    def _workspace_path(self, name: str) -> Path:
+        """Get the filesystem path for a workspace's files."""
+        if self._is_main(name):
+            return self.repo_root  # Main workspace IS the repo root
+        return self.workspaces_dir / name
+
     def _meta_path(self, name: str) -> Path:
+        """Get the path to workspace metadata JSON."""
+        if self._is_main(name):
+            return self.vex_dir / "main.json"  # Special location for main
         return self.workspaces_dir / f"{name}.json"
 
     def _lock_path(self, name: str) -> Path:
+        """Get the path to workspace lock directory."""
+        if self._is_main(name):
+            return self.vex_dir / "main.lockdir"  # Special location for main
         return self.workspaces_dir / f"{name}.lockdir"
 
     def _update_meta(self, name: str, **updates):
@@ -651,10 +760,18 @@ class WorkspaceManager:
 
         _atomic_write(meta_path, json.dumps(data, indent=2))
 
-    def _clean_workspace_contents(self, ws_path: Path):
-        """Remove all contents of a workspace directory."""
+    def _clean_workspace_contents(self, ws_path: Path, protect_vex: bool = False):
+        """Remove all contents of a workspace directory.
+
+        Args:
+            ws_path: Path to the workspace directory
+            protect_vex: If True, don't touch .vex directory (for main workspace)
+        """
         if ws_path.exists():
             for item in ws_path.iterdir():
+                # CRITICAL: Never delete .vex when cleaning main workspace
+                if protect_vex and item.name == ".vex":
+                    continue
                 if item.is_dir():
                     shutil.rmtree(item)
                 else:

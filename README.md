@@ -26,7 +26,7 @@ pip install vex[gcs]   # Google Cloud Storage support (google-cloud-storage)
 
 **Lanes** — Isolated workstreams. They don't merge — they produce candidates that get *promoted* into a target lane through evaluation. Lane names use dashes (e.g., `feature-auth`, `bugfix-parser`). Slashes are not allowed.
 
-**Workspaces** — Each lane gets a physically isolated directory under `.vex/workspaces/<name>/`. Agents modify files in their workspace, not the repo root. Two agents cannot stomp on each other's files — the isolation is physical, not logical.
+**Workspaces** — The main workspace IS the repo root (like git). Feature lanes get physically isolated directories under `.vex/workspaces/<name>/`. This gives you familiar git-style behavior for main while still enabling parallel agents on feature lanes to work without stomping on each other.
 
 **Promote** — The mechanism for composing work from lanes into a target. Detects file-level conflicts (same path modified on both sides), rebases cleanly when possible, and stops with a conflict report when not. No three-way content merge ever happens.
 
@@ -61,11 +61,11 @@ pip install vex[gcs]   # Google Cloud Storage support (google-cloud-storage)
 cd my-project
 vex init
 # ✓ Initialized Vex repository at /path/to/my-project
-#   Workspace: /path/to/my-project/.vex/workspaces/main
+#   Initial snapshot: a7d53265...
 #   Lane: main
 ```
 
-Existing files are moved into the `main` workspace and snapshotted. The repo root becomes metadata-only.
+Existing files stay in place — the repo root IS the main workspace (like git). Only `.vex/` metadata is added.
 
 ### Agent Workflow (Python SDK)
 
@@ -190,30 +190,29 @@ See [docs/guide.md](docs/guide.md) for comprehensive documentation on all featur
 
 ```
 my-project/
-└── .vex/
-    ├── config.json
-    ├── vex.db                          # SQLite database (states, transitions, lanes)
-    ├── objects/                         # CAS blob storage
-    │   ├── a7/d532652a97...
-    │   └── ee/49ee72e3c9...
-    ├── templates/                       # Workspace templates
-    │   └── python-service.json
-    └── workspaces/
-        ├── main/                       # working files for main lane
-        │   ├── main.py
-        │   └── lib/
-        ├── main.json                   # workspace metadata
-        ├── main.lockdir/               # advisory lock (exists = locked)
-        │   └── owner.json              # who holds the lock
-        ├── feature-auth/               # working files for feature lane
-        └── feature-auth.json
+├── .vex/
+│   ├── config.json
+│   ├── store.db                        # SQLite database (states, transitions, lanes, CAS)
+│   ├── main.json                       # main workspace metadata
+│   ├── main.lockdir/                   # main workspace lock (when active)
+│   │   └── owner.json
+│   └── workspaces/
+│       ├── feature-auth/               # isolated feature lane workspace
+│       │   ├── main.py
+│       │   └── lib/
+│       ├── feature-auth.json
+│       └── feature-auth.lockdir/
+├── main.py                             # YOUR FILES STAY AT REPO ROOT
+└── lib/
 ```
 
-Agents never touch the repo root. Each workspace is materialized from the CAS on creation and can be incrementally updated when the target lane advances.
+The main workspace IS the repo root (git-style). Feature lanes get isolated directories under `.vex/workspaces/`. This means `ls` shows your files, IDEs work naturally, but parallel agents on feature lanes still can't stomp on each other.
 
 ## Key Design Properties
 
-**Physical isolation.** Workspaces are real directories, not logical constructs. Two agents in separate workspaces cannot interfere with each other at the filesystem level.
+**Git-style main.** The main workspace is the repo root itself. Files stay where you expect them — `ls` shows your project, IDEs work naturally, and `vex init` doesn't move anything.
+
+**Physical isolation for feature lanes.** Feature workspaces are real directories under `.vex/workspaces/`. Two agents in separate workspaces cannot interfere with each other at the filesystem level.
 
 **Smart incremental updates.** When syncing a workspace to a new state, Vex diffs the old and new trees and writes only changed files. On a large repo where 3 files changed, it writes 3 files — not 10,000.
 

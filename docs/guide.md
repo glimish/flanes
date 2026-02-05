@@ -59,13 +59,13 @@ cd my-project
 vex init
 ```
 
-This creates a `.vex/` directory, moves existing files into the `main` workspace at `.vex/workspaces/main/`, and takes an initial snapshot. The repo root becomes metadata-only.
+This creates a `.vex/` directory and takes an initial snapshot. Your files stay in place — the repo root IS the main workspace (like git). Only metadata is added.
 
 ### Make Changes and Commit
 
 ```bash
-# Edit files in the workspace
-echo "print('hello')" > .vex/workspaces/main/app.py
+# Edit files at repo root (main workspace IS the repo root)
+echo "print('hello')" > app.py
 
 # Quick commit: snapshot + propose + accept
 vex commit \
@@ -153,7 +153,7 @@ Lane names must use dashes, not slashes:
 
 ### Workspaces
 
-Each lane has a physically isolated workspace directory at `.vex/workspaces/<name>/`. Agents read and write files directly in their workspace. Two agents working on different lanes cannot interfere with each other at the filesystem level.
+The main workspace IS the repo root (like git). Feature lanes get physically isolated directories at `.vex/workspaces/<name>/`. This gives you familiar git-style behavior for everyday work while still enabling parallel agents to work on feature lanes without interfering with each other.
 
 Workspaces are materialized from the CAS when created and incrementally updated when the target state changes — only modified files are written.
 
@@ -450,7 +450,7 @@ Repository configuration is stored in `.vex/config.json`. It is created automati
 
 ```json
 {
-  "version": "0.2.0",
+  "version": "0.3.0",
   "default_lane": "main",
   "created_at": 1706999999.0,
   "max_blob_size": 104857600,
@@ -474,7 +474,7 @@ Repository configuration is stored in `.vex/config.json`. It is created automati
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `version` | string | `"0.2.0"` | Vex version that created this repo |
+| `version` | string | `"0.3.0"` | Vex version that created this repo |
 | `default_lane` | string | `"main"` | Default lane for operations |
 | `created_at` | float | (auto) | Unix timestamp of repo creation |
 | `max_blob_size` | int | `104857600` | Maximum file size in bytes (100 MB). Set to 0 for default. |
@@ -1076,7 +1076,8 @@ Template file paths are validated against path traversal:
 
 Workspaces use advisory locking via atomic `mkdir`:
 
-- Lock directory: `.vex/workspaces/<name>.lockdir/`
+- Main lock: `.vex/main.lockdir/`
+- Feature lock: `.vex/workspaces/<name>.lockdir/`
 - Owner file: `owner.json` inside the lock directory (contains PID, hostname, timestamp)
 - Stale lock detection: `vex doctor` checks if the owning PID is still alive
 - Cross-platform: Works on Linux, macOS, and Windows

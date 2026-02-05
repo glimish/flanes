@@ -117,9 +117,10 @@ class Repository:
         Initialize a new repository.
 
         Creates the .vex directory, database, initial 'main' lane,
-        and a workspace for it. If the directory already contains files,
-        creates an initial snapshot from them and materializes it into
-        the main workspace.
+        and a workspace for it. Unlike git, the main workspace IS the
+        repo root — files stay in place, no movement needed.
+
+        Feature lanes will get isolated workspaces under .vex/workspaces/.
         """
         root = Path(path).resolve()
         vex_dir = root / REPO_DIR_NAME
@@ -129,7 +130,7 @@ class Repository:
 
         vex_dir.mkdir(parents=True)
         (vex_dir / "config.json").write_text(json.dumps({
-            "version": "0.2.0",
+            "version": "0.3.0",  # Bump version for git-style main
             "default_lane": initial_lane,
             "created_at": time.time(),
             "max_blob_size": 100 * 1024 * 1024,  # 100 MB default
@@ -167,18 +168,12 @@ class Repository:
                 summary="Initial snapshot accepted",
             ))
 
-            # Create workspace via WorkspaceManager (empty), then move files in
-            ws_info = repo.wm.create(initial_lane, lane=initial_lane, state_id=None)
-            ws_path = ws_info.path
-
-            for f in user_files:
-                dest = ws_path / f.name
-                shutil.move(str(f), str(dest))
-
-            # Record the snapshot as base_state
+            # Create main workspace metadata pointing to repo root
+            # Files stay in place — no movement needed (git-style)
+            repo.wm.create(initial_lane, lane=initial_lane, state_id=None)
             repo.wm._update_meta(initial_lane, base_state=state_id)
         else:
-            # Empty repo — create empty workspace directory
+            # Empty repo — create workspace metadata (repo root already exists)
             repo.wm.create(initial_lane, lane=initial_lane, state_id=None)
 
         return repo

@@ -52,9 +52,10 @@ class TestFix1InitWorkspaceMetadata:
         assert info.created_at > 0
         assert info.updated_at > 0
 
-        # Verify files were moved into workspace
-        assert (info.path / "app.py").exists()
-        assert not (tmp_dir / "app.py").exists()
+        # Git-style: main workspace IS repo root, files stay in place
+        assert info.path == tmp_dir, "main workspace should BE the repo root"
+        assert (info.path / "app.py").exists(), "files should be accessible via workspace"
+        assert (tmp_dir / "app.py").exists(), "files should stay at repo root"
         repo.close()
 
 
