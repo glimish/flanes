@@ -1,5 +1,5 @@
 """
-MCP Tool Server for Vex.
+MCP Tool Server for Fla.
 
 JSON-RPC 2.0 over stdio with Content-Length framing (LSP-style, per MCP spec).
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class MCPServer:
-    """MCP tool server that exposes Vex operations as tools."""
+    """MCP tool server that exposes Fla operations as tools."""
 
     def __init__(self, repo_path: Path):
         self.repo = Repository.find(Path(repo_path))
@@ -31,12 +31,12 @@ class MCPServer:
         """Return all tool definitions with JSON Schema input schemas."""
         return [
             {
-                "name": "vex_status",
+                "name": "fla_status",
                 "description": "Get repository status",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "vex_snapshot",
+                "name": "fla_snapshot",
                 "description": "Snapshot a workspace",
                 "inputSchema": {
                     "type": "object",
@@ -46,7 +46,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_commit",
+                "name": "fla_commit",
                 "description": "Quick commit: snapshot + propose + accept",
                 "inputSchema": {
                     "type": "object",
@@ -59,7 +59,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_history",
+                "name": "fla_history",
                 "description": "Get transition history",
                 "inputSchema": {
                     "type": "object",
@@ -70,7 +70,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_diff",
+                "name": "fla_diff",
                 "description": "Diff two states",
                 "inputSchema": {
                     "type": "object",
@@ -82,7 +82,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_show",
+                "name": "fla_show",
                 "description": "Show file content at a state",
                 "inputSchema": {
                     "type": "object",
@@ -94,7 +94,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_search",
+                "name": "fla_search",
                 "description": "Search intents",
                 "inputSchema": {
                     "type": "object",
@@ -105,17 +105,17 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_lanes",
+                "name": "fla_lanes",
                 "description": "List lanes",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "vex_workspaces",
+                "name": "fla_workspaces",
                 "description": "List workspaces",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "vex_accept",
+                "name": "fla_accept",
                 "description": "Accept a transition",
                 "inputSchema": {
                     "type": "object",
@@ -126,7 +126,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_reject",
+                "name": "fla_reject",
                 "description": "Reject a transition",
                 "inputSchema": {
                     "type": "object",
@@ -137,7 +137,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "vex_restore",
+                "name": "fla_restore",
                 "description": "Restore a workspace to a state",
                 "inputSchema": {
                     "type": "object",
@@ -170,7 +170,7 @@ class MCPServer:
                         "tools": {},
                     },
                     "serverInfo": {
-                        "name": "vex-mcp",
+                        "name": "fla-mcp",
                         "version": "0.3.0",
                     },
                 },
@@ -220,15 +220,15 @@ class MCPServer:
 
     def _call_tool(self, name: str, args: dict) -> dict | list:
         """Dispatch tool call to the appropriate repo method."""
-        if name == "vex_status":
+        if name == "fla_status":
             return self.repo.status()
 
-        elif name == "vex_snapshot":
+        elif name == "fla_snapshot":
             workspace = args.get("workspace", "main")
             state_id = self.repo.snapshot(workspace)
             return {"state_id": state_id}
 
-        elif name == "vex_commit":
+        elif name == "fla_commit":
             agent = AgentIdentity(
                 agent_id=args["agent_id"],
                 agent_type=args["agent_type"],
@@ -240,16 +240,16 @@ class MCPServer:
                 auto_accept=True,
             )
 
-        elif name == "vex_history":
+        elif name == "fla_history":
             return self.repo.history(
                 lane=args.get("lane"),
                 limit=args.get("limit", 50),
             )
 
-        elif name == "vex_diff":
+        elif name == "fla_diff":
             return self.repo.diff(args["state_a"], args["state_b"])
 
-        elif name == "vex_show":
+        elif name == "fla_show":
             state = self.repo.wsm.get_state(args["state_id"])
             if not state:
                 raise ValueError(f"State not found: {args['state_id']}")
@@ -268,25 +268,25 @@ class MCPServer:
                 "content_base64": base64.b64encode(obj.data).decode("ascii"),
             }
 
-        elif name == "vex_search":
+        elif name == "fla_search":
             return self.repo.search(args["query"])
 
-        elif name == "vex_lanes":
+        elif name == "fla_lanes":
             return self.repo.lanes()
 
-        elif name == "vex_workspaces":
+        elif name == "fla_workspaces":
             ws_list = self.repo.workspaces()
             return [w.to_dict() for w in ws_list]
 
-        elif name == "vex_accept":
+        elif name == "fla_accept":
             status = self.repo.accept(args["transition_id"])
             return {"status": status.value}
 
-        elif name == "vex_reject":
+        elif name == "fla_reject":
             status = self.repo.reject(args["transition_id"])
             return {"status": status.value}
 
-        elif name == "vex_restore":
+        elif name == "fla_restore":
             result = self.repo.restore(args["workspace"], args["state_id"])
             return result
 

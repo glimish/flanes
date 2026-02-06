@@ -1,10 +1,10 @@
 """
 Agent SDK
 
-A clean Python API for AI agents to interact with Vex.
+A clean Python API for AI agents to interact with Fla.
 Workspace-aware: each agent gets an isolated working directory.
 
-    from vex.agent_sdk import AgentSession
+    from fla.agent_sdk import AgentSession
 
     session = AgentSession(
         repo_path="/path/to/project",

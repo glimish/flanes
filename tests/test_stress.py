@@ -1,5 +1,5 @@
 """
-Stress Tests for Vex
+Stress Tests for Fla
 
 Tests production workload scenarios:
 - Concurrent snapshot operations
@@ -18,8 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from vex.repo import Repository
-from vex.state import AgentIdentity
+from fla.repo import Repository
+from fla.state import AgentIdentity
 
 # Mark all tests in this module as stress tests
 pytestmark = pytest.mark.stress
@@ -310,14 +310,14 @@ class TestRESTAPIConcurrency:
         """Start a test server and return its port."""
         import socket
 
-        from vex.server import VexServer
+        from fla.server import FlaServer
 
         # Find free port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(('127.0.0.1', 0))
             port = s.getsockname()[1]
 
-        server = VexServer(repo, "127.0.0.1", port)
+        server = FlaServer(repo, "127.0.0.1", port)
 
         def serve():
             server.serve_forever()

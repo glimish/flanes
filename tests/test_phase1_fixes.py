@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vex.repo import Repository
-from vex.state import AgentIdentity, WorldStateManager
-from vex.workspace import _replace_with_retry
+from fla.repo import Repository
+from fla.state import AgentIdentity, WorldStateManager
+from fla.workspace import _replace_with_retry
 
 
 @pytest.fixture
@@ -104,11 +104,11 @@ class TestFix2PromoteUpdatesForkBase:
         assert result2["status"] == "accepted"
 
 
-# ── Fix 3: .vexignore fnmatch patterns ──────────────────────────────
+# ── Fix 3: .flaignore fnmatch patterns ──────────────────────────────
 
-class TestFix3VexignoreFnmatch:
-    def test_glob_patterns_in_vexignore(self, tmp_dir):
-        (tmp_dir / ".vexignore").write_text("*.pyc\ntest_*\n")
+class TestFix3FlaignoreFnmatch:
+    def test_glob_patterns_in_flaignore(self, tmp_dir):
+        (tmp_dir / ".flaignore").write_text("*.pyc\ntest_*\n")
         (tmp_dir / "app.py").write_text("pass\n")
         (tmp_dir / "app.pyc").write_bytes(b"\x00compiled")
         (tmp_dir / "test_app.py").write_text("pass\n")
@@ -162,9 +162,9 @@ class TestFix4AtomicWriteRetry:
                 raise PermissionError("File in use")
             return original_replace(self_path, target)
 
-        with patch("vex.workspace.os.name", "nt"), \
+        with patch("fla.workspace.os.name", "nt"), \
              patch.object(Path, "replace", mock_replace), \
-             patch("vex.workspace.time.sleep"):
+             patch("fla.workspace.time.sleep"):
             _replace_with_retry(src, dst)
 
         assert dst.read_text() == "new content"
@@ -175,9 +175,9 @@ class TestFix4AtomicWriteRetry:
         dst = tmp_path / "dst.txt"
         src.write_text("content")
 
-        with patch("vex.workspace.os.name", "nt"), \
+        with patch("fla.workspace.os.name", "nt"), \
              patch.object(Path, "replace", side_effect=PermissionError("locked")), \
-             patch("vex.workspace.time.sleep"), \
+             patch("fla.workspace.time.sleep"), \
              pytest.raises(PermissionError):
             _replace_with_retry(src, dst)
 
@@ -186,7 +186,7 @@ class TestFix4AtomicWriteRetry:
         dst = tmp_path / "dst.txt"
         src.write_text("content")
 
-        with patch("vex.workspace.os.name", "posix"), \
+        with patch("fla.workspace.os.name", "posix"), \
              patch.object(Path, "replace", side_effect=PermissionError("nope")), \
              pytest.raises(PermissionError):
             _replace_with_retry(src, dst)
@@ -237,7 +237,7 @@ class TestFix7WorkExceptionShadowing:
         session.end = MagicMock()
         session.propose = MagicMock(side_effect=RuntimeError("cleanup kaboom"))
 
-        from vex.agent_sdk import AgentSession
+        from fla.agent_sdk import AgentSession
 
         real_session = AgentSession(
             repo_path=tmp_dir,
@@ -258,9 +258,9 @@ class TestFix7WorkExceptionShadowing:
 
 class TestFix8VersionMatch:
     def test_versions_consistent(self):
-        import vex
+        import fla
 
-        project_root = Path(vex.__file__).parent.parent
+        project_root = Path(fla.__file__).parent.parent
 
         # Read setup.py version
         setup_py = project_root / "setup.py"
@@ -278,9 +278,9 @@ class TestFix8VersionMatch:
         assert m2, "Could not find version in pyproject.toml"
         pyproject_version = m2.group(1)
 
-        assert vex.__version__ == setup_version, (
-            f"__init__.py ({vex.__version__}) != setup.py ({setup_version})"
+        assert fla.__version__ == setup_version, (
+            f"__init__.py ({fla.__version__}) != setup.py ({setup_version})"
         )
-        assert vex.__version__ == pyproject_version, (
-            f"__init__.py ({vex.__version__}) != pyproject.toml ({pyproject_version})"
+        assert fla.__version__ == pyproject_version, (
+            f"__init__.py ({fla.__version__}) != pyproject.toml ({pyproject_version})"
         )

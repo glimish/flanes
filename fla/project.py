@@ -1,8 +1,8 @@
 """
 Multi-Repo Project Management
 
-A project coordinates multiple vex repos under a single root.
-Configuration is stored in .vex-project.json at the project root.
+A project coordinates multiple fla repos under a single root.
+Configuration is stored in .fla-project.json at the project root.
 """
 
 import json
@@ -15,12 +15,12 @@ from .serializable import Serializable
 
 logger = logging.getLogger(__name__)
 
-PROJECT_FILE = ".vex-project.json"
+PROJECT_FILE = ".fla-project.json"
 
 
 @dataclass
 class RepoMount(Serializable):
-    """A vex repo mounted in the project."""
+    """A fla repo mounted in the project."""
     repo_path: str
     mount_point: str
     lane: str = "main"
@@ -41,7 +41,7 @@ class Project:
         self.root = root.resolve()
         self.config_path = self.root / PROJECT_FILE
         if not self.config_path.exists():
-            raise ValueError(f"Not a vex project: {self.root} (no {PROJECT_FILE})")
+            raise ValueError(f"Not a fla project: {self.root} (no {PROJECT_FILE})")
         self.config = ProjectConfig.from_dict(
             json.loads(self.config_path.read_text())
         )

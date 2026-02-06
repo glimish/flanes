@@ -1,68 +1,68 @@
 {
-  "name": "vex-vscode",
-  "displayName": "Vex Version Control",
-  "description": "VSCode integration for Vex — version control for AI agents",
+  "name": "fla-vscode",
+  "displayName": "Fla Version Control",
+  "description": "VSCode integration for Fla — version control for AI agents",
   "version": "0.1.0",
-  "publisher": "vex",
+  "publisher": "fla",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": ["SCM Providers", "Other"],
-  "keywords": ["vex", "version control", "ai", "agents"],
+  "keywords": ["fla", "version control", "ai", "agents"],
   "activationEvents": [
-    "workspaceContains:.vex"
+    "workspaceContains:.fla"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "vex.status",
-        "title": "Vex: Show Status"
+        "command": "fla.status",
+        "title": "Fla: Show Status"
       },
       {
-        "command": "vex.snapshot",
-        "title": "Vex: Snapshot Workspace"
+        "command": "fla.snapshot",
+        "title": "Fla: Snapshot Workspace"
       },
       {
-        "command": "vex.commit",
-        "title": "Vex: Commit (Snapshot + Propose + Accept)"
+        "command": "fla.commit",
+        "title": "Fla: Commit (Snapshot + Propose + Accept)"
       },
       {
-        "command": "vex.history",
-        "title": "Vex: Show History"
+        "command": "fla.history",
+        "title": "Fla: Show History"
       },
       {
-        "command": "vex.lanes",
-        "title": "Vex: List Lanes"
+        "command": "fla.lanes",
+        "title": "Fla: List Lanes"
       },
       {
-        "command": "vex.createLane",
-        "title": "Vex: Create Lane"
+        "command": "fla.createLane",
+        "title": "Fla: Create Lane"
       },
       {
-        "command": "vex.switchLane",
-        "title": "Vex: Switch Lane"
+        "command": "fla.switchLane",
+        "title": "Fla: Switch Lane"
       },
       {
-        "command": "vex.diff",
-        "title": "Vex: Show Diff"
+        "command": "fla.diff",
+        "title": "Fla: Show Diff"
       }
     ],
     "configuration": {
-      "title": "Vex",
+      "title": "Fla",
       "properties": {
-        "vex.path": {
+        "fla.path": {
           "type": "string",
-          "default": "vex",
-          "description": "Path to the vex CLI binary"
+          "default": "fla",
+          "description": "Path to the fla CLI binary"
         },
-        "vex.autoRefresh": {
+        "fla.autoRefresh": {
           "type": "boolean",
           "default": true,
           "description": "Automatically refresh status bar"
         },
-        "vex.refreshInterval": {
+        "fla.refreshInterval": {
           "type": "number",
           "default": 5000,
           "description": "Auto-refresh interval in milliseconds"

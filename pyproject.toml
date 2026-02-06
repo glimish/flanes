@@ -3,16 +3,15 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vex"
+name = "fla"
 version = "0.3.0"
-description = "Version control for agentic AI systems"
+description = "FLA — Feature Lanes for Agents: version control for agentic AI systems"
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
 requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -21,8 +20,14 @@ classifiers = [
     "Topic :: Software Development :: Version Control",
 ]
 
+[project.urls]
+Homepage = "https://github.com/glimish/fla"
+Repository = "https://github.com/glimish/fla"
+Issues = "https://github.com/glimish/fla/issues"
+Documentation = "https://github.com/glimish/fla/tree/main/docs"
+
 [project.scripts]
-vex = "vex.cli:main"
+fla = "fla.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "mypy>=1.10"]
@@ -32,18 +37,18 @@ remote = ["boto3>=1.26", "google-cloud-storage>=2.0"]
 
 # Entry point groups for plugins — third-party packages register here
 # See docs/guide.md "Writing Plugins" for details
-[project.entry-points."vex.evaluators"]
+[project.entry-points."fla.evaluators"]
 # example: my_evaluator = "my_package:evaluate_func"
-[project.entry-points."vex.storage"]
+[project.entry-points."fla.storage"]
 # example: my_backend = "my_package:create_backend"
-[project.entry-points."vex.hooks"]
+[project.entry-points."fla.hooks"]
 # example: my_hook = "my_package:hook_handler"
 
 [tool.setuptools.packages.find]
-include = ["vex*"]
+include = ["fla*"]
 
 [tool.setuptools.package-data]
-"vex" = ["web/*.html", "web/*.css", "web/*.js"]
+"fla" = ["web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

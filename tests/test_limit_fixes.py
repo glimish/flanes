@@ -11,8 +11,8 @@ import json
 
 import pytest
 
-from vex.cas import ContentStoreLimitError
-from vex.repo import Repository
+from fla.cas import ContentStoreLimitError
+from fla.repo import Repository
 
 
 def test_reject_negative_blob_size(tmp_path):
@@ -23,7 +23,7 @@ def test_reject_negative_blob_size(tmp_path):
     repo.store.close()
 
     # Set negative blob size in config
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = -100
     config_path.write_text(json.dumps(config, indent=2))
@@ -41,7 +41,7 @@ def test_reject_negative_tree_depth(tmp_path):
     repo.store.close()
 
     # Set negative tree depth in config
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_tree_depth"] = -10
     config_path.write_text(json.dumps(config, indent=2))
@@ -60,7 +60,7 @@ def test_deduplication_with_lowered_limits(tmp_path):
     repo.store.close()
 
     # Lower the limit below the existing file size
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = 2000  # Lower than 5000
     config_path.write_text(json.dumps(config, indent=2))
@@ -88,7 +88,7 @@ def test_new_large_blob_rejected_after_lowering_limit(tmp_path):
     repo.store.close()
 
     # Lower the limit
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = 2000
     config_path.write_text(json.dumps(config, indent=2))
@@ -116,7 +116,7 @@ def test_zero_blob_size_uses_default(tmp_path):
     repo.store.close()
 
     # Set to 0
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = 0
     config_path.write_text(json.dumps(config, indent=2))
@@ -136,7 +136,7 @@ def test_zero_tree_depth_uses_default(tmp_path):
     repo.store.close()
 
     # Set to 0
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_tree_depth"] = 0
     config_path.write_text(json.dumps(config, indent=2))
@@ -155,7 +155,7 @@ def test_custom_limits_respected(tmp_path):
     repo.store.close()
 
     # Set custom limits
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = 50000
     config["max_tree_depth"] = 50
@@ -176,7 +176,7 @@ def test_very_large_limit_acts_as_unlimited(tmp_path):
     repo.store.close()
 
     # Set very large limits
-    config_path = tmp_path / ".vex" / "config.json"
+    config_path = tmp_path / ".fla" / "config.json"
     config = json.loads(config_path.read_text())
     config["max_blob_size"] = 10**12  # 1 TB
     config["max_tree_depth"] = 10000

@@ -1,16 +1,16 @@
-# Vex — Version Control for Agentic AI Systems
+# Fla — Version Control for Agentic AI Systems
 
-[![Tests](https://github.com/<owner>/vex/actions/workflows/test.yml/badge.svg)](https://github.com/<owner>/vex/actions/workflows/test.yml)
+[![Tests](https://github.com/<owner>/fla/actions/workflows/test.yml/badge.svg)](https://github.com/<owner>/fla/actions/workflows/test.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 Version control designed from the ground up for AI agents. Replaces git's line-diff model with intent-based snapshots, physically isolated workspaces, and evaluation gating.
 
-## Why Vex?
+## Why Fla?
 
 Git assumes a single human making small, curated edits. AI agents break every part of that model.
 
-| | Git | Vex |
+| | Git | Fla |
 |---|---|---|
 | **Unit of work** | Line diffs | Full world-state snapshots |
 | **Change metadata** | Free-text commit message | Structured intent + agent identity |
@@ -22,25 +22,25 @@ Git assumes a single human making small, curated edits. AI agents break every pa
 
 ```bash
 cd my-project
-vex init
+fla init
 # Writes files, then commits in one step:
-vex commit --prompt "Add auth module" \
+fla commit --prompt "Add auth module" \
   --agent-id coder-1 --agent-type feature_dev --auto-accept
 
 # Create isolated feature lane
-vex lane create feature-auth
+fla lane create feature-auth
 
 # Work in isolation, promote back to main
-vex promote --workspace feature-auth --target main --auto-accept
+fla promote --workspace feature-auth --target main --auto-accept
 
 # Query history
-vex history --lane main
+fla history --lane main
 ```
 
 Or use the Python SDK:
 
 ```python
-from vex.agent_sdk import AgentSession
+from fla.agent_sdk import AgentSession
 
 session = AgentSession(
     repo_path="./my-project",
@@ -59,11 +59,11 @@ See [`examples/`](examples/) for runnable demos.
 ## Installation
 
 ```bash
-pip install vex
+pip install fla
 
 # Optional: remote storage backends
-pip install vex[s3]    # Amazon S3 (boto3)
-pip install vex[gcs]   # Google Cloud Storage
+pip install fla[s3]    # Amazon S3 (boto3)
+pip install fla[gcs]   # Google Cloud Storage
 ```
 
 ## Core Concepts
@@ -76,14 +76,14 @@ pip install vex[gcs]   # Google Cloud Storage
 
 **Lanes** — Isolated workstreams. Work is *promoted* into a target lane through evaluation, not merged.
 
-**Workspaces** — Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.vex/workspaces/`.
+**Workspaces** — Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.fla/workspaces/`.
 
 ## Architecture
 
 ```
 +--------------------------------------------------+
 |                 CLI / Agent SDK                    |
-|       (vex commands / AgentSession API)            |
+|       (fla commands / AgentSession API)            |
 +--------------------------------------------------+
 |                  Repository                        |
 |   (propose, accept, promote, restore, etc)         |
@@ -110,11 +110,11 @@ pip install vex[gcs]   # Google Cloud Storage
 - **Conflict detection** — promote finds path-level collisions without content merging.
 - **Evaluators** — run pytest, ruff, or custom checks as gates before accepting transitions.
 - **Cost tracking** — per-transition token usage, wall time, and API call counts.
-- **Git bridge** — `vex export-git` / `vex import-git` for CI integration.
+- **Git bridge** — `fla export-git` / `fla import-git` for CI integration.
 - **Remote storage** — S3/GCS-backed sync for team collaboration.
-- **MCP server** — expose Vex as tools for LLM integration via Model Context Protocol.
-- **REST API** — `vex serve` starts a multi-threaded HTTP API.
-- **Garbage collection** — `vex gc` removes rejected states and unreachable objects.
+- **MCP server** — expose Fla as tools for LLM integration via Model Context Protocol.
+- **REST API** — `fla serve` starts a multi-threaded HTTP API.
+- **Garbage collection** — `fla gc` removes rejected states and unreachable objects.
 
 ## Documentation
 
@@ -126,7 +126,7 @@ pip install vex[gcs]   # Google Cloud Storage
 
 ```
 my-project/
-+-- .vex/
++-- .fla/
 |   +-- config.json
 |   +-- store.db                        # SQLite database
 |   +-- main.json                       # main workspace metadata

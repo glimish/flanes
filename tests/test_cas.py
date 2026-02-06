@@ -3,7 +3,7 @@
 
 import pytest
 
-from vex.cas import ContentStore, ObjectType
+from fla.cas import ContentStore, ObjectType
 
 
 @pytest.fixture

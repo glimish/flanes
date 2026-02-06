@@ -1,8 +1,8 @@
 """
 Workspace Templates
 
-Templates stored as JSON in .vex/templates/<name>.json.
-A template captures a set of files, directories, and vexignore
+Templates stored as JSON in .fla/templates/<name>.json.
+A template captures a set of files, directories, and flaignore
 patterns that can be applied when creating a new workspace.
 """
 
@@ -33,7 +33,7 @@ class WorkspaceTemplate(Serializable):
     description: str = ""
     files: list[TemplateFile] = field(default_factory=list)
     directories: list = field(default_factory=list)
-    vexignore_patterns: list = field(default_factory=list)
+    flaignore_patterns: list = field(default_factory=list)
 
 
 def _validate_name(name: str):
@@ -53,10 +53,10 @@ def _validate_path_within(base: Path, target: Path):
 
 
 class TemplateManager:
-    """Manages workspace templates stored in .vex/templates/."""
+    """Manages workspace templates stored in .fla/templates/."""
 
-    def __init__(self, vex_dir: Path):
-        self.templates_dir = vex_dir / "templates"
+    def __init__(self, fla_dir: Path):
+        self.templates_dir = fla_dir / "templates"
 
     def save(self, template: WorkspaceTemplate) -> Path:
         """Save a template to disk."""
@@ -105,7 +105,7 @@ class TemplateManager:
     def apply(self, template: WorkspaceTemplate, workspace_path: Path, store=None):
         """Apply a template to a workspace directory.
 
-        Creates files, directories, and .vexignore as specified.
+        Creates files, directories, and .flaignore as specified.
         If store is provided, resolves source_hash references from the CAS.
         """
         # Create directories
@@ -142,7 +142,7 @@ class TemplateManager:
                     tf.path,
                 )
 
-        # Write .vexignore
-        if template.vexignore_patterns:
-            vexignore_path = workspace_path / ".vexignore"
-            vexignore_path.write_text("\n".join(template.vexignore_patterns) + "\n")
+        # Write .flaignore
+        if template.flaignore_patterns:
+            flaignore_path = workspace_path / ".flaignore"
+            flaignore_path.write_text("\n".join(template.flaignore_patterns) + "\n")

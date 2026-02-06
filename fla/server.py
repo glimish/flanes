@@ -1,11 +1,11 @@
 """
-REST API Server for Vex.
+REST API Server for Fla.
 
 Uses stdlib http.server with ThreadingHTTPServer for concurrent request handling.
 Each request acquires a repo lock to serialize SQLite access safely.
 
 Authentication:
-    When a token is configured (via VEX_API_TOKEN env var or "api_token" in config),
+    When a token is configured (via FLA_API_TOKEN env var or "api_token" in config),
     all endpoints except /health require a Bearer token in the Authorization header.
     If no token is configured, the server runs without authentication (local-only use).
 """
@@ -25,10 +25,10 @@ from .state import AgentIdentity
 logger = logging.getLogger(__name__)
 
 
-class VexHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for the Vex REST API."""
+class FlaHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for the Fla REST API."""
 
-    server: "VexServer"  # type: ignore[assignment]
+    server: "FlaServer"  # type: ignore[assignment]
 
     @property
     def repo(self) -> Repository:
@@ -98,7 +98,7 @@ class VexHandler(BaseHTTPRequestHandler):
     }
 
     def _serve_static(self, url_path: str) -> bool:
-        """Serve a static file from vex/web/. Returns True if handled."""
+        """Serve a static file from fla/web/. Returns True if handled."""
         if not self.server._web_enabled:
             return False
         if not url_path.startswith("/web/") and url_path != "/web":
@@ -396,14 +396,14 @@ class VexHandler(BaseHTTPRequestHandler):
             self._send_error(500, "Internal server error")
 
 
-class VexServer(ThreadingHTTPServer):
-    """Thread-pooled HTTP server for Vex Repository.
+class FlaServer(ThreadingHTTPServer):
+    """Thread-pooled HTTP server for Fla Repository.
 
     Uses ThreadingHTTPServer for concurrent request handling.
     A lock serializes access to the Repository to ensure SQLite thread safety.
 
     Authentication:
-        Set VEX_API_TOKEN env var or pass api_token to enable bearer auth.
+        Set FLA_API_TOKEN env var or pass api_token to enable bearer auth.
         Without a token, the server is unauthenticated (suitable for localhost only).
     """
 
@@ -418,7 +418,7 @@ class VexServer(ThreadingHTTPServer):
         api_token: str | None = None, web: bool = False,
     ):
         self._repo_lock = threading.Lock()
-        self._api_token = api_token or os.environ.get("VEX_API_TOKEN")
+        self._api_token = api_token or os.environ.get("FLA_API_TOKEN")
         self._web_enabled = web
         if isinstance(repo_or_path, Repository):
             self.repo = repo_or_path
@@ -426,7 +426,7 @@ class VexServer(ThreadingHTTPServer):
         else:
             self._repo_path = repo_or_path
             self.repo = None
-        super().__init__((host, port), VexHandler)
+        super().__init__((host, port), FlaHandler)
 
     def _ensure_repo(self):
         """Open repo lazily in the serving thread to avoid SQLite threading issues."""
@@ -444,18 +444,18 @@ def serve(
     repo_path, host="127.0.0.1", port=7654,
     api_token: str | None = None, web: bool = False,
 ):
-    """Start the Vex REST API server.
+    """Start the Fla REST API server.
 
     Args:
         api_token: Bearer token for authentication. If not provided, reads from
-                   VEX_API_TOKEN env var. If neither is set, runs without auth.
+                   FLA_API_TOKEN env var. If neither is set, runs without auth.
         web: If True, serve the web viewer at /web/.
     """
     repo = Repository.find(Path(repo_path))
-    server = VexServer(repo, host, port, api_token=api_token, web=web)
+    server = FlaServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
-    auth_status = "with auth" if server._api_token else "without auth (set VEX_API_TOKEN to enable)"
-    print(f"Vex server listening on {host}:{actual_port} ({auth_status})")
+    auth_status = "with auth" if server._api_token else "without auth (set FLA_API_TOKEN to enable)"
+    print(f"Fla server listening on {host}:{actual_port} ({auth_status})")
     if web:
         print(f"  Web viewer: http://{host}:{actual_port}/web/")
     try:

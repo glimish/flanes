@@ -1,5 +1,5 @@
 """
-Git Bridge — Export/import between Vex and Git repositories.
+Git Bridge — Export/import between Fla and Git repositories.
 
 All git operations use subprocess calls to the git CLI.
 No gitpython dependency required.
@@ -86,7 +86,7 @@ def _build_tree_from_flat(store, files: dict) -> str:
 
 def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dict:
     """
-    Export Vex history to a git repository.
+    Export Fla history to a git repository.
 
     Creates a git repo in target_dir with one commit per accepted transition.
     """
@@ -141,7 +141,7 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
         prompt = t.get("intent_prompt", "No message")
         state_id = t["to_state"]
 
-        message = f"{prompt}\n\nAgent: {agent_id} ({agent_type})\nVex-State: {state_id}"
+        message = f"{prompt}\n\nAgent: {agent_id} ({agent_type})\nFla-State: {state_id}"
 
         # Set dates from created_at
         created_at = t.get("created_at", 0)
@@ -156,9 +156,9 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
             "GIT_AUTHOR_DATE": f"@{date_str}",
             "GIT_COMMITTER_DATE": f"@{date_str}",
             "GIT_COMMITTER_NAME": safe_agent_id,
-            "GIT_COMMITTER_EMAIL": f"{safe_agent_id}@vex",
+            "GIT_COMMITTER_EMAIL": f"{safe_agent_id}@fla",
         }
-        author = f"{safe_agent_id} <{safe_agent_id}@vex>"
+        author = f"{safe_agent_id} <{safe_agent_id}@fla>"
 
         try:
             _git(
@@ -179,7 +179,7 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
 
 def import_from_git(source_dir: Path, repo: Repository, lane: str = "main") -> dict:
     """
-    Import git history into a Vex repository.
+    Import git history into a Fla repository.
 
     Each git commit becomes a world state + accepted transition.
     """

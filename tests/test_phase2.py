@@ -5,9 +5,9 @@ Tests for Phase 2: ignore patterns, context managers, deferred fork_base fix.
 
 import pytest
 
-from vex.agent_sdk import AgentSession
-from vex.repo import Repository
-from vex.state import AgentIdentity, WorldStateManager
+from fla.agent_sdk import AgentSession
+from fla.repo import Repository
+from fla.state import AgentIdentity, WorldStateManager
 
 
 @pytest.fixture
@@ -25,12 +25,12 @@ def repo_with_files(tmp_dir):
     repo.close()
 
 
-# ── 1. Directory patterns in .vexignore ──────────────────────────────
+# ── 1. Directory patterns in .flaignore ──────────────────────────────
 
 class TestDirectoryPatterns:
     def test_trailing_slash_ignores_directory_not_file(self, tmp_dir):
-        """``build/`` in .vexignore ignores dirs named build, not files."""
-        (tmp_dir / ".vexignore").write_text("build/\n")
+        """``build/`` in .flaignore ignores dirs named build, not files."""
+        (tmp_dir / ".flaignore").write_text("build/\n")
         # Create a *file* named build and a *directory* named build_output
         (tmp_dir / "build").write_text("I am a file named build\n")
         (tmp_dir / "builddir").mkdir()
@@ -55,7 +55,7 @@ class TestDirectoryPatterns:
 
     def test_dir_pattern_excludes_matching_directory(self, tmp_dir):
         """A directory whose name matches a dir-only pattern is excluded."""
-        (tmp_dir / ".vexignore").write_text("dist/\n")
+        (tmp_dir / ".flaignore").write_text("dist/\n")
         (tmp_dir / "app.py").write_text("pass\n")
         (tmp_dir / "dist").mkdir()
         (tmp_dir / "dist" / "bundle.js").write_text("var x;")
@@ -70,12 +70,12 @@ class TestDirectoryPatterns:
         repo.close()
 
 
-# ── 2. Negation patterns in .vexignore ───────────────────────────────
+# ── 2. Negation patterns in .flaignore ───────────────────────────────
 
 class TestNegationPatterns:
     def test_negation_reinclude(self, tmp_dir):
         """`*.log` + `!important.log` keeps important.log."""
-        (tmp_dir / ".vexignore").write_text("*.log\n!important.log\n")
+        (tmp_dir / ".flaignore").write_text("*.log\n!important.log\n")
         (tmp_dir / "debug.log").write_text("debug stuff\n")
         (tmp_dir / "important.log").write_text("keep me\n")
         (tmp_dir / "app.py").write_text("pass\n")

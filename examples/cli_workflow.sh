@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Vex CLI Workflow Example
+# Fla CLI Workflow Example
 #
-# Demonstrates the core Vex workflow using only CLI commands.
-# Requires: vex installed (pip install -e .)
+# Demonstrates the core Fla workflow using only CLI commands.
+# Requires: fla installed (pip install -e .)
 #
 # Usage:
 #   bash examples/cli_workflow.sh
@@ -11,8 +11,8 @@
 
 set -euo pipefail
 
-DEMO_DIR=$(mktemp -d -t vex-cli-demo-XXXXXX)
-echo "=== Vex CLI Workflow Demo ==="
+DEMO_DIR=$(mktemp -d -t fla-cli-demo-XXXXXX)
+echo "=== Fla CLI Workflow Demo ==="
 echo "Working directory: $DEMO_DIR"
 echo
 
@@ -28,13 +28,13 @@ cd "$DEMO_DIR"
 echo "--- Step 1: Initialize repository ---"
 echo 'def main(): print("Hello")' > app.py
 echo "# My Project" > README.md
-vex init
+fla init
 echo
 
 # ── Step 2: Make changes and commit ─────────────────────────────
 echo "--- Step 2: Agent commits changes ---"
 echo 'def greet(name): return f"Hello, {name}!"' > utils.py
-vex commit \
+fla commit \
   --prompt "Add utility module" \
   --agent-id coder-alpha \
   --agent-type feature_developer \
@@ -43,17 +43,17 @@ echo
 
 # ── Step 3: Create feature lane ─────────────────────────────────
 echo "--- Step 3: Create feature lane ---"
-vex lane create feature-auth
+fla lane create feature-auth
 echo "Workspaces:"
-vex workspace list
+fla workspace list
 echo
 
 # ── Step 4: Work on feature lane ────────────────────────────────
 echo "--- Step 4: Work on feature lane ---"
-WS_DIR=".vex/workspaces/feature-auth"
+WS_DIR=".fla/workspaces/feature-auth"
 mkdir -p "$WS_DIR/auth"
 echo 'def login(): pass' > "$WS_DIR/auth/login.py"
-vex commit \
+fla commit \
   --prompt "Add auth module" \
   --agent-id auth-agent \
   --agent-type security \
@@ -63,7 +63,7 @@ echo
 
 # ── Step 5: Promote to main ─────────────────────────────────────
 echo "--- Step 5: Promote feature-auth to main ---"
-vex promote \
+fla promote \
   --workspace feature-auth \
   --target main \
   --auto-accept
@@ -71,11 +71,11 @@ echo
 
 # ── Step 6: View history ────────────────────────────────────────
 echo "--- Step 6: View history ---"
-vex history --lane main
+fla history --lane main
 echo
 
 echo "--- Step 7: View status ---"
-vex status
+fla status
 echo
 
 echo "=== Demo complete ==="

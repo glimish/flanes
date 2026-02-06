@@ -3,8 +3,8 @@
 
 import pytest
 
-from vex.repo import Repository
-from vex.state import AgentIdentity, TransitionStatus
+from fla.repo import Repository
+from fla.state import AgentIdentity, TransitionStatus
 
 
 def _agent():
@@ -85,7 +85,7 @@ class TestFind:
     def test_find_raises_when_no_repo(self, tmp_path):
         empty = tmp_path / "empty"
         empty.mkdir()
-        with pytest.raises(ValueError, match="Not inside a Vex repository"):
+        with pytest.raises(ValueError, match="Not inside a Fla repository"):
             Repository.find(empty)
 
 
@@ -94,22 +94,22 @@ class TestInit:
         with pytest.raises(ValueError, match="already exists"):
             Repository.init(repo_with_files.root)
 
-    def test_init_empty_dir_creates_vexignore(self, tmp_path):
+    def test_init_empty_dir_creates_flaignore(self, tmp_path):
         project = tmp_path / "empty_project"
         project.mkdir()
         repo = Repository.init(project)
-        # .vexignore is auto-created, so there's an initial snapshot
+        # .flaignore is auto-created, so there's an initial snapshot
         assert repo.head() is not None
-        # Workspace should exist with .vexignore
+        # Workspace should exist with .flaignore
         ws = repo.workspace_path("main")
         assert ws is not None
-        # .vexignore should exist (it starts with . so is a dotfile)
-        assert (ws / ".vexignore").exists()
-        # Only .vex dir and .vexignore should exist
+        # .flaignore should exist (it starts with . so is a dotfile)
+        assert (ws / ".flaignore").exists()
+        # Only .fla dir and .flaignore should exist
         all_files = list(ws.iterdir())
         names = {f.name for f in all_files}
-        assert ".vexignore" in names
-        assert ".vex" in names
+        assert ".flaignore" in names
+        assert ".fla" in names
         repo.close()
 
 
@@ -136,3 +136,104 @@ class TestAcceptNonPromote:
 
         # Feature lane's fork_base should be unchanged
         assert repo.wsm.get_lane_fork_base("feature") == original_fork_base
+
+
+class TestInstanceLock:
+    """NFS safety: instance lock file tests."""
+
+    def test_instance_lock_created_on_open(self, tmp_path):
+        """Opening a repo creates an instance.lock file."""
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "file.txt").write_text("hello")
+        repo = Repository.init(project)
+        lock_path = repo.fla_dir / "instance.lock"
+        assert lock_path.exists()
+        import json
+        lock_data = json.loads(lock_path.read_text())
+        assert "hostname" in lock_data
+        assert "pid" in lock_data
+        assert "machine_id" in lock_data
+        assert "started_at" in lock_data
+        import os
+        assert lock_data["pid"] == os.getpid()
+        repo.close()
+
+    def test_instance_lock_removed_on_close(self, tmp_path):
+        """Closing a repo removes the instance.lock file."""
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "file.txt").write_text("hello")
+        repo = Repository.init(project)
+        lock_path = repo.fla_dir / "instance.lock"
+        assert lock_path.exists()
+        repo.close()
+        assert not lock_path.exists()
+
+    def test_stale_lock_reclaimed(self, tmp_path):
+        """A lock from a dead PID on the same host is reclaimed."""
+        import json
+        import os
+        import platform
+
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "file.txt").write_text("hello")
+        repo = Repository.init(project)
+        lock_path = repo.fla_dir / "instance.lock"
+        repo.close()
+
+        # Write a fake lock from a dead PID on same host
+        fake_lock = {
+            "hostname": platform.node(),
+            "pid": 999999999,  # almost certainly dead
+            "machine_id": str(os.getpid()),  # same machine
+            "started_at": 1000000.0,  # ancient
+        }
+        lock_path.write_text(json.dumps(fake_lock))
+
+        # Should be able to open the repo (stale lock reclaimed)
+        repo2 = Repository(project)
+        assert lock_path.exists()
+        lock_data = json.loads(lock_path.read_text())
+        assert lock_data["pid"] == os.getpid()
+        repo2.close()
+
+    def test_foreign_machine_lock_rejected(self, tmp_path):
+        """A lock from a different machine raises ConcurrentAccessError."""
+        import json
+        import time
+
+        from fla.repo import ConcurrentAccessError
+
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "file.txt").write_text("hello")
+        repo = Repository.init(project)
+        lock_path = repo.fla_dir / "instance.lock"
+        repo.close()
+
+        # Write a fake lock from a different machine
+        fake_lock = {
+            "hostname": "other-machine.example.com",
+            "pid": 12345,
+            "machine_id": "999999999999",  # different from local
+            "started_at": time.time(),
+        }
+        lock_path.write_text(json.dumps(fake_lock))
+
+        with pytest.raises(ConcurrentAccessError, match="Another machine"):
+            Repository(project)
+
+    def test_context_manager_cleans_lock(self, tmp_path):
+        """Using 'with' statement cleans up the lock."""
+        project = tmp_path / "project"
+        project.mkdir()
+        (project / "file.txt").write_text("hello")
+        repo = Repository.init(project)
+        repo.close()
+
+        lock_path = project / ".fla" / "instance.lock"
+        with Repository(project) as r:
+            assert lock_path.exists()
+        assert not lock_path.exists()

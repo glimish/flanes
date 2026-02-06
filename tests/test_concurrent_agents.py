@@ -17,10 +17,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
-from vex.agent_sdk import AgentSession
-from vex.cas import ContentStoreLimitError
-from vex.repo import Repository
-from vex.state import (
+from fla.agent_sdk import AgentSession
+from fla.cas import ContentStoreLimitError
+from fla.repo import Repository
+from fla.state import (
     AgentIdentity,
     CostRecord,
     TransitionStatus,

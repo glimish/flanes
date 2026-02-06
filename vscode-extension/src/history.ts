@@ -1,15 +1,15 @@
 import * as vscode from 'vscode';
-import { VexCli } from './cli';
+import { FlaCli } from './cli';
 
 /**
- * Tree data provider for the Vex History panel.
+ * Tree data provider for the Fla History panel.
  */
-export class VexHistoryProvider implements vscode.TreeDataProvider<HistoryItem> {
-  private cli: VexCli;
+export class FlaHistoryProvider implements vscode.TreeDataProvider<HistoryItem> {
+  private cli: FlaCli;
   private _onDidChangeTreeData = new vscode.EventEmitter<HistoryItem | undefined>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor(cli: VexCli) {
+  constructor(cli: FlaCli) {
     this.cli = cli;
   }
 

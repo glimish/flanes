@@ -19,10 +19,10 @@
       "justMyCode": true
     },
     {
-      "name": "Vex CLI",
+      "name": "Fla CLI",
       "type": "debugpy",
       "request": "launch",
-      "module": "vex.cli",
+      "module": "fla.cli",
       "args": ["status"],
       "cwd": "${workspaceFolder}",
       "justMyCode": true

@@ -25,9 +25,9 @@ except (FileNotFoundError, subprocess.CalledProcessError):
     HAS_GIT = False
 
 
-def run_vex(*args, cwd=None, expect_fail=False):
-    """Run a vex CLI command and return (returncode, stdout, stderr)."""
-    cmd = [sys.executable, "-X", "utf8", "-m", "vex.cli"] + list(args)
+def run_fla(*args, cwd=None, expect_fail=False):
+    """Run a fla CLI command and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
     result = subprocess.run(
         cmd,
         capture_output=True,
@@ -44,10 +44,10 @@ def run_vex(*args, cwd=None, expect_fail=False):
 
 @pytest.fixture
 def repo_dir(tmp_path):
-    """A temporary directory with an initialized vex repo containing test files."""
+    """A temporary directory with an initialized fla repo containing test files."""
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02binary content")
-    rc, out, err = run_vex("init", cwd=tmp_path)
+    rc, out, err = run_fla("init", cwd=tmp_path)
     assert rc == 0, f"Init failed: {err}"
     return tmp_path
 
@@ -55,7 +55,7 @@ def repo_dir(tmp_path):
 @pytest.fixture
 def repo_with_commit(repo_dir):
     """A repo with at least one commit."""
-    rc, _, _ = run_vex(
+    rc, _, _ = run_fla(
         "commit", "-m", "initial commit",
         "--agent-id", "test", "--agent-type", "human",
         "--auto-accept", cwd=repo_dir,
@@ -67,7 +67,7 @@ def repo_with_commit(repo_dir):
 @pytest.fixture
 def repo(tmp_path):
     """A Repository object for direct API testing."""
-    from vex.repo import Repository
+    from fla.repo import Repository
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     repo = Repository.init(tmp_path)
     return repo
@@ -79,18 +79,18 @@ def repo(tmp_path):
 class TestCatFileBlob:
     def test_cat_file_blob(self, repo_with_commit):
         # Get head state, find a blob hash
-        rc, out, _ = run_vex("--json", "status", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "status", cwd=repo_with_commit)
         assert rc == 0
         status = json.loads(out)
         head = status["current_head"]
 
-        rc, out, _ = run_vex("--json", "show", head, "hello.txt", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "show", head, "hello.txt", cwd=repo_with_commit)
         assert rc == 0
         show_data = json.loads(out)
         blob_hash = show_data["blob_hash"]
 
         # Now cat-file the blob
-        rc, out, _ = run_vex("--json", "cat-file", blob_hash, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "cat-file", blob_hash, cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
         assert data["type"] == "blob"
@@ -101,17 +101,17 @@ class TestCatFileBlob:
 
 class TestCatFileTree:
     def test_cat_file_tree(self, repo_with_commit):
-        rc, out, _ = run_vex("--json", "status", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "status", cwd=repo_with_commit)
         assert rc == 0
         head = json.loads(out)["current_head"]
 
         # Get root tree from state info
-        rc, out, _ = run_vex("--json", "info", head, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "info", head, cwd=repo_with_commit)
         assert rc == 0
         info = json.loads(out)
         root_tree = info["root_tree"]
 
-        rc, out, _ = run_vex("--json", "cat-file", root_tree, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "cat-file", root_tree, cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
         assert data["type"] == "tree"
@@ -122,12 +122,12 @@ class TestCatFileTree:
 
 class TestCatFileState:
     def test_cat_file_state(self, repo_with_commit):
-        rc, out, _ = run_vex("--json", "status", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "status", cwd=repo_with_commit)
         assert rc == 0
         head = json.loads(out)["current_head"]
 
         # cat-file on a state ID (world_states fallback)
-        rc, out, _ = run_vex("--json", "cat-file", head, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "cat-file", head, cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
         assert data["type"] == "state"
@@ -136,7 +136,7 @@ class TestCatFileState:
 
 class TestCatFileNotFound:
     def test_cat_file_not_found(self, repo_with_commit):
-        rc, out, err = run_vex(
+        rc, out, err = run_fla(
             "cat-file", "deadbeef" * 8,
             cwd=repo_with_commit, expect_fail=True,
         )
@@ -145,15 +145,15 @@ class TestCatFileNotFound:
 
 class TestCatFileTypeMismatch:
     def test_cat_file_type_mismatch(self, repo_with_commit):
-        rc, out, _ = run_vex("--json", "status", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "status", cwd=repo_with_commit)
         head = json.loads(out)["current_head"]
 
         # Get a tree hash
-        rc, out, _ = run_vex("--json", "info", head, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "info", head, cwd=repo_with_commit)
         root_tree = json.loads(out)["root_tree"]
 
         # Try to cat-file with --type blob on a tree → should fail
-        rc, out, err = run_vex(
+        rc, out, err = run_fla(
             "cat-file", root_tree, "--type", "blob",
             cwd=repo_with_commit, expect_fail=True,
         )
@@ -162,13 +162,13 @@ class TestCatFileTypeMismatch:
 
 class TestCatFileJson:
     def test_cat_file_json_blob(self, repo_with_commit):
-        rc, out, _ = run_vex("--json", "status", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "status", cwd=repo_with_commit)
         head = json.loads(out)["current_head"]
 
-        rc, out, _ = run_vex("--json", "show", head, "hello.txt", cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "show", head, "hello.txt", cwd=repo_with_commit)
         blob_hash = json.loads(out)["blob_hash"]
 
-        rc, out, _ = run_vex("--json", "cat-file", blob_hash, cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "cat-file", blob_hash, cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
         assert "content_base64" in data
@@ -182,7 +182,7 @@ class TestCatFileJson:
 class TestGitExport:
     def test_export_creates_git_repo(self, repo_with_commit, tmp_path):
         target = tmp_path / "git-export"
-        rc, out, err = run_vex(
+        rc, out, err = run_fla(
             "export-git", str(target),
             cwd=repo_with_commit,
         )
@@ -191,14 +191,14 @@ class TestGitExport:
 
     def test_export_preserves_files(self, repo_with_commit, tmp_path):
         target = tmp_path / "git-export"
-        run_vex("export-git", str(target), cwd=repo_with_commit)
+        run_fla("export-git", str(target), cwd=repo_with_commit)
 
         assert (target / "hello.txt").exists()
         assert (target / "hello.txt").read_text() == "Hello, World!\n"
 
     def test_export_preserves_messages(self, repo_with_commit, tmp_path):
         target = tmp_path / "git-export"
-        run_vex("export-git", str(target), cwd=repo_with_commit)
+        run_fla("export-git", str(target), cwd=repo_with_commit)
 
         result = subprocess.run(
             ["git", "log", "--format=%s"],
@@ -214,14 +214,14 @@ class TestGitExport:
         # Main workspace IS the repo root in git-style
         ws_path = repo_with_commit
         (ws_path / "second.txt").write_text("Second file\n")
-        run_vex(
+        run_fla(
             "commit", "-m", "add second file",
             "--agent-id", "test", "--agent-type", "human",
             "--auto-accept", cwd=repo_with_commit,
         )
 
         target = tmp_path / "git-export"
-        rc, _, err = run_vex("export-git", str(target), cwd=repo_with_commit)
+        rc, _, err = run_fla("export-git", str(target), cwd=repo_with_commit)
         assert rc == 0, f"Export failed: {err}"
 
         result = subprocess.run(
@@ -260,14 +260,14 @@ class TestGitImport:
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
-        rc, out, err = run_vex(
+        rc, out, err = run_fla(
             "import-git", str(git_repo), "--lane", "imported",
             cwd=repo_with_commit,
         )
         assert rc == 0, f"Import failed: {err}"
 
         # Check that states exist on the imported lane
-        rc, out, _ = run_vex("--json", "history", "--lane", "imported",
+        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
                              cwd=repo_with_commit)
         assert rc == 0
         history = json.loads(out)
@@ -277,17 +277,17 @@ class TestGitImport:
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
-        run_vex("import-git", str(git_repo), "--lane", "imported",
+        run_fla("import-git", str(git_repo), "--lane", "imported",
                 cwd=repo_with_commit)
 
         # Get head of imported lane
-        rc, out, _ = run_vex("--json", "history", "--lane", "imported",
+        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
                              "--status", "accepted", cwd=repo_with_commit)
         history = json.loads(out)
         latest_state = history[0]["to_state"]
 
         # Check file content
-        rc, out, _ = run_vex("--json", "show", latest_state, "readme.txt",
+        rc, out, _ = run_fla("--json", "show", latest_state, "readme.txt",
                              cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
@@ -298,10 +298,10 @@ class TestGitImport:
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
-        run_vex("import-git", str(git_repo), "--lane", "imported",
+        run_fla("import-git", str(git_repo), "--lane", "imported",
                 cwd=repo_with_commit)
 
-        rc, out, _ = run_vex("--json", "history", "--lane", "imported",
+        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
                              cwd=repo_with_commit)
         history = json.loads(out)
         for t in history:
@@ -316,30 +316,30 @@ class TestGitRoundtrip:
     def test_export_import_roundtrip(self, repo_with_commit, tmp_path):
         # Export to git
         git_dir = tmp_path / "git-export"
-        rc, _, err = run_vex("export-git", str(git_dir), cwd=repo_with_commit)
+        rc, _, err = run_fla("export-git", str(git_dir), cwd=repo_with_commit)
         assert rc == 0, f"Export failed: {err}"
 
-        # Create a fresh vex repo for import
-        import_dir = tmp_path / "vex-import"
+        # Create a fresh fla repo for import
+        import_dir = tmp_path / "fla-import"
         import_dir.mkdir()
-        rc, _, err = run_vex("init", cwd=import_dir)
+        rc, _, err = run_fla("init", cwd=import_dir)
         assert rc == 0
 
         # Import from the git export
-        rc, _, err = run_vex(
+        rc, _, err = run_fla(
             "import-git", str(git_dir), "--lane", "roundtrip",
             cwd=import_dir,
         )
         assert rc == 0, f"Import failed: {err}"
 
         # Verify file content survived the roundtrip
-        rc, out, _ = run_vex("--json", "history", "--lane", "roundtrip",
+        rc, out, _ = run_fla("--json", "history", "--lane", "roundtrip",
                              "--status", "accepted", cwd=import_dir)
         history = json.loads(out)
         assert len(history) > 0
 
         latest = history[0]["to_state"]
-        rc, out, _ = run_vex("--json", "show", latest, "hello.txt", cwd=import_dir)
+        rc, out, _ = run_fla("--json", "show", latest, "hello.txt", cwd=import_dir)
         assert rc == 0
         data = json.loads(out)
         content = base64.b64decode(data["content_base64"])
@@ -353,14 +353,14 @@ class TestRESTServer:
     @pytest.fixture(autouse=True)
     def setup_server(self, tmp_path):
         """Start server in daemon thread with port=0 for OS-assigned port."""
-        from vex.repo import Repository
-        from vex.server import VexServer
+        from fla.repo import Repository
+        from fla.server import FlaServer
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         repo = Repository.init(tmp_path)
 
         # Make a commit
-        from vex.state import AgentIdentity
+        from fla.state import AgentIdentity
         repo.quick_commit(
             workspace="main",
             prompt="test commit",
@@ -370,7 +370,7 @@ class TestRESTServer:
         repo.close()
 
         # Pass path so repo is opened in the server thread
-        self.server = VexServer(str(tmp_path), host="127.0.0.1", port=0)
+        self.server = FlaServer(str(tmp_path), host="127.0.0.1", port=0)
         self.port = self.server.server_address[1]
         self.base_url = f"http://127.0.0.1:{self.port}"
 
@@ -443,14 +443,14 @@ class TestRESTServer:
 class TestMCPServer:
     @pytest.fixture(autouse=True)
     def setup_mcp(self, tmp_path):
-        from vex.mcp_server import MCPServer
-        from vex.repo import Repository
+        from fla.mcp_server import MCPServer
+        from fla.repo import Repository
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         self.repo = Repository.init(tmp_path)
 
         # Make a commit
-        from vex.state import AgentIdentity
+        from fla.state import AgentIdentity
         self.repo.quick_commit(
             workspace="main",
             prompt="test commit",
@@ -488,15 +488,15 @@ class TestMCPServer:
         tools = resp["result"]["tools"]
         assert len(tools) == 12
         names = {t["name"] for t in tools}
-        assert "vex_status" in names
-        assert "vex_commit" in names
+        assert "fla_status" in names
+        assert "fla_commit" in names
 
     def test_tool_status(self):
         resp = self.mcp.handle_request({
             "jsonrpc": "2.0",
             "id": 3,
             "method": "tools/call",
-            "params": {"name": "vex_status", "arguments": {}},
+            "params": {"name": "fla_status", "arguments": {}},
         })
         content = resp["result"]["content"]
         assert len(content) == 1
@@ -509,7 +509,7 @@ class TestMCPServer:
             "id": 4,
             "method": "tools/call",
             "params": {
-                "name": "vex_commit",
+                "name": "fla_commit",
                 "arguments": {
                     "prompt": "mcp commit",
                     "agent_id": "mcp-test",
@@ -526,7 +526,7 @@ class TestMCPServer:
             "jsonrpc": "2.0",
             "id": 5,
             "method": "tools/call",
-            "params": {"name": "vex_lanes", "arguments": {}},
+            "params": {"name": "fla_lanes", "arguments": {}},
         })
         content = resp["result"]["content"]
         data = json.loads(content[0]["text"])

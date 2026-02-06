@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from vex.cas import ContentStore
-from vex.repo import Repository
-from vex.state import AgentIdentity
+from fla.cas import ContentStore
+from fla.repo import Repository
+from fla.state import AgentIdentity
 
 
 @pytest.fixture
@@ -91,11 +91,11 @@ class TestDeeplyNestedDirectory:
 
 class TestEmptyDirectory:
     def test_empty_dir_snapshot(self, repo):
-        # Remove auto-created .vexignore to test truly empty workspace
+        # Remove auto-created .flaignore to test truly empty workspace
         ws = repo.workspace_path("main")
-        vexignore = ws / ".vexignore"
-        if vexignore.exists():
-            vexignore.unlink()
+        flaignore = ws / ".flaignore"
+        if flaignore.exists():
+            flaignore.unlink()
 
         # Empty workspace (no files) should produce a valid state
         state_id = repo.snapshot("main")
@@ -109,7 +109,7 @@ class TestDuplicateContentDeduplication:
     def test_duplicate_files_single_blob(self, repo):
         ws = repo.workspace_path("main")
 
-        # Count blobs before adding files (may include .vexignore from init)
+        # Count blobs before adding files (may include .flaignore from init)
         stats_before = repo.store.stats()
         blobs_before = stats_before.get("by_type", {}).get("blob", {}).get("count", 0)
 

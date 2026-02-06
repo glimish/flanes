@@ -5,19 +5,19 @@ import { promisify } from 'util';
 const execFileAsync = promisify(execFile);
 
 /**
- * Wrapper around the `vex` CLI. All interaction with Vex goes through
+ * Wrapper around the `fla` CLI. All interaction with Fla goes through
  * the CLI with `--json` output for machine-readable results.
  */
-export class VexCli {
-  private get vexPath(): string {
-    return vscode.workspace.getConfiguration('vex').get<string>('path', 'vex');
+export class FlaCli {
+  private get flaPath(): string {
+    return vscode.workspace.getConfiguration('fla').get<string>('path', 'fla');
   }
 
   private get cwd(): string | undefined {
     return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   }
 
-  /** Run a vex CLI command and return parsed JSON output. */
+  /** Run a fla CLI command and return parsed JSON output. */
   async run(args: string[]): Promise<any> {
     const cwd = this.cwd;
     if (!cwd) {
@@ -25,7 +25,7 @@ export class VexCli {
     }
 
     try {
-      const { stdout } = await execFileAsync(this.vexPath, [...args, '--json'], {
+      const { stdout } = await execFileAsync(this.flaPath, [...args, '--json'], {
         cwd,
         timeout: 30000,
       });
@@ -69,7 +69,7 @@ export class VexCli {
       const msg = `Lane: ${status.default_lane} | Head: ${(status.head || 'none').substring(0, 12)}`;
       vscode.window.showInformationMessage(msg);
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex status: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla status: ${err.message}`);
     }
   }
 
@@ -80,7 +80,7 @@ export class VexCli {
         `Snapshot created: ${result.state_id?.substring(0, 12)}`
       );
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex snapshot: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla snapshot: ${err.message}`);
     }
   }
 
@@ -99,7 +99,7 @@ export class VexCli {
         `Committed: ${result.transition_id?.substring(0, 12)}`
       );
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex commit: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla commit: ${err.message}`);
     }
   }
 
@@ -113,7 +113,7 @@ export class VexCli {
       }));
       vscode.window.showQuickPick(items, { placeHolder: 'Recent transitions' });
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex history: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla history: ${err.message}`);
     }
   }
 
@@ -126,7 +126,7 @@ export class VexCli {
       }));
       vscode.window.showQuickPick(items, { placeHolder: 'Lanes' });
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex lanes: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla lanes: ${err.message}`);
     }
   }
 
@@ -141,7 +141,7 @@ export class VexCli {
       await this.run(['lane', 'create', name]);
       vscode.window.showInformationMessage(`Lane '${name}' created`);
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex create lane: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla create lane: ${err.message}`);
     }
   }
 
@@ -156,13 +156,13 @@ export class VexCli {
         vscode.window.showInformationMessage(`Selected lane: ${picked}`);
       }
     } catch (err: any) {
-      vscode.window.showErrorMessage(`Vex switch lane: ${err.message}`);
+      vscode.window.showErrorMessage(`Fla switch lane: ${err.message}`);
     }
   }
 
   async showDiff(): Promise<void> {
     vscode.window.showInformationMessage(
-      'Diff view: use Vex History panel to select transitions'
+      'Diff view: use Fla History panel to select transitions'
     );
   }
 }
