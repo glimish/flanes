@@ -17,12 +17,18 @@ import pytest
 def run_fla(*args, cwd=None, expect_fail=False):
     """Run a fla CLI command and return (returncode, stdout, stderr)."""
     cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
+    # from the CI runner reaching the child process.
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         cwd=cwd,
         env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent)},
+        **kwargs,
     )
     if not expect_fail:
         if result.returncode != 0:
