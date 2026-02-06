@@ -56,8 +56,8 @@ def _build_tree_from_flat(store, files: dict) -> str:
     bottom-up. Returns root tree hash.
     """
     # Separate files at this level vs subdirectories
-    direct: dict[str, bytes] = {}      # name -> content bytes
-    subdirs: dict[str, dict[str, bytes]] = {}     # dirname -> {subpath: content}
+    direct: dict[str, bytes] = {}  # name -> content bytes
+    subdirs: dict[str, dict[str, bytes]] = {}  # dirname -> {subpath: content}
 
     for path, content in files.items():
         parts = path.split("/", 1)
@@ -148,8 +148,9 @@ def export_to_git(repo: Repository, target_dir: Path, lane: str = "main") -> dic
         date_str = str(int(created_at))
 
         # Sanitize agent_id for use in git author/committer fields
-        safe_agent_id = (agent_id.replace("<", "").replace(">", "")
-                         .replace("\n", "").replace("\r", ""))
+        safe_agent_id = (
+            agent_id.replace("<", "").replace(">", "").replace("\n", "").replace("\r", "")
+        )
 
         # Set both author and committer info (needed for CI environments without global git config)
         env = {
@@ -272,11 +273,14 @@ def import_from_git(source_dir: Path, repo: Repository, lane: str = "main") -> d
         )
 
         # Auto-accept
-        repo.wsm.evaluate(tid, EvaluationResult(
-            passed=True,
-            evaluator="git-import",
-            summary=f"Imported from git commit {commit_hash[:12]}",
-        ))
+        repo.wsm.evaluate(
+            tid,
+            EvaluationResult(
+                passed=True,
+                evaluator="git-import",
+                summary=f"Imported from git commit {commit_hash[:12]}",
+            ),
+        )
 
         prev_state = state_id
         commits_imported += 1

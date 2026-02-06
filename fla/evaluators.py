@@ -27,6 +27,7 @@ class EvaluatorConfig(Serializable):
     and `args` (explicit list, cross-platform). If both are provided, `args`
     takes precedence.
     """
+
     name: str
     command: str = ""
     args: list[str] | None = None  # Fix #6: Explicit args list for cross-platform
@@ -52,6 +53,7 @@ class EvaluatorConfig(Serializable):
 @dataclass
 class EvaluatorResult(Serializable):
     """Result from running a single evaluator."""
+
     name: str
     passed: bool
     returncode: int
@@ -85,8 +87,7 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
                 returncode=-1,
                 stdout="",
                 stderr=(
-                    f"Evaluator working_directory"
-                    f" '{evaluator.working_directory}' escapes workspace"
+                    f"Evaluator working_directory '{evaluator.working_directory}' escapes workspace"
                 ),
                 duration_ms=0.0,
             )

@@ -80,11 +80,11 @@ def print_json(data):
 
 def get_verbosity(args) -> int:
     """Return verbosity level: 0=quiet, 1=normal, 2=verbose."""
-    if getattr(args, 'json', False):
+    if getattr(args, "json", False):
         return 1
-    if getattr(args, 'verbose', False):
+    if getattr(args, "verbose", False):
         return 2
-    if getattr(args, 'quiet', False):
+    if getattr(args, "quiet", False):
         return 0
     return 1
 
@@ -138,12 +138,13 @@ def _blob_lines(store, blob_hash):
     obj = store.retrieve(blob_hash)
     if obj is None:
         return None
-    if b'\x00' in obj.data[:8192]:
+    if b"\x00" in obj.data[:8192]:
         return None  # binary
-    return obj.data.decode('utf-8', errors='replace').splitlines(keepends=True)
+    return obj.data.decode("utf-8", errors="replace").splitlines(keepends=True)
 
 
 # ── Commands ──────────────────────────────────────────────────
+
 
 def cmd_init(args):
     v = get_verbosity(args)
@@ -189,13 +190,15 @@ def cmd_status(args):
         if args.json:
             print_json(status)
         elif v == 0:
-            print(status['current_head'] or "none")
+            print(status["current_head"] or "none")
         else:
             print(f"Repository: {status['root']}")
             print(f"Head:       {_display_hash(status['current_head'], v)}")
             print(f"Pending:    {status['pending_proposals']} proposals")
-            print(f"Storage:    {status['storage']['total_objects']} objects, "
-                  f"{status['storage']['total_bytes']:,} bytes")
+            print(
+                f"Storage:    {status['storage']['total_objects']} objects, "
+                f"{status['storage']['total_bytes']:,} bytes"
+            )
             print("\nLanes:")
             for lane in status["lanes"]:
                 marker = "→" if lane["head_state"] == status["current_head"] else " "
@@ -261,14 +264,16 @@ def cmd_propose(args):
         )
 
         if args.json:
-            print_json({
-                "transition_id": tid,
-                "from_state": head,
-                "to_state": new_state,
-                "workspace": ws_name,
-                "lane": lane,
-                "status": "proposed",
-            })
+            print_json(
+                {
+                    "transition_id": tid,
+                    "from_state": head,
+                    "to_state": new_state,
+                    "workspace": ws_name,
+                    "lane": lane,
+                    "status": "proposed",
+                }
+            )
         elif v == 0:
             print(tid)
         else:
@@ -320,8 +325,10 @@ def cmd_commit(args):
 
         # Warn about auto-accept behavior
         if args.auto_accept and v > 0 and not args.json:
-            print("Note: --auto-accept will run evaluators but won't block on failures",
-                  file=sys.stderr)
+            print(
+                "Note: --auto-accept will run evaluators but won't block on failures",
+                file=sys.stderr,
+            )
 
         agent = AgentIdentity(
             agent_id=args.agent_id,
@@ -352,7 +359,7 @@ def cmd_commit(args):
             result["workspace"] = ws_name
             print_json(result)
         elif v == 0:
-            print(result['transition_id'])
+            print(result["transition_id"])
         else:
             status_icon = "✓" if result["status"] == "accepted" else "◉"
             print(f"{status_icon} Committed: {_display_hash(result['transition_id'], v)}")
@@ -361,11 +368,11 @@ def cmd_commit(args):
             print(f"  To:        {_display_hash(result['to_state'], v)}")
             print(f"  Status:    {result['status']}")
             print(f"  Prompt:    {args.prompt[:80]}")
-            if result.get('evaluation'):
-                ev = result['evaluation']
-                ev_icon = "✓" if ev['passed'] else "✗"
+            if result.get("evaluation"):
+                ev = result["evaluation"]
+                ev_icon = "✓" if ev["passed"] else "✗"
                 print(f"  Eval:      {ev_icon} {ev['summary']}")
-            if v >= 2 and result.get('cost'):
+            if v >= 2 and result.get("cost"):
                 print(f"  Cost:      {result['cost']}")
 
 
@@ -382,7 +389,7 @@ def cmd_history(args):
             print_json(entries)
         elif v == 0:
             for e in entries:
-                print(e['id'])
+                print(e["id"])
         else:
             if not entries:
                 print("No transitions found.")
@@ -399,8 +406,8 @@ def cmd_history(args):
                     ts = format_time(e["created_at"])
 
                     print(f"{icon} {_display_hash(e['id'], v)}  {ts}  [{e['status']}]")
-                    from_h = _display_hash(e['from_state'], v)
-                    to_h = _display_hash(e['to_state'], v)
+                    from_h = _display_hash(e["from_state"], v)
+                    to_h = _display_hash(e["to_state"], v)
                     print(f"  {from_h} → {to_h}")
                     print(f"  Agent: {e['agent']['agent_id']} ({e['agent']['agent_type']})")
                     print(f"  {e['intent_prompt'][:100]}")
@@ -429,10 +436,10 @@ def cmd_trace(args):
                 for i, entry in enumerate(lineage):
                     connector = "  ├─" if i < len(lineage) - 1 else "  └─"
                     prefix = "  │ " if i < len(lineage) - 1 else "    "
-                    to_h = short_hash(entry['to_state'])
-                    from_h = short_hash(entry['from_state'])
+                    to_h = short_hash(entry["to_state"])
+                    from_h = short_hash(entry["from_state"])
                     print(f"{connector} {to_h} ← {from_h}")
-                    agent = entry['agent']
+                    agent = entry["agent"]
                     print(f"{prefix}   {agent['agent_id']} ({agent['agent_type']})")
                     print(f"{prefix}   {entry['intent_prompt'][:80]}")
                     if entry.get("tags"):
@@ -445,7 +452,7 @@ def cmd_diff(args):
     with open_repo(args) as repo:
         result = repo.diff(args.state_a, args.state_b)
 
-        show_content = getattr(args, 'content', False)
+        show_content = getattr(args, "content", False)
 
         if args.json:
             data = dict(result)
@@ -459,15 +466,17 @@ def cmd_diff(args):
                         if lines is None:
                             diff = f"Binary file {path} differs"
                         else:
-                            diff = ''.join(difflib.unified_diff(
-                                [], lines,
-                                fromfile='/dev/null', tofile=f'b/{path}',
-                            ))
+                            diff = "".join(
+                                difflib.unified_diff(
+                                    [],
+                                    lines,
+                                    fromfile="/dev/null",
+                                    tofile=f"b/{path}",
+                                )
+                            )
                     else:
                         diff = ""
-                    content_diffs.append(
-                        {"path": path, "type": "added", "diff": diff}
-                    )
+                    content_diffs.append({"path": path, "type": "added", "diff": diff})
                 for path in sorted(result.get("removed", {})):
                     removed = result["removed"]
                     blob_hash = removed[path] if isinstance(removed, dict) else None
@@ -476,15 +485,17 @@ def cmd_diff(args):
                         if lines is None:
                             diff = f"Binary file {path} differs"
                         else:
-                            diff = ''.join(difflib.unified_diff(
-                                lines, [],
-                                fromfile=f'a/{path}', tofile='/dev/null',
-                            ))
+                            diff = "".join(
+                                difflib.unified_diff(
+                                    lines,
+                                    [],
+                                    fromfile=f"a/{path}",
+                                    tofile="/dev/null",
+                                )
+                            )
                     else:
                         diff = ""
-                    content_diffs.append(
-                        {"path": path, "type": "removed", "diff": diff}
-                    )
+                    content_diffs.append({"path": path, "type": "removed", "diff": diff})
                 for path in sorted(result.get("modified", {})):
                     modified = result["modified"]
                     mod = modified[path] if isinstance(modified, dict) else None
@@ -494,15 +505,17 @@ def cmd_diff(args):
                         if old_lines is None or new_lines is None:
                             diff = f"Binary file {path} differs"
                         else:
-                            diff = ''.join(difflib.unified_diff(
-                                old_lines, new_lines,
-                                fromfile=f'a/{path}', tofile=f'b/{path}',
-                            ))
+                            diff = "".join(
+                                difflib.unified_diff(
+                                    old_lines,
+                                    new_lines,
+                                    fromfile=f"a/{path}",
+                                    tofile=f"b/{path}",
+                                )
+                            )
                     else:
                         diff = ""
-                    content_diffs.append(
-                        {"path": path, "type": "modified", "diff": diff}
-                    )
+                    content_diffs.append({"path": path, "type": "modified", "diff": diff})
                 data["content_diffs"] = content_diffs
             print_json(data)
         else:
@@ -523,9 +536,10 @@ def cmd_diff(args):
                             print(f"    Binary file {path} differs")
                         else:
                             diff = difflib.unified_diff(
-                            [], lines, fromfile='/dev/null', tofile=f'b/{path}')
+                                [], lines, fromfile="/dev/null", tofile=f"b/{path}"
+                            )
                         for line in diff:
-                            print(f"    {line}", end='' if line.endswith('\n') else '\n')
+                            print(f"    {line}", end="" if line.endswith("\n") else "\n")
             if result["removed"]:
                 for path in sorted(result["removed"]):
                     print(f"  - {path}")
@@ -535,9 +549,10 @@ def cmd_diff(args):
                             print(f"    Binary file {path} differs")
                         else:
                             diff = difflib.unified_diff(
-                            lines, [], fromfile=f'a/{path}', tofile='/dev/null')
+                                lines, [], fromfile=f"a/{path}", tofile="/dev/null"
+                            )
                         for line in diff:
-                            print(f"    {line}", end='' if line.endswith('\n') else '\n')
+                            print(f"    {line}", end="" if line.endswith("\n") else "\n")
             if result["modified"]:
                 for path in sorted(result["modified"]):
                     print(f"  ~ {path}")
@@ -548,10 +563,10 @@ def cmd_diff(args):
                             print(f"    Binary file {path} differs")
                         else:
                             diff = difflib.unified_diff(
-                                old_lines, new_lines,
-                                fromfile=f'a/{path}', tofile=f'b/{path}')
+                                old_lines, new_lines, fromfile=f"a/{path}", tofile=f"b/{path}"
+                            )
                             for line in diff:
-                                print(f"    {line}", end='' if line.endswith('\n') else '\n')
+                                print(f"    {line}", end="" if line.endswith("\n") else "\n")
 
             if not result["added"] and not result["removed"] and not result["modified"]:
                 print("  No differences.")
@@ -594,8 +609,8 @@ def cmd_lanes(args):
                 ts = format_time(lane["created_at"])
                 fork_base = lane.get("fork_base")
                 fork = f"  fork:{short_hash(fork_base)}" if fork_base else ""
-                head = short_hash(lane['head_state'])
-                name = lane['name']
+                head = short_hash(lane["head_state"])
+                name = lane["name"]
                 print(f"  {marker} {name}: {head}{fork}  (created {ts})")
 
 
@@ -613,6 +628,7 @@ def cmd_lane_create(args):
 
 
 # ── Workspace commands ────────────────────────────────────────
+
 
 def cmd_workspace_list(args):
     with open_repo(args) as repo:
@@ -716,7 +732,7 @@ def cmd_info(args):
         if args.json:
             print_json(state)
         elif v == 0:
-            print(state['id'])
+            print(state["id"])
         else:
             print(f"State:   {_display_hash(state['id'], v)}")
             print(f"Tree:    {_display_hash(state['root_tree'], v)}")
@@ -753,15 +769,15 @@ def cmd_promote(args):
             agent=agent,
             auto_accept=args.auto_accept,
             evaluator=args.evaluator or "auto",
-            force=getattr(args, 'force', False),
+            force=getattr(args, "force", False),
         )
 
         if args.json:
             print_json(result)
         elif result["status"] == "conflicts":
-            target_lane = result['target_lane']
-            source_lane = result.get('source_lane', ws_name)
-            fork_base = result['fork_base']
+            target_lane = result["target_lane"]
+            source_lane = result.get("source_lane", ws_name)
+            fork_base = result["fork_base"]
             target_head = repo.head(target_lane)
 
             print(f"✗ Conflicts detected — cannot promote '{ws_name}' into '{target_lane}'")
@@ -776,18 +792,18 @@ def cmd_promote(args):
                 print(f"      Your change:   {c['lane_action']}")
                 print(f"      Their change:  {c['target_action']}")
 
-            if result['lane_only']:
+            if result["lane_only"]:
                 print(f"\n  Lane-only changes ({len(result['lane_only'])}):")
                 for p in result["lane_only"][:5]:
                     print(f"    {p}")
-                if len(result['lane_only']) > 5:
+                if len(result["lane_only"]) > 5:
                     print(f"    ... and {len(result['lane_only']) - 5} more")
 
-            if result['target_only']:
+            if result["target_only"]:
                 print(f"\n  Target-only changes ({len(result['target_only'])}):")
                 for p in result["target_only"][:5]:
                     print(f"    {p}")
-                if len(result['target_only']) > 5:
+                if len(result["target_only"]) > 5:
                     print(f"    ... and {len(result['target_only']) - 5} more")
 
             print("\n  How to resolve:")
@@ -805,7 +821,7 @@ def cmd_promote(args):
             print("    Option 3: Force promote (overwrites their changes)")
             print(f"      fla promote -w {ws_name} --target {target_lane} --force")
         elif v == 0:
-            print(result.get('transition_id', ''))
+            print(result.get("transition_id", ""))
         else:
             icon = "✓" if result["status"] == "accepted" else "◉"
             print(f"{icon} Promoted: {ws_name} → {result['target_lane']}")
@@ -834,13 +850,15 @@ def cmd_show(args):
             raise ValueError(f"Blob not found: {blob_hash}")
 
         if args.json:
-            print_json({
-                "state_id": args.state_id,
-                "path": args.file_path,
-                "blob_hash": blob_hash,
-                "size": len(obj.data),
-                "content_base64": base64.b64encode(obj.data).decode('ascii'),
-            })
+            print_json(
+                {
+                    "state_id": args.state_id,
+                    "path": args.file_path,
+                    "blob_hash": blob_hash,
+                    "size": len(obj.data),
+                    "content_base64": base64.b64encode(obj.data).decode("ascii"),
+                }
+            )
         else:
             sys.stdout.buffer.write(obj.data)
 
@@ -848,7 +866,7 @@ def cmd_show(args):
 def cmd_doctor(args):
     """Check repository health and optionally fix issues."""
     with open_repo(args) as repo:
-        fix = getattr(args, 'fix', False)
+        fix = getattr(args, "fix", False)
         findings = []
         fixed_count = 0
 
@@ -949,14 +967,16 @@ def cmd_doctor(args):
             config = json.loads(config_path.read_text())
             repo_version = config.get("version", "unknown")
             if repo_version != _fla_pkg.__version__:
-                findings.append({
-                    "check": "version_mismatch",
-                    "detail": (
-                        f"Repository version '{repo_version}' differs"
-                        f" from fla version '{_fla_pkg.__version__}'"
-                    ),
-                    "fixable": False,
-                })
+                findings.append(
+                    {
+                        "check": "version_mismatch",
+                        "detail": (
+                            f"Repository version '{repo_version}' differs"
+                            f" from fla version '{_fla_pkg.__version__}'"
+                        ),
+                        "fixable": False,
+                    }
+                )
 
         if args.json:
             print_json({"findings": findings, "fixed": fixed_count})
@@ -1026,14 +1046,16 @@ def cmd_cat_file(args):
             if args.type and args.type != "state":
                 raise ValueError(f"Type mismatch: object is a state, expected {args.type}")
             if args.json:
-                print_json({
-                    "hash": args.hash,
-                    "type": "state",
-                    "root_tree": state["root_tree"],
-                    "parent_id": state["parent_id"],
-                    "created_at": state["created_at"],
-                    "metadata": state["metadata"],
-                })
+                print_json(
+                    {
+                        "hash": args.hash,
+                        "type": "state",
+                        "root_tree": state["root_tree"],
+                        "parent_id": state["parent_id"],
+                        "created_at": state["created_at"],
+                        "metadata": state["metadata"],
+                    }
+                )
             else:
                 print("type: state")
                 print(f"root_tree: {state['root_tree']}")
@@ -1048,31 +1070,40 @@ def cmd_cat_file(args):
 
             if obj_type == "blob":
                 if args.json:
-                    print_json({
-                        "hash": obj.hash,
-                        "type": "blob",
-                        "size": obj.size,
-                        "content_base64": base64.b64encode(obj.data).decode("ascii"),
-                    })
+                    print_json(
+                        {
+                            "hash": obj.hash,
+                            "type": "blob",
+                            "size": obj.size,
+                            "content_base64": base64.b64encode(obj.data).decode("ascii"),
+                        }
+                    )
                 else:
                     sys.stdout.buffer.write(obj.data)
             elif obj_type == "tree":
                 import json as _json
+
                 entries = _json.loads(obj.data.decode())
                 if args.json:
                     result_entries = []
                     for name, entry in entries:
                         typ, h = entry[0], entry[1]
                         mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else 0o644)
-                        result_entries.append({
-                            "name": name, "type": typ,
-                            "hash": h, "mode": oct(mode),
-                        })
-                    print_json({
-                        "hash": obj.hash,
-                        "type": "tree",
-                        "entries": result_entries,
-                    })
+                        result_entries.append(
+                            {
+                                "name": name,
+                                "type": typ,
+                                "hash": h,
+                                "mode": oct(mode),
+                            }
+                        )
+                    print_json(
+                        {
+                            "hash": obj.hash,
+                            "type": "tree",
+                            "entries": result_entries,
+                        }
+                    )
                 else:
                     for name, entry in entries:
                         typ, h = entry[0], entry[1]
@@ -1080,12 +1111,14 @@ def cmd_cat_file(args):
                         print(f"{oct(mode)} {typ} {h} {name}")
             else:
                 if args.json:
-                    print_json({
-                        "hash": obj.hash,
-                        "type": obj_type,
-                        "size": obj.size,
-                        "content_base64": base64.b64encode(obj.data).decode("ascii"),
-                    })
+                    print_json(
+                        {
+                            "hash": obj.hash,
+                            "type": obj_type,
+                            "size": obj.size,
+                            "content_base64": base64.b64encode(obj.data).decode("ascii"),
+                        }
+                    )
                 else:
                     sys.stdout.buffer.write(obj.data)
 
@@ -1125,12 +1158,14 @@ def cmd_import_git(args):
 def cmd_serve(args):
     """Start the Fla REST API server."""
     from .server import serve
+
     serve(args.path or ".", host=args.host, port=args.port, web=args.web)
 
 
 def cmd_mcp(args):
     """Start the MCP tool server on stdio."""
     from .mcp_server import run_mcp_server
+
     run_mcp_server(Path(args.path or "."))
 
 
@@ -1145,6 +1180,7 @@ def cmd_completion(args):
 
 
 # ── Budget commands ───────────────────────────────────────────
+
 
 def cmd_budget_show(args):
     """Show budget status for a lane."""
@@ -1175,8 +1211,10 @@ def cmd_budget_show(args):
                     _budget_line("API calls:  ", s.total_api_calls, c.max_api_calls)
                 if c.max_wall_time_ms is not None:
                     _budget_line(
-                        "Wall time:  ", s.total_wall_time_ms,
-                        c.max_wall_time_ms, fmt=",.0f",
+                        "Wall time:  ",
+                        s.total_wall_time_ms,
+                        c.max_wall_time_ms,
+                        fmt=",.0f",
                     )
                 if status.warnings:
                     print(f"  Warnings:   {', '.join(status.warnings)}")
@@ -1209,6 +1247,7 @@ def cmd_budget_set(args):
 
 # ── Template commands ─────────────────────────────────────────
 
+
 def cmd_template_list(args):
     """List available templates."""
     with open_repo(args) as repo:
@@ -1230,6 +1269,7 @@ def cmd_template_list(args):
 def cmd_template_create(args):
     """Create a new template."""
     from .templates import WorkspaceTemplate
+
     with open_repo(args) as repo:
         tm = repo.get_template_manager()
 
@@ -1280,6 +1320,7 @@ def cmd_template_show(args):
 
 # ── Evaluate command ──────────────────────────────────────────
 
+
 def cmd_evaluate(args):
     """Run evaluators on a transition."""
     with open_repo(args) as repo:
@@ -1308,6 +1349,7 @@ def cmd_evaluate(args):
 
 # ── Semantic search command ───────────────────────────────────
 
+
 def cmd_semantic_search(args):
     """Search intents using semantic similarity."""
     with open_repo(args) as repo:
@@ -1332,9 +1374,11 @@ def cmd_semantic_search(args):
 
 # ── Project commands ──────────────────────────────────────────
 
+
 def cmd_project_init(args):
     """Initialize a multi-repo project."""
     from .project import Project
+
     path = Path(args.path or ".").resolve()
     project = Project.init(path, name=args.name)
 
@@ -1349,6 +1393,7 @@ def cmd_project_init(args):
 def cmd_project_add(args):
     """Add a repo to the project."""
     from .project import Project
+
     project = Project.find(Path(args.path or "."))
     project.add_repo(args.repo_path, args.mount_point, lane=args.lane or "main")
 
@@ -1363,6 +1408,7 @@ def cmd_project_add(args):
 def cmd_project_status(args):
     """Show project status."""
     from .project import Project
+
     project = Project.find(Path(args.path or "."))
     status = project.status()
 
@@ -1385,6 +1431,7 @@ def cmd_project_status(args):
 def cmd_project_snapshot(args):
     """Snapshot all repos in the project."""
     from .project import Project
+
     project = Project.find(Path(args.path or "."))
     result = project.coordinated_snapshot()
 
@@ -1400,6 +1447,7 @@ def cmd_project_snapshot(args):
 
 
 # ── Remote commands ───────────────────────────────────────────
+
 
 def cmd_remote_push(args):
     """Push objects to remote storage."""
@@ -1450,14 +1498,18 @@ def cmd_remote_pull(args):
             if args.json:
                 print_json(meta_result)
             else:
-                print(f"Pulled metadata: {meta_result['lanes_pulled']} lanes, "
-                      f"{meta_result['transitions_imported']} transitions, "
-                      f"{meta_result['intents_imported']} intents")
+                print(
+                    f"Pulled metadata: {meta_result['lanes_pulled']} lanes, "
+                    f"{meta_result['transitions_imported']} transitions, "
+                    f"{meta_result['intents_imported']} intents"
+                )
                 if meta_result["conflicts"]:
                     print("\nConflicts detected:")
                     for c in meta_result["conflicts"]:
-                        print(f"  Lane '{c['lane']}': local={c['local_head'][:12]}, "
-                              f"remote={c['remote_head'][:12]}")
+                        print(
+                            f"  Lane '{c['lane']}': local={c['local_head'][:12]}, "
+                            f"remote={c['remote_head'][:12]}"
+                        )
 
 
 def cmd_remote_status(args):
@@ -1545,9 +1597,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=GROUPED_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--version", "-V", action="version", version=f"fla {_fla_pkg.__version__}"
-    )
+    parser.add_argument("--version", "-V", action="version", version=f"fla {_fla_pkg.__version__}")
     parser.add_argument("--path", "-C", default=".", help="Repository path")
     parser.add_argument("--json", "-j", action="store_true", help="JSON output")
 
@@ -1567,8 +1617,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     # snapshot
     p = sub.add_parser("snapshot", help="Snapshot a workspace")
-    p.add_argument("--workspace", "-w", default=None,
-                   help="Workspace name (auto-detected from cwd if omitted)")
+    p.add_argument(
+        "--workspace", "-w", default=None, help="Workspace name (auto-detected from cwd if omitted)"
+    )
     p.set_defaults(func=cmd_snapshot)
 
     # propose
@@ -1636,8 +1687,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("diff", help="Diff two world states")
     p.add_argument("state_a")
     p.add_argument("state_b")
-    p.add_argument("--content", "-c", action="store_true",
-                   help="Show unified diff of file contents")
+    p.add_argument(
+        "--content", "-c", action="store_true", help="Show unified diff of file contents"
+    )
     p.set_defaults(func=cmd_diff)
 
     # search
@@ -1695,18 +1747,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     # promote
     p = sub.add_parser("promote", help="Promote workspace work into a target lane")
-    p.add_argument("--workspace", "-w", default=None,
-                   help="Source workspace (auto-detected from cwd)")
-    p.add_argument("--target", "-t", default=None,
-                   help="Target lane (default: main)")
+    p.add_argument(
+        "--workspace", "-w", default=None, help="Source workspace (auto-detected from cwd)"
+    )
+    p.add_argument("--target", "-t", default=None, help="Target lane (default: main)")
     p.add_argument("--prompt", "-m", default=None)
     p.add_argument("--agent-id", default=None)
     p.add_argument("--agent-type", default=None)
     p.add_argument("--model", default=None)
     p.add_argument("--auto-accept", "-a", action="store_true")
     p.add_argument("--evaluator", default=None)
-    p.add_argument("--force", "-f", action="store_true",
-                   help="Force promote, overwriting conflicting changes in target")
+    p.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force promote, overwriting conflicting changes in target",
+    )
     p.set_defaults(func=cmd_promote)
 
     # show
@@ -1717,10 +1773,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     # gc
     p = sub.add_parser("gc", help="Garbage collect unreachable objects")
-    p.add_argument("--confirm", action="store_true",
-                   help="Actually delete (default is dry-run)")
-    p.add_argument("--older-than", type=int, default=30,
-                   help="Only delete transitions older than N days (default: 30)")
+    p.add_argument("--confirm", action="store_true", help="Actually delete (default is dry-run)")
+    p.add_argument(
+        "--older-than",
+        type=int,
+        default=30,
+        help="Only delete transitions older than N days (default: 30)",
+    )
     p.set_defaults(func=cmd_gc)
 
     # doctor
@@ -1731,8 +1790,9 @@ def build_parser() -> argparse.ArgumentParser:
     # cat-file
     p = sub.add_parser("cat-file", help="Inspect a CAS object by hash")
     p.add_argument("hash", help="Object hash to inspect")
-    p.add_argument("--type", choices=["blob", "tree", "state"],
-                   default=None, help="Verify object type")
+    p.add_argument(
+        "--type", choices=["blob", "tree", "state"], default=None, help="Verify object type"
+    )
     p.set_defaults(func=cmd_cat_file)
 
     # export-git
@@ -1832,13 +1892,15 @@ def build_parser() -> argparse.ArgumentParser:
     remote_sub = p.add_subparsers(dest="remote_command")
 
     rpush = remote_sub.add_parser("push", help="Push objects to remote")
-    rpush.add_argument("--metadata", action="store_true",
-                       help="Also push lane metadata (transitions, intents)")
+    rpush.add_argument(
+        "--metadata", action="store_true", help="Also push lane metadata (transitions, intents)"
+    )
     rpush.set_defaults(func=cmd_remote_push)
 
     rpull = remote_sub.add_parser("pull", help="Pull objects from remote")
-    rpull.add_argument("--metadata", action="store_true",
-                       help="Also pull lane metadata (transitions, intents)")
+    rpull.add_argument(
+        "--metadata", action="store_true", help="Also pull lane metadata (transitions, intents)"
+    )
     rpull.set_defaults(func=cmd_remote_pull)
 
     rstat = remote_sub.add_parser("status", help="Show remote sync status")
@@ -1862,12 +1924,39 @@ def _error_hint(msg: str) -> str | None:
 
 
 _KNOWN_COMMANDS = [
-    "init", "status", "snapshot", "commit", "propose", "accept", "reject",
-    "history", "log", "trace", "diff", "search", "semantic-search",
-    "lanes", "lane", "workspace", "restore", "promote", "info", "show",
-    "evaluate", "budget", "gc", "doctor", "serve", "mcp",
-    "export-git", "import-git", "remote", "project", "template",
-    "cat-file", "completion",
+    "init",
+    "status",
+    "snapshot",
+    "commit",
+    "propose",
+    "accept",
+    "reject",
+    "history",
+    "log",
+    "trace",
+    "diff",
+    "search",
+    "semantic-search",
+    "lanes",
+    "lane",
+    "workspace",
+    "restore",
+    "promote",
+    "info",
+    "show",
+    "evaluate",
+    "budget",
+    "gc",
+    "doctor",
+    "serve",
+    "mcp",
+    "export-git",
+    "import-git",
+    "remote",
+    "project",
+    "template",
+    "cat-file",
+    "completion",
 ]
 
 

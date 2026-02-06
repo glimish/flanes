@@ -35,13 +35,9 @@ def repo(tmp_path):
     (tmp_path / "main.py").write_text(
         'def main():\n    print("Hello, World!")\n\nif __name__ == "__main__":\n    main()\n'
     )
-    (tmp_path / "config.json").write_text(
-        '{"app_name": "TestApp", "version": "1.0.0"}\n'
-    )
+    (tmp_path / "config.json").write_text('{"app_name": "TestApp", "version": "1.0.0"}\n')
     (tmp_path / "lib").mkdir()
-    (tmp_path / "lib" / "utils.py").write_text(
-        'def add(a, b):\n    return a + b\n'
-    )
+    (tmp_path / "lib" / "utils.py").write_text("def add(a, b):\n    return a + b\n")
 
     repo = Repository.init(tmp_path)
     return repo
@@ -73,9 +69,9 @@ def test_concurrent_proposals(repo):
             # Modify workspace
             ws = thread_repo.workspace_path(lane_name)
             (ws / f"file_{agent_num}.py").write_text(
-                f'# File created by agent {agent_num}\n'
-                f'def func_{agent_num}():\n'
-                f'    return {agent_num}\n'
+                f"# File created by agent {agent_num}\n"
+                f"def func_{agent_num}():\n"
+                f"    return {agent_num}\n"
             )
 
             # Snapshot and propose
@@ -89,19 +85,23 @@ def test_concurrent_proposals(repo):
                 cost=CostRecord(tokens_in=100, tokens_out=50, wall_time_ms=100, api_calls=1),
             )
 
-            results.append({
-                "agent_num": agent_num,
-                "tid": tid,
-                "lane": lane_name,
-                "success": True,
-            })
+            results.append(
+                {
+                    "agent_num": agent_num,
+                    "tid": tid,
+                    "lane": lane_name,
+                    "success": True,
+                }
+            )
             return tid
 
         except Exception as e:
-            errors.append({
-                "agent_num": agent_num,
-                "error": str(e),
-            })
+            errors.append(
+                {
+                    "agent_num": agent_num,
+                    "error": str(e),
+                }
+            )
             raise
 
     # Run 5 agents concurrently
@@ -121,30 +121,36 @@ def test_concurrent_proposals(repo):
 
 
 def test_concurrent_workspace_locking(repo):
-    """Test that workspace locking prevents concurrent modifications."""
+    """Test that workspace locking prevents concurrent modifications.
+
+    Each thread gets its own Repository instance to avoid sharing a single
+    SQLite connection across threads (which hangs on Windows).
+    """
     initial_head = repo.head()
+    repo_root = repo.root
     lane_name = "test-lane"
     repo.create_lane(lane_name, base=initial_head)
 
-    agent = AgentIdentity(
-        agent_id="lock-tester",
-        agent_type="lock_test",
-        model="test-model",
-    )
-
     lock_acquired_count = 0
     lock_failed_count = 0
-    lock = threading.Lock()
+    counter_lock = threading.Lock()
 
-    def try_lock_workspace():
+    def try_lock_workspace(thread_num):
         """Try to acquire workspace lock."""
         nonlocal lock_acquired_count, lock_failed_count
         try:
-            session = AgentSession(repo, agent)
+            # Each thread gets its own Repository instance
+            thread_repo = Repository(repo_root)
+            agent = AgentIdentity(
+                agent_id=f"lock-tester-{thread_num}",
+                agent_type="lock_test",
+                model="test-model",
+            )
+            session = AgentSession(thread_repo, agent)
             session.begin(lane_name)
 
             # If we got here, we acquired the lock
-            with lock:
+            with counter_lock:
                 lock_acquired_count += 1
 
             # Hold the lock briefly
@@ -154,12 +160,12 @@ def test_concurrent_workspace_locking(repo):
             session.end()
 
         except Exception:
-            with lock:
+            with counter_lock:
                 lock_failed_count += 1
 
     # Try to acquire lock from multiple threads
     num_threads = 5
-    threads = [threading.Thread(target=try_lock_workspace) for _ in range(num_threads)]
+    threads = [threading.Thread(target=try_lock_workspace, args=(i,)) for i in range(num_threads)]
 
     for thread in threads:
         thread.start()
@@ -167,8 +173,7 @@ def test_concurrent_workspace_locking(repo):
     for thread in threads:
         thread.join(timeout=30)
 
-    # At most one should succeed at a time due to locking
-    # (This test might need adjustment based on exact locking implementation)
+    # All threads should complete (either acquired or failed)
     assert lock_acquired_count + lock_failed_count == num_threads
 
 
@@ -206,11 +211,13 @@ def test_concurrent_file_size_limit_violations(repo):
 
         except ContentStoreLimitError as e:
             with lock:
-                errors_caught.append({
-                    "agent_num": agent_num,
-                    "file_size": file_size,
-                    "error": str(e),
-                })
+                errors_caught.append(
+                    {
+                        "agent_num": agent_num,
+                        "file_size": file_size,
+                        "error": str(e),
+                    }
+                )
 
     # Run agents with files of different sizes
     test_cases = [
@@ -277,18 +284,20 @@ def test_concurrent_tree_depth_limit_violations(repo, tmp_path):
 
         except TreeDepthLimitError as e:
             with lock:
-                errors_caught.append({
-                    "agent_num": agent_num,
-                    "depth": depth,
-                    "error": str(e),
-                })
+                errors_caught.append(
+                    {
+                        "agent_num": agent_num,
+                        "depth": depth,
+                        "error": str(e),
+                    }
+                )
 
     # Run agents with different depth levels
     test_cases = [
         (1, max_tree_depth - 10),  # Under limit - should succeed
-        (2, max_tree_depth + 5),   # Over limit - should fail
+        (2, max_tree_depth + 5),  # Over limit - should fail
         (3, max_tree_depth + 20),  # Way over limit - should fail
-        (4, max_tree_depth - 5),   # Under limit - should succeed
+        (4, max_tree_depth - 5),  # Under limit - should succeed
     ]
 
     with ThreadPoolExecutor(max_workers=len(test_cases)) as executor:
@@ -338,11 +347,13 @@ def test_concurrent_accept_reject(repo):
             cost=CostRecord(tokens_in=100, tokens_out=50, wall_time_ms=100, api_calls=1),
         )
 
-        transitions.append({
-            "tid": tid,
-            "agent_num": i,
-            "should_accept": i % 2 == 0,  # Accept even-numbered agents
-        })
+        transitions.append(
+            {
+                "tid": tid,
+                "agent_num": i,
+                "should_accept": i % 2 == 0,  # Accept even-numbered agents
+            }
+        )
 
     results = []
     lock = threading.Lock()
@@ -370,20 +381,22 @@ def test_concurrent_accept_reject(repo):
                 )
 
             with lock:
-                expected = (
-                    TransitionStatus.ACCEPTED if should_accept else TransitionStatus.REJECTED
+                expected = TransitionStatus.ACCEPTED if should_accept else TransitionStatus.REJECTED
+                results.append(
+                    {
+                        "tid": tid,
+                        "status": status,
+                        "expected": expected,
+                    }
                 )
-                results.append({
-                    "tid": tid,
-                    "status": status,
-                    "expected": expected,
-                })
         except Exception as e:
             with lock:
-                results.append({
-                    "tid": tid,
-                    "error": str(e),
-                })
+                results.append(
+                    {
+                        "tid": tid,
+                        "error": str(e),
+                    }
+                )
 
     # Evaluate all transitions concurrently
     with ThreadPoolExecutor(max_workers=5) as executor:
@@ -433,11 +446,13 @@ def test_concurrent_snapshot_operations(repo):
         state_id = thread_repo.snapshot(lane_name, parent_id=initial_head)
 
         with lock:
-            snapshots.append({
-                "agent_num": agent_num,
-                "state_id": state_id,
-                "lane": lane_name,
-            })
+            snapshots.append(
+                {
+                    "agent_num": agent_num,
+                    "state_id": state_id,
+                    "lane": lane_name,
+                }
+            )
 
         return state_id
 

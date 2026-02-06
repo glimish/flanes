@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TemplateFile(Serializable):
     """A file in a template."""
+
     _skip_none = True
 
     path: str
@@ -29,6 +30,7 @@ class TemplateFile(Serializable):
 @dataclass
 class WorkspaceTemplate(Serializable):
     """A workspace template."""
+
     name: str
     description: str = ""
     files: list[TemplateFile] = field(default_factory=list)
@@ -47,9 +49,7 @@ def _validate_path_within(base: Path, target: Path):
     try:
         target.resolve().relative_to(base.resolve())
     except ValueError:
-        raise ValueError(
-            f"Path traversal detected: {target} is outside {base}"
-        )
+        raise ValueError(f"Path traversal detected: {target} is outside {base}")
 
 
 class TemplateManager:
@@ -129,12 +129,14 @@ class TemplateManager:
                 else:
                     logger.warning(
                         "Template file %s references hash %s but blob not found in store",
-                        tf.path, tf.source_hash,
+                        tf.path,
+                        tf.source_hash,
                     )
             elif tf.source_hash is not None and store is None:
                 logger.warning(
                     "Template file %s references hash %s but no store provided",
-                    tf.path, tf.source_hash,
+                    tf.path,
+                    tf.source_hash,
                 )
             else:
                 logger.warning(

@@ -27,6 +27,7 @@ from fla.state import (
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def run_fla(*args, cwd=None, expect_fail=False):
     cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
     result = subprocess.run(
@@ -56,6 +57,7 @@ def make_intent(prompt="test change"):
 
 
 # ── Fixtures ─────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def store(tmp_path):
@@ -87,6 +89,7 @@ def repo_dir(tmp_path):
 
 
 # ── Batch Transactions ───────────────────────────────────────────
+
 
 class TestBatchTransactions:
     def test_batch_commits_once(self, store):
@@ -141,6 +144,7 @@ class TestBatchTransactions:
 
 
 # ── Stat Cache ───────────────────────────────────────────────────
+
 
 class TestStatCache:
     def test_cache_hit_skips_file_read(self, tmp_path):
@@ -208,6 +212,7 @@ class TestStatCache:
 
 # ── Garbage Collection ───────────────────────────────────────────
 
+
 class TestGarbageCollection:
     def _setup_repo_with_transitions(self, tmp_path):
         """Create a repo with accepted and rejected transitions."""
@@ -234,10 +239,7 @@ class TestGarbageCollection:
 
         # Backdate the rejected transition so it's older than threshold
         old_time = time.time() - (31 * 86400)
-        wsm.conn.execute(
-            "UPDATE transitions SET created_at = ? WHERE id = ?",
-            (old_time, tid2)
-        )
+        wsm.conn.execute("UPDATE transitions SET created_at = ? WHERE id = ?", (old_time, tid2))
         wsm.conn.commit()
 
         return store, wsm, state1, state2
@@ -356,6 +358,7 @@ class TestGarbageCollection:
 
 # ── Filesystem Blob Storage ──────────────────────────────────────
 
+
 class TestFilesystemBlobStorage:
     def test_large_blob_stored_on_fs(self, tmp_path):
         """File over threshold is stored on filesystem."""
@@ -454,6 +457,7 @@ class TestFilesystemBlobStorage:
 
 
 # ── CLI GC Command ───────────────────────────────────────────────
+
 
 class TestGCCLI:
     def test_gc_command_dry_run(self, repo_dir):

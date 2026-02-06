@@ -1,6 +1,5 @@
 """ContentStore unit tests."""
 
-
 import pytest
 
 from fla.cas import ContentStore, ObjectType

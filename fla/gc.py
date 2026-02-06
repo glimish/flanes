@@ -62,7 +62,7 @@ def _mark_phase(conn, store, max_age_days):
     for row in conn.execute(
         """SELECT from_state, to_state FROM transitions
            WHERE status = 'rejected' AND created_at >= ?""",
-        (cutoff,)
+        (cutoff,),
     ):
         if row[0]:
             live_state_ids.add(row[0])
@@ -167,7 +167,7 @@ def collect_garbage(
     # Find transitions to delete (rejected/superseded older than max_age_days)
     expired_transitions = conn.execute(
         "SELECT id FROM transitions WHERE status IN ('rejected', 'superseded') AND created_at < ?",
-        (cutoff,)
+        (cutoff,),
     ).fetchall()
     deletable_transition_ids = [row[0] for row in expired_transitions]
 
@@ -236,8 +236,7 @@ def collect_garbage(
         if unreachable:
             placeholders = ",".join("?" for _ in unreachable)
             conn.execute(
-                f"DELETE FROM stat_cache WHERE blob_hash IN ({placeholders})",
-                list(unreachable)
+                f"DELETE FROM stat_cache WHERE blob_hash IN ({placeholders})", list(unreachable)
             )
 
     # Delete filesystem blobs after DB transaction committed successfully

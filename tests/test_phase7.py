@@ -35,6 +35,7 @@ def run_fla(*args, cwd=None, expect_fail=False):
 def repo(tmp_path):
     """A Repository object for direct API testing."""
     from fla.repo import Repository
+
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     repo = Repository.init(tmp_path)
     return repo
@@ -53,10 +54,11 @@ def repo_dir(tmp_path):
 # 1. Cost Budgets
 # ══════════════════════════════════════════════════════════════
 
-class TestBudgets:
 
+class TestBudgets:
     def test_budget_config_serialization(self):
         from fla.budgets import BudgetConfig
+
         config = BudgetConfig(
             max_tokens_in=1000,
             max_tokens_out=500,
@@ -74,6 +76,7 @@ class TestBudgets:
 
     def test_set_and_get_budget(self, repo):
         from fla.budgets import BudgetConfig, get_lane_budget, set_lane_budget
+
         config = BudgetConfig(max_tokens_in=5000, max_api_calls=20)
         set_lane_budget(repo.wsm, "main", config)
         loaded = get_lane_budget(repo.wsm, "main")
@@ -165,8 +168,7 @@ class TestBudgets:
 
     def test_budget_cli_show(self, repo_dir):
         # Set budget first
-        rc, _, _ = run_fla("budget", "set", "main",
-                           "--max-tokens-in", "1000", cwd=repo_dir)
+        rc, _, _ = run_fla("budget", "set", "main", "--max-tokens-in", "1000", cwd=repo_dir)
         assert rc == 0
 
         rc, out, _ = run_fla("--json", "budget", "show", "main", cwd=repo_dir)
@@ -175,9 +177,16 @@ class TestBudgets:
         assert data["config"]["max_tokens_in"] == 1000
 
     def test_budget_cli_set(self, repo_dir):
-        rc, _, _ = run_fla("budget", "set", "main",
-                           "--max-tokens-in", "5000",
-                           "--max-api-calls", "100", cwd=repo_dir)
+        rc, _, _ = run_fla(
+            "budget",
+            "set",
+            "main",
+            "--max-tokens-in",
+            "5000",
+            "--max-api-calls",
+            "100",
+            cwd=repo_dir,
+        )
         assert rc == 0
 
         rc, out, _ = run_fla("--json", "budget", "show", "main", cwd=repo_dir)
@@ -191,10 +200,11 @@ class TestBudgets:
 # 2. Workspace Templates
 # ══════════════════════════════════════════════════════════════
 
-class TestTemplates:
 
+class TestTemplates:
     def test_template_save_and_load(self, repo):
         from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         template = WorkspaceTemplate(
             name="python-basic",
@@ -213,6 +223,7 @@ class TestTemplates:
 
     def test_template_list(self, repo):
         from fla.templates import TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         tm.save(WorkspaceTemplate(name="tmpl-a", description="A"))
         tm.save(WorkspaceTemplate(name="tmpl-b", description="B"))
@@ -223,6 +234,7 @@ class TestTemplates:
 
     def test_template_apply_creates_files(self, repo, tmp_path):
         from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         template = WorkspaceTemplate(
             name="test-files",
@@ -239,6 +251,7 @@ class TestTemplates:
 
     def test_template_apply_creates_directories(self, repo, tmp_path):
         from fla.templates import TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         template = WorkspaceTemplate(
             name="test-dirs",
@@ -253,6 +266,7 @@ class TestTemplates:
 
     def test_template_apply_flaignore(self, repo, tmp_path):
         from fla.templates import TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         template = WorkspaceTemplate(
             name="test-ignore",
@@ -267,6 +281,7 @@ class TestTemplates:
 
     def test_workspace_create_with_template(self, repo):
         from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+
         tm = TemplateManager(repo.fla_dir)
         template = WorkspaceTemplate(
             name="py-project",
@@ -284,8 +299,9 @@ class TestTemplates:
 
     def test_template_cli(self, repo_dir):
         # Create
-        rc, out, _ = run_fla("template", "create", "my-template",
-                             "--description", "Test template", cwd=repo_dir)
+        rc, out, _ = run_fla(
+            "template", "create", "my-template", "--description", "Test template", cwd=repo_dir
+        )
         assert rc == 0
 
         # List
@@ -307,10 +323,11 @@ class TestTemplates:
 # 3. Evaluation Plugins
 # ══════════════════════════════════════════════════════════════
 
-class TestEvaluators:
 
+class TestEvaluators:
     def test_evaluator_config_loading(self):
         from fla.evaluators import load_evaluators
+
         config = {
             "evaluators": [
                 {"name": "pytest", "command": "python -m pytest", "required": True},
@@ -324,23 +341,26 @@ class TestEvaluators:
 
     def test_run_evaluator_pass(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_evaluator
-        ev = EvaluatorConfig(name="pass-test", command=f"{sys.executable} -c \"exit(0)\"")
+
+        ev = EvaluatorConfig(name="pass-test", command=f'{sys.executable} -c "exit(0)"')
         result = run_evaluator(ev, tmp_path)
         assert result.passed is True
         assert result.returncode == 0
 
     def test_run_evaluator_fail(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_evaluator
-        ev = EvaluatorConfig(name="fail-test", command=f"{sys.executable} -c \"exit(1)\"")
+
+        ev = EvaluatorConfig(name="fail-test", command=f'{sys.executable} -c "exit(1)"')
         result = run_evaluator(ev, tmp_path)
         assert result.passed is False
         assert result.returncode == 1
 
     def test_run_evaluator_timeout(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_evaluator
+
         ev = EvaluatorConfig(
             name="timeout-test",
-            command=f"{sys.executable} -c \"import time; time.sleep(10)\"",
+            command=f'{sys.executable} -c "import time; time.sleep(10)"',
             timeout_seconds=1,
         )
         result = run_evaluator(ev, tmp_path)
@@ -349,15 +369,16 @@ class TestEvaluators:
 
     def test_required_vs_optional(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_all_evaluators
+
         evaluators = [
             EvaluatorConfig(
                 name="required-pass",
-                command=f"{sys.executable} -c \"exit(0)\"",
+                command=f'{sys.executable} -c "exit(0)"',
                 required=True,
             ),
             EvaluatorConfig(
                 name="optional-fail",
-                command=f"{sys.executable} -c \"exit(1)\"",
+                command=f'{sys.executable} -c "exit(1)"',
                 required=False,
             ),
         ]
@@ -369,15 +390,16 @@ class TestEvaluators:
 
     def test_required_fail_overall_fail(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_all_evaluators
+
         evaluators = [
             EvaluatorConfig(
                 name="required-fail",
-                command=f"{sys.executable} -c \"exit(1)\"",
+                command=f'{sys.executable} -c "exit(1)"',
                 required=True,
             ),
             EvaluatorConfig(
                 name="optional-pass",
-                command=f"{sys.executable} -c \"exit(0)\"",
+                command=f'{sys.executable} -c "exit(0)"',
                 required=False,
             ),
         ]
@@ -396,10 +418,11 @@ class TestEvaluators:
 # 4. Semantic Search (Embeddings)
 # ══════════════════════════════════════════════════════════════
 
-class TestEmbeddings:
 
+class TestEmbeddings:
     def test_cosine_similarity(self):
         from fla.embeddings import cosine_similarity
+
         # Identical vectors
         assert cosine_similarity([1, 0, 0], [1, 0, 0]) == pytest.approx(1.0)
         # Orthogonal vectors
@@ -455,9 +478,15 @@ class TestEmbeddings:
     def test_semantic_search_cli(self, repo_dir):
         # Commit something first
         rc, _, _ = run_fla(
-            "commit", "-m", "add user login feature",
-            "--agent-id", "test", "--agent-type", "human",
-            "--auto-accept", cwd=repo_dir,
+            "commit",
+            "-m",
+            "add user login feature",
+            "--agent-id",
+            "test",
+            "--agent-type",
+            "human",
+            "--auto-accept",
+            cwd=repo_dir,
         )
         assert rc == 0
 
@@ -471,10 +500,11 @@ class TestEmbeddings:
 # 5. Multi-Repo Projects
 # ══════════════════════════════════════════════════════════════
 
-class TestProject:
 
+class TestProject:
     def test_project_init(self, tmp_path):
         from fla.project import Project
+
         project = Project.init(tmp_path, name="my-project")
         assert (tmp_path / ".fla-project.json").exists()
         assert project.config.name == "my-project"
@@ -534,6 +564,7 @@ class TestProject:
 
     def test_project_find(self, tmp_path):
         from fla.project import Project
+
         Project.init(tmp_path, name="findable")
 
         # Should find from a subdirectory
@@ -544,8 +575,7 @@ class TestProject:
 
     def test_project_cli(self, tmp_path):
         # Init
-        rc, out, _ = run_fla("--json", "project", "init", "--name", "cli-project",
-                             cwd=tmp_path)
+        rc, out, _ = run_fla("--json", "project", "init", "--name", "cli-project", cwd=tmp_path)
         assert rc == 0
         data = json.loads(out)
         assert data["name"] == "cli-project"
@@ -561,10 +591,11 @@ class TestProject:
 # 6. Remote Storage
 # ══════════════════════════════════════════════════════════════
 
-class TestRemote:
 
+class TestRemote:
     def test_remote_backend_mock(self):
         from fla.remote import InMemoryBackend
+
         backend = InMemoryBackend()
 
         backend.upload("key1", b"data1")
@@ -584,6 +615,7 @@ class TestRemote:
 
     def test_local_cache_layer(self, tmp_path):
         from fla.remote import InMemoryBackend, LocalCacheLayer
+
         backend = InMemoryBackend()
         cache = LocalCacheLayer(backend, tmp_path / "cache")
 
@@ -606,6 +638,7 @@ class TestRemote:
 
     def test_remote_sync_push(self, repo):
         from fla.remote import InMemoryBackend, RemoteSyncManager
+
         backend = InMemoryBackend()
         sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
 
@@ -620,6 +653,7 @@ class TestRemote:
 
     def test_remote_sync_pull(self, repo):
         from fla.remote import InMemoryBackend, RemoteSyncManager
+
         backend = InMemoryBackend()
         sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
 
@@ -633,6 +667,7 @@ class TestRemote:
 
     def test_remote_status(self, repo):
         from fla.remote import InMemoryBackend, RemoteSyncManager
+
         backend = InMemoryBackend()
         sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
 
@@ -664,11 +699,13 @@ class TestRemote:
 
     def test_create_backend_memory(self):
         from fla.remote import create_backend
+
         backend = create_backend({"remote_storage": {"type": "memory"}})
         backend.upload("test", b"data")
         assert backend.download("test") == b"data"
 
     def test_create_backend_unknown(self):
         from fla.remote import create_backend
+
         with pytest.raises(ValueError, match="Unknown remote storage type"):
             create_backend({"remote_storage": {"type": "ftp"}})

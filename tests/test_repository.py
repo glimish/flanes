@@ -1,6 +1,5 @@
 """Repository unit tests."""
 
-
 import pytest
 
 from fla.repo import Repository
@@ -150,12 +149,14 @@ class TestInstanceLock:
         lock_path = repo.fla_dir / "instance.lock"
         assert lock_path.exists()
         import json
+
         lock_data = json.loads(lock_path.read_text())
         assert "hostname" in lock_data
         assert "pid" in lock_data
         assert "machine_id" in lock_data
         assert "started_at" in lock_data
         import os
+
         assert lock_data["pid"] == os.getpid()
         repo.close()
 

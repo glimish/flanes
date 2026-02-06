@@ -2,7 +2,6 @@
 Tests for Phase 2: ignore patterns, context managers, deferred fork_base fix.
 """
 
-
 import pytest
 
 from fla.agent_sdk import AgentSession
@@ -26,6 +25,7 @@ def repo_with_files(tmp_dir):
 
 
 # ── 1. Directory patterns in .flaignore ──────────────────────────────
+
 
 class TestDirectoryPatterns:
     def test_trailing_slash_ignores_directory_not_file(self, tmp_dir):
@@ -72,6 +72,7 @@ class TestDirectoryPatterns:
 
 # ── 2. Negation patterns in .flaignore ───────────────────────────────
 
+
 class TestNegationPatterns:
     def test_negation_reinclude(self, tmp_dir):
         """`*.log` + `!important.log` keeps important.log."""
@@ -96,13 +97,20 @@ class TestNegationPatterns:
         negate = frozenset({"important.log"})
         # Updated signature: _should_ignore(name, rel_path, ignore, negate)
         assert WorldStateManager._should_ignore("debug.log", "debug.log", ignore, negate) is True
-        assert WorldStateManager._should_ignore(
-            "important.log", "important.log", ignore, negate,
-        ) is False
+        assert (
+            WorldStateManager._should_ignore(
+                "important.log",
+                "important.log",
+                ignore,
+                negate,
+            )
+            is False
+        )
         assert WorldStateManager._should_ignore("app.py", "app.py", ignore, negate) is False
 
 
 # ── 3. Repository context manager ───────────────────────────────────
+
 
 class TestRepositoryContextManager:
     def test_with_statement_auto_closes(self, tmp_dir):
@@ -117,6 +125,7 @@ class TestRepositoryContextManager:
 
 
 # ── 4. AgentSession context manager ─────────────────────────────────
+
 
 class TestAgentSessionContextManager:
     def test_with_statement_auto_closes(self, tmp_dir):
@@ -136,6 +145,7 @@ class TestAgentSessionContextManager:
 
 
 # ── 5. Non-auto promote accept updates fork_base ────────────────────
+
 
 class TestPromoteManualAcceptForkBase:
     def test_manual_accept_updates_fork_base(self, repo_with_files):

@@ -34,9 +34,9 @@ from fla.state import (
 
 
 def divider(title: str):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  {title}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
 
 def test_full_workflow():
@@ -56,7 +56,7 @@ def test_full_workflow():
         )
         (test_dir / "lib").mkdir()
         (test_dir / "lib" / "utils.py").write_text(
-            'def add(a, b):\n    return a + b\n\ndef multiply(a, b):\n    return a * b\n'
+            "def add(a, b):\n    return a + b\n\ndef multiply(a, b):\n    return a * b\n"
         )
 
         repo = Repository.init(test_dir)
@@ -91,15 +91,15 @@ def test_full_workflow():
         # Get the main workspace path and modify files there
         ws_main = repo.workspace_path("main")
         (ws_main / "main.py").write_text(
-            'from lib.utils import add\nfrom lib.auth import authenticate\n\n'
+            "from lib.utils import add\nfrom lib.auth import authenticate\n\n"
             'def main():\n    if authenticate("admin"):\n        result = add(2, 3)\n'
             '        print(f"Result: {result}")\n\nif __name__ == "__main__":\n    main()\n'
         )
         (ws_main / "lib" / "auth.py").write_text(
             'USERS = {"admin": "secret123"}\n\n'
-            'def authenticate(username: str) -> bool:\n'
+            "def authenticate(username: str) -> bool:\n"
             '    """Simple auth check."""\n'
-            '    return username in USERS\n'
+            "    return username in USERS\n"
         )
 
         # Snapshot the main workspace and propose
@@ -149,13 +149,13 @@ def test_full_workflow():
         # Agent 2 modifies files in the bugfix workspace only
         (ws_bugfix / "lib" / "utils.py").write_text(
             'def add(a, b):\n    """Add two numbers with type checking."""\n'
-            '    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):\n'
+            "    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):\n"
             '        raise TypeError("Arguments must be numeric")\n'
-            '    return a + b\n\n'
+            "    return a + b\n\n"
             'def multiply(a, b):\n    """Multiply two numbers with type checking."""\n'
-            '    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):\n'
+            "    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):\n"
             '        raise TypeError("Arguments must be numeric")\n'
-            '    return a * b\n'
+            "    return a * b\n"
         )
 
         bugfix_state = repo.snapshot("bugfix-utils-edge-case", parent_id=initial_head)
@@ -179,12 +179,18 @@ def test_full_workflow():
         # ── Phase 4: Quick commit on main ─────────────────────────
         divider("Phase 4: Quick Commit on Main Workspace")
 
-        (ws_main / "config.json").write_text(json.dumps({
-            "app_name": "MyApp",
-            "version": "1.1.0",
-            "debug": False,
-            "auth": {"enabled": True, "session_timeout": 3600},
-        }, indent=2) + "\n")
+        (ws_main / "config.json").write_text(
+            json.dumps(
+                {
+                    "app_name": "MyApp",
+                    "version": "1.1.0",
+                    "debug": False,
+                    "auth": {"enabled": True, "session_timeout": 3600},
+                },
+                indent=2,
+            )
+            + "\n"
+        )
 
         result = repo.quick_commit(
             workspace="main",
@@ -246,7 +252,8 @@ def test_full_workflow():
 
         with session.work(
             "Refactor auth to use hashed passwords",
-            tags=["refactor", "security"], auto_accept=True,
+            tags=["refactor", "security"],
+            auto_accept=True,
         ) as w:
             w.record_tokens(tokens_in=2000, tokens_out=1200)
             w.add_metadata("files_touched", ["lib/auth.py"])
@@ -256,14 +263,14 @@ def test_full_workflow():
             print(f"  Working in: {w.path}")
 
             (w.path / "lib" / "auth.py").write_text(
-                'import hashlib\n\n'
+                "import hashlib\n\n"
                 'USERS = {"admin": hashlib.sha256(b"secret123").hexdigest()}\n\n'
                 'def authenticate(username: str, password: str = "") -> bool:\n'
                 '    """Auth check with hashed passwords."""\n'
-                '    expected = USERS.get(username)\n'
-                '    if expected is None:\n'
-                '        return False\n'
-                '    return hashlib.sha256(password.encode()).hexdigest() == expected\n'
+                "    expected = USERS.get(username)\n"
+                "    if expected is None:\n"
+                "        return False\n"
+                "    return hashlib.sha256(password.encode()).hexdigest() == expected\n"
             )
 
         print(f"Work result: {w.result['status']}")
@@ -424,13 +431,14 @@ def test_full_workflow():
 
         # ── Cleanup ───────────────────────────────────────────────
         repo.close()
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("  ALL TESTS PASSED ✓")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
     except Exception as e:
         print(f"\n✗ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         raise
     finally:

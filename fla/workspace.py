@@ -85,7 +85,7 @@ def _replace_with_retry(src: Path, dst: Path):
             except PermissionError:
                 if attempt == 4:
                     raise
-                time.sleep(0.01 * (2 ** attempt))
+                time.sleep(0.01 * (2**attempt))
     else:
         src.replace(dst)
 
@@ -119,21 +119,22 @@ def _atomic_write(path: Path, content: str):
 
 
 class WorkspaceStatus(Enum):
-    ACTIVE = "active"       # Agent is working in this workspace
-    IDLE = "idle"           # Workspace exists but no active work
-    STALE = "stale"         # Workspace is behind lane head
-    DISPOSED = "disposed"   # Workspace has been cleaned up
+    ACTIVE = "active"  # Agent is working in this workspace
+    IDLE = "idle"  # Workspace exists but no active work
+    STALE = "stale"  # Workspace is behind lane head
+    DISPOSED = "disposed"  # Workspace has been cleaned up
 
 
 @dataclass
 class WorkspaceInfo(Serializable):
     """Metadata about a workspace."""
-    name: str                    # Matches lane name by default
-    lane: str                    # Which lane this workspace tracks
-    path: Path                   # Physical directory path
-    base_state: str | None    # State this workspace was materialized from
+
+    name: str  # Matches lane name by default
+    lane: str  # Which lane this workspace tracks
+    path: Path  # Physical directory path
+    base_state: str | None  # State this workspace was materialized from
     status: str
-    agent_id: str | None      # Agent currently using this workspace
+    agent_id: str | None  # Agent currently using this workspace
     created_at: float
     updated_at: float
 
@@ -237,10 +238,14 @@ class WorkspaceManager:
             # Feature workspace: materialize into new directory
             ws_path.mkdir(parents=True, exist_ok=True)
             dirty_path = ws_path / ".fla_materializing"
-            dirty_path.write_text(json.dumps({
-                "state_id": state_id,
-                "started_at": time.time(),
-            }))
+            dirty_path.write_text(
+                json.dumps(
+                    {
+                        "state_id": state_id,
+                        "started_at": time.time(),
+                    }
+                )
+            )
 
             try:
                 self.wsm.materialize(state_id, ws_path)
@@ -254,10 +259,14 @@ class WorkspaceManager:
             # Main workspace with state: materialize into repo root
             # This happens during update, not typically during init
             dirty_path = ws_path / ".fla_materializing"
-            dirty_path.write_text(json.dumps({
-                "state_id": state_id,
-                "started_at": time.time(),
-            }))
+            dirty_path.write_text(
+                json.dumps(
+                    {
+                        "state_id": state_id,
+                        "started_at": time.time(),
+                    }
+                )
+            )
 
             try:
                 self._materialize_to_main(state_id, ws_path)
@@ -345,15 +354,20 @@ class WorkspaceManager:
 
         # Dirty marker — signals that the workspace is mid-update
         dirty_path = ws_path / ".fla_materializing"
-        dirty_path.write_text(json.dumps({
-            "from_state": old_state,
-            "to_state": new_state_id,
-            "started_at": time.time(),
-        }))
+        dirty_path.write_text(
+            json.dumps(
+                {
+                    "from_state": old_state,
+                    "to_state": new_state_id,
+                    "started_at": time.time(),
+                }
+            )
+        )
 
         try:
             result = self._apply_update(
-                ws_path, old_state, new_state_id, is_main=self._is_main(name))
+                ws_path, old_state, new_state_id, is_main=self._is_main(name)
+            )
         except Exception:
             # Leave dirty marker so recovery can detect partial state
             raise
@@ -364,8 +378,7 @@ class WorkspaceManager:
             return result
 
     def _apply_update(
-        self, ws_path: Path, old_state: str | None, new_state_id: str,
-        is_main: bool = False
+        self, ws_path: Path, old_state: str | None, new_state_id: str, is_main: bool = False
     ) -> dict:
         """Apply the actual file changes for an update."""
         if old_state is None:
@@ -504,12 +517,18 @@ class WorkspaceManager:
 
         # Write owner info atomically
         owner_path = lock_dir / "owner.json"
-        _atomic_write(owner_path, json.dumps({
-            "agent_id": agent_id,
-            "acquired_at": time.time(),
-            "pid": os.getpid(),
-            "hostname": _hostname(),
-        }, indent=2))
+        _atomic_write(
+            owner_path,
+            json.dumps(
+                {
+                    "agent_id": agent_id,
+                    "acquired_at": time.time(),
+                    "pid": os.getpid(),
+                    "hostname": _hostname(),
+                },
+                indent=2,
+            ),
+        )
 
         self._update_meta(name, agent_id=agent_id, status=WorkspaceStatus.ACTIVE.value)
         return True
@@ -588,6 +607,7 @@ class WorkspaceManager:
             # Windows path — os.kill(pid, 0) is unreliable
             try:
                 import ctypes
+
                 kernel32 = ctypes.windll.kernel32
                 PROCESS_QUERY_LIMITED_INFORMATION = 0x1000  # noqa: N806
                 handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)

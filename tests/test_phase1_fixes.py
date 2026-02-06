@@ -33,6 +33,7 @@ def repo_with_files(tmp_dir):
 
 # ── Fix 1: init() workspace metadata matches wm.create() schema ─────
 
+
 class TestFix1InitWorkspaceMetadata:
     def test_init_workspace_has_all_required_fields(self, tmp_dir):
         (tmp_dir / "app.py").write_text("pass\n")
@@ -56,6 +57,7 @@ class TestFix1InitWorkspaceMetadata:
 
 
 # ── Fix 2: promote updates fork_base ────────────────────────────────
+
 
 class TestFix2PromoteUpdatesForkBase:
     def test_fork_base_advances_after_promote(self, repo_with_files):
@@ -107,6 +109,7 @@ class TestFix2PromoteUpdatesForkBase:
 
 # ── Fix 3: .flaignore fnmatch patterns ──────────────────────────────
 
+
 class TestFix3FlaignoreFnmatch:
     def test_glob_patterns_in_flaignore(self, tmp_dir):
         (tmp_dir / ".flaignore").write_text("*.pyc\ntest_*\n")
@@ -139,18 +142,34 @@ class TestFix3FlaignoreFnmatch:
         """Test Fix #3: Path-based ignore patterns."""
         ignore = frozenset({"build/output/*", "docs/generated/*"})
         # Path patterns should match relative paths
-        assert WorldStateManager._should_ignore(
-            "file.json", "build/output/file.json", ignore,
-        ) is True
-        assert WorldStateManager._should_ignore(
-            "file.json", "src/file.json", ignore,
-        ) is False
-        assert WorldStateManager._should_ignore(
-            "readme.md", "docs/generated/readme.md", ignore,
-        ) is True
+        assert (
+            WorldStateManager._should_ignore(
+                "file.json",
+                "build/output/file.json",
+                ignore,
+            )
+            is True
+        )
+        assert (
+            WorldStateManager._should_ignore(
+                "file.json",
+                "src/file.json",
+                ignore,
+            )
+            is False
+        )
+        assert (
+            WorldStateManager._should_ignore(
+                "readme.md",
+                "docs/generated/readme.md",
+                ignore,
+            )
+            is True
+        )
 
 
 # ── Fix 4: _atomic_write retries on Windows PermissionError ─────────
+
 
 class TestFix4AtomicWriteRetry:
     def test_replace_with_retry_succeeds_after_transient_failure(self, tmp_path):
@@ -169,9 +188,11 @@ class TestFix4AtomicWriteRetry:
                 raise PermissionError("File in use")
             return original_replace(self_path, target)
 
-        with patch("fla.workspace.os.name", "nt"), \
-             patch.object(Path, "replace", mock_replace), \
-             patch("fla.workspace.time.sleep"):
+        with (
+            patch("fla.workspace.os.name", "nt"),
+            patch.object(Path, "replace", mock_replace),
+            patch("fla.workspace.time.sleep"),
+        ):
             _replace_with_retry(src, dst)
 
         assert dst.read_text() == "new content"
@@ -182,10 +203,12 @@ class TestFix4AtomicWriteRetry:
         dst = tmp_path / "dst.txt"
         src.write_text("content")
 
-        with patch("fla.workspace.os.name", "nt"), \
-             patch.object(Path, "replace", side_effect=PermissionError("locked")), \
-             patch("fla.workspace.time.sleep"), \
-             pytest.raises(PermissionError):
+        with (
+            patch("fla.workspace.os.name", "nt"),
+            patch.object(Path, "replace", side_effect=PermissionError("locked")),
+            patch("fla.workspace.time.sleep"),
+            pytest.raises(PermissionError),
+        ):
             _replace_with_retry(src, dst)
 
     def test_replace_posix_raises_immediately(self, tmp_path):
@@ -193,13 +216,16 @@ class TestFix4AtomicWriteRetry:
         dst = tmp_path / "dst.txt"
         src.write_text("content")
 
-        with patch("fla.workspace.os.name", "posix"), \
-             patch.object(Path, "replace", side_effect=PermissionError("nope")), \
-             pytest.raises(PermissionError):
+        with (
+            patch("fla.workspace.os.name", "posix"),
+            patch.object(Path, "replace", side_effect=PermissionError("nope")),
+            pytest.raises(PermissionError),
+        ):
             _replace_with_retry(src, dst)
 
 
 # ── Fix 5: wm.list() ignores lockdir/owner.json ─────────────────────
+
 
 class TestFix5ListIgnoresLockdir:
     def test_list_excludes_lockdir_json(self, repo_with_files):
@@ -224,6 +250,7 @@ class TestFix5ListIgnoresLockdir:
 
 # ── Fix 6: PRAGMA busy_timeout ───────────────────────────────────────
 
+
 class TestFix6BusyTimeout:
     def test_busy_timeout_is_set(self, repo_with_files):
         repo = repo_with_files
@@ -232,6 +259,7 @@ class TestFix6BusyTimeout:
 
 
 # ── Fix 7: work() propagates original exception ─────────────────────
+
 
 class TestFix7WorkExceptionShadowing:
     def test_original_exception_propagates_not_cleanup(self, tmp_dir):
@@ -263,6 +291,7 @@ class TestFix7WorkExceptionShadowing:
 
 # ── Fix 8: version strings match ────────────────────────────────────
 
+
 class TestFix8VersionMatch:
     def test_versions_consistent(self):
         import fla
@@ -274,6 +303,7 @@ class TestFix8VersionMatch:
         setup_text = setup_py.read_text()
         # Extract version="X.Y.Z" from setup.py
         import re
+
         m = re.search(r'version="([^"]+)"', setup_text)
         assert m, "Could not find version in setup.py"
         setup_version = m.group(1)
