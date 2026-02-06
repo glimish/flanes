@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fla"
 version = "0.3.0"
-description = "FLA — Feature Lanes for Agents: version control for agentic AI systems"
+description = "Fla: Feature Lanes for Agents - version control for agentic AI systems"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"
@@ -35,7 +35,7 @@ s3 = ["boto3>=1.26"]
 gcs = ["google-cloud-storage>=2.0"]
 remote = ["boto3>=1.26", "google-cloud-storage>=2.0"]
 
-# Entry point groups for plugins — third-party packages register here
+# Entry point groups for plugins - third-party packages register here
 # See docs/guide.md "Writing Plugins" for details
 [project.entry-points."fla.evaluators"]
 # example: my_evaluator = "my_package:evaluate_func"

@@ -1,4 +1,6 @@
-# Fla — Version Control for Agentic AI Systems
+# Fla: Feature Lanes for Agents
+
+**Version Control for Agentic AI Systems**
 
 [![Tests](https://github.com/<owner>/fla/actions/workflows/test.yml/badge.svg)](https://github.com/<owner>/fla/actions/workflows/test.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -68,15 +70,15 @@ pip install fla[gcs]   # Google Cloud Storage
 
 ## Core Concepts
 
-**World States** — Immutable snapshots of the entire project. Agents propose new world states, not diffs.
+**World States:** Immutable snapshots of the entire project. Agents propose new world states, not diffs.
 
-**Intents** — Structured metadata for every change: the instruction, who issued it, cost tracking, and semantic tags.
+**Intents:** Structured metadata for every change: the instruction, who issued it, cost tracking, and semantic tags.
 
-**Transitions** — Proposals to move from one state to another. Must be *evaluated* before acceptance.
+**Transitions:** Proposals to move from one state to another. Must be *evaluated* before acceptance.
 
-**Lanes** — Isolated workstreams. Work is *promoted* into a target lane through evaluation, not merged.
+**Lanes:** Isolated workstreams. Work is *promoted* into a target lane through evaluation, not merged.
 
-**Workspaces** — Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.fla/workspaces/`.
+**Workspaces:** Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.fla/workspaces/`.
 
 ## Architecture
 
@@ -103,24 +105,24 @@ pip install fla[gcs]   # Google Cloud Storage
 
 ## Key Features
 
-- **Git-style main** — repo root IS the main workspace. Files stay where you expect them.
-- **Physical isolation** — feature workspaces are real directories. Parallel agents can't stomp on each other.
-- **Smart incremental updates** — workspace sync writes only changed files, not the entire tree.
-- **Cross-platform locking** — atomic `mkdir` locking works on Linux, macOS, and Windows.
-- **Conflict detection** — promote finds path-level collisions without content merging.
-- **Evaluators** — run pytest, ruff, or custom checks as gates before accepting transitions.
-- **Cost tracking** — per-transition token usage, wall time, and API call counts.
-- **Git bridge** — `fla export-git` / `fla import-git` for CI integration.
-- **Remote storage** — S3/GCS-backed sync for team collaboration.
-- **MCP server** — expose Fla as tools for LLM integration via Model Context Protocol.
-- **REST API** — `fla serve` starts a multi-threaded HTTP API.
-- **Garbage collection** — `fla gc` removes rejected states and unreachable objects.
+- **Git-style main:** repo root IS the main workspace. Files stay where you expect them.
+- **Physical isolation:** feature workspaces are real directories. Parallel agents can't stomp on each other.
+- **Smart incremental updates:** workspace sync writes only changed files, not the entire tree.
+- **Cross-platform locking:** atomic `mkdir` locking works on Linux, macOS, and Windows.
+- **Conflict detection:** promote finds path-level collisions without content merging.
+- **Evaluators:** run pytest, ruff, or custom checks as gates before accepting transitions.
+- **Cost tracking:** per-transition token usage, wall time, and API call counts.
+- **Git bridge:** `fla export-git` / `fla import-git` for CI integration.
+- **Remote storage:** S3/GCS-backed sync for team collaboration.
+- **MCP server:** expose Fla as tools for LLM integration via Model Context Protocol.
+- **REST API:** `fla serve` starts a multi-threaded HTTP API.
+- **Garbage collection:** `fla gc` removes rejected states and unreachable objects.
 
 ## Documentation
 
-- **[User Guide](docs/guide.md)** — comprehensive reference for all features
-- **[Examples](examples/)** — runnable demo scripts
-- **[Contributing](CONTRIBUTING.md)** — development setup and guidelines
+- **[User Guide](docs/guide.md):** comprehensive reference for all features
+- **[Examples](examples/):** runnable demo scripts
+- **[Contributing](CONTRIBUTING.md):** development setup and guidelines
 
 ## Workspace Layout
 
