@@ -326,7 +326,13 @@ class RemoteSyncManager:
 
 
 def create_backend(config: dict) -> RemoteBackend:
-    """Create a remote backend from config."""
+    """Create a remote backend from config.
+
+    Built-in backends: s3, gcs, memory.
+    Additional backends can be registered via the ``vex.storage`` entry point
+    group. Each entry point should be a factory callable that accepts the
+    remote_storage config dict and returns a RemoteBackend instance.
+    """
     remote_config = config.get("remote_storage", {})
     backend_type = remote_config.get("type", "")
 
@@ -344,4 +350,12 @@ def create_backend(config: dict) -> RemoteBackend:
     elif backend_type == "memory":
         return InMemoryBackend()
     else:
-        raise ValueError(f"Unknown remote storage type: {backend_type!r}")
+        # Check plugin backends
+        from .plugins import discover_storage_backends
+        plugins = discover_storage_backends()
+        if backend_type in plugins:
+            return plugins[backend_type](remote_config)
+        raise ValueError(
+            f"Unknown remote storage type: {backend_type!r}. "
+            f"Available plugins: {list(plugins.keys()) or 'none'}"
+        )

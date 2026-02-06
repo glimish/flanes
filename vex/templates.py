@@ -11,60 +11,29 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .serializable import Serializable
+
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class TemplateFile:
+class TemplateFile(Serializable):
     """A file in a template."""
+    _skip_none = True
+
     path: str
     content: str | None = None
     source_hash: str | None = None
 
-    def to_dict(self) -> dict:
-        d = {"path": self.path}
-        if self.content is not None:
-            d["content"] = self.content
-        if self.source_hash is not None:
-            d["source_hash"] = self.source_hash
-        return d
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "TemplateFile":
-        return cls(
-            path=d["path"],
-            content=d.get("content"),
-            source_hash=d.get("source_hash"),
-        )
-
 
 @dataclass
-class WorkspaceTemplate:
+class WorkspaceTemplate(Serializable):
     """A workspace template."""
     name: str
     description: str = ""
-    files: list = field(default_factory=list)
+    files: list[TemplateFile] = field(default_factory=list)
     directories: list = field(default_factory=list)
     vexignore_patterns: list = field(default_factory=list)
-
-    def to_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "description": self.description,
-            "files": [f.to_dict() if isinstance(f, TemplateFile) else f for f in self.files],
-            "directories": self.directories,
-            "vexignore_patterns": self.vexignore_patterns,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "WorkspaceTemplate":
-        return cls(
-            name=d["name"],
-            description=d.get("description", ""),
-            files=[TemplateFile.from_dict(f) for f in d.get("files", [])],
-            directories=d.get("directories", []),
-            vexignore_patterns=d.get("vexignore_patterns", []),
-        )
 
 
 def _validate_name(name: str):

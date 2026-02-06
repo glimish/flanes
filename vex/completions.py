@@ -12,7 +12,7 @@ _vex_completions() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="init status snapshot propose accept reject commit history log trace diff search lanes lane workspace restore info promote show gc doctor completion cat-file export-git import-git serve mcp budget template evaluate semantic-search project remote"
+    commands="init status snapshot propose accept reject commit history log trace diff search lanes lane workspace restore info promote show gc doctor completion cat-file export-git import-git serve mcp budget template evaluate semantic-search project remote ci st sn hist"
     global_flags="--json -j --path -C --verbose -v --quiet -q"
 
     case "${prev}" in
@@ -100,6 +100,10 @@ _vex() {
         'semantic-search:Search intents semantically'
         'project:Multi-repo project management'
         'remote:Remote storage operations'
+        'ci:Alias for commit'
+        'st:Alias for status'
+        'sn:Alias for snapshot'
+        'hist:Alias for history'
     )
 
     global_flags=(
@@ -234,6 +238,10 @@ complete -c vex -n '__fish_use_subcommand' -a evaluate -d 'Run evaluators on a w
 complete -c vex -n '__fish_use_subcommand' -a semantic-search -d 'Search intents semantically'
 complete -c vex -n '__fish_use_subcommand' -a project -d 'Multi-repo project management'
 complete -c vex -n '__fish_use_subcommand' -a remote -d 'Remote storage operations'
+complete -c vex -n '__fish_use_subcommand' -a ci -d 'Alias for commit'
+complete -c vex -n '__fish_use_subcommand' -a st -d 'Alias for status'
+complete -c vex -n '__fish_use_subcommand' -a sn -d 'Alias for snapshot'
+complete -c vex -n '__fish_use_subcommand' -a hist -d 'Alias for history'
 
 # workspace sub-subcommands
 complete -c vex -n '__fish_seen_subcommand_from workspace' -a list -d 'List workspaces'

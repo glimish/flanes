@@ -6,10 +6,13 @@ Cosine similarity search over stored intent embeddings.
 """
 
 import json
+import logging
 import math
 import struct
 import urllib.error
 import urllib.request
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingError(Exception):
@@ -109,9 +112,21 @@ def bytes_to_embedding(data: bytes) -> list:
 
 
 def get_embedding_client(config: dict) -> EmbeddingClient | None:
-    """Create an EmbeddingClient from config, or None if not configured."""
+    """Create an EmbeddingClient from config, or None if not configured.
+
+    API key resolution order:
+        1. VEX_EMBEDDING_API_KEY environment variable
+        2. OPENAI_API_KEY environment variable
+        3. "embedding_api_key" in config dict
+    """
+    import os
+
     api_url = config.get("embedding_api_url")
-    api_key = config.get("embedding_api_key")
+    api_key = (
+        os.environ.get("VEX_EMBEDDING_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+        or config.get("embedding_api_key")
+    )
     model = config.get("embedding_model")
     if not api_url or not api_key or not model:
         return None

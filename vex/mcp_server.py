@@ -2,14 +2,22 @@
 MCP Tool Server for Vex.
 
 JSON-RPC 2.0 over stdio with Content-Length framing (LSP-style, per MCP spec).
+
+Thread safety: A lock serializes access to self.repo, matching the REST server
+pattern. Currently MCP runs over stdio (single-client), but this protects
+against future concurrent request handling.
 """
 
 import json
+import logging
 import sys
+import threading
 from pathlib import Path
 
 from .repo import Repository
 from .state import AgentIdentity
+
+logger = logging.getLogger(__name__)
 
 
 class MCPServer:
@@ -17,6 +25,7 @@ class MCPServer:
 
     def __init__(self, repo_path: Path):
         self.repo = Repository.find(Path(repo_path))
+        self._repo_lock = threading.Lock()
 
     def _define_tools(self) -> list:
         """Return all tool definitions with JSON Schema input schemas."""
@@ -180,7 +189,8 @@ class MCPServer:
             tool_name = params.get("name", "")
             tool_args = params.get("arguments", {})
             try:
-                result = self._call_tool(tool_name, tool_args)
+                with self._repo_lock:
+                    result = self._call_tool(tool_name, tool_args)
                 return {
                     "jsonrpc": "2.0",
                     "id": req_id,

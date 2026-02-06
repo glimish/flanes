@@ -5,6 +5,7 @@ Runs shell commands (pytest, ruff, etc.) as evaluators via subprocess.
 Evaluator configs are stored in .vex/config.json under "evaluators".
 """
 
+import logging
 import os
 import shlex
 import subprocess
@@ -12,11 +13,14 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .serializable import Serializable
 from .state import EvaluationResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class EvaluatorConfig:
+class EvaluatorConfig(Serializable):
     """Configuration for a single evaluator.
 
     Fix #6 from audit: Supports both `command` (string, OS-dependent parsing)
@@ -31,6 +35,7 @@ class EvaluatorConfig:
     timeout_seconds: int = 300
 
     def to_dict(self) -> dict:
+        """Custom to_dict: only includes non-empty args/command."""
         d: dict = {
             "name": self.name,
             "working_directory": self.working_directory,
@@ -43,20 +48,9 @@ class EvaluatorConfig:
             d["command"] = self.command
         return d
 
-    @classmethod
-    def from_dict(cls, d: dict) -> "EvaluatorConfig":
-        return cls(
-            name=d["name"],
-            command=d.get("command", ""),
-            args=d.get("args"),
-            working_directory=d.get("working_directory"),
-            required=d.get("required", True),
-            timeout_seconds=d.get("timeout_seconds", 300),
-        )
-
 
 @dataclass
-class EvaluatorResult:
+class EvaluatorResult(Serializable):
     """Result from running a single evaluator."""
     name: str
     passed: bool
@@ -64,16 +58,6 @@ class EvaluatorResult:
     stdout: str
     stderr: str
     duration_ms: float
-
-    def to_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "passed": self.passed,
-            "returncode": self.returncode,
-            "stdout": self.stdout,
-            "stderr": self.stderr,
-            "duration_ms": self.duration_ms,
-        }
 
 
 def load_evaluators(config: dict) -> list:
@@ -154,13 +138,55 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
         )
 
 
+def run_plugin_evaluators(workspace_path: Path) -> list[EvaluatorResult]:
+    """Discover and run evaluator plugins (Python callables).
+
+    Plugin evaluators are discovered via the ``vex.evaluators`` entry point
+    group. Each must be a callable that accepts a workspace Path and returns
+    an EvaluatorResult.
+    """
+    from .plugins import discover_evaluators
+
+    results = []
+    plugins = discover_evaluators()
+    for name, func in plugins.items():
+        start = time.monotonic()
+        try:
+            result = func(workspace_path)
+            if not isinstance(result, EvaluatorResult):
+                result = EvaluatorResult(
+                    name=name,
+                    passed=bool(result),
+                    returncode=0 if result else 1,
+                    stdout=str(result),
+                    stderr="",
+                    duration_ms=(time.monotonic() - start) * 1000,
+                )
+        except Exception as e:
+            result = EvaluatorResult(
+                name=name,
+                passed=False,
+                returncode=-1,
+                stdout="",
+                stderr=str(e),
+                duration_ms=(time.monotonic() - start) * 1000,
+            )
+        results.append(result)
+    return results
+
+
 def run_all_evaluators(evaluators: list, workspace_path: Path) -> EvaluationResult:
-    """Run all evaluators and return an aggregate EvaluationResult."""
+    """Run all evaluators and return an aggregate EvaluationResult.
+
+    Runs both configured shell-command evaluators and discovered plugin
+    evaluators (via ``vex.evaluators`` entry points).
+    """
     results = []
     checks = {}
     all_passed = True
     total_duration = 0.0
 
+    # Run configured shell-command evaluators
     for evaluator in evaluators:
         result = run_evaluator(evaluator, workspace_path)
         results.append(result)
@@ -168,6 +194,15 @@ def run_all_evaluators(evaluators: list, workspace_path: Path) -> EvaluationResu
         total_duration += result.duration_ms
 
         if not result.passed and evaluator.required:
+            all_passed = False
+
+    # Run discovered plugin evaluators
+    plugin_results = run_plugin_evaluators(workspace_path)
+    for result in plugin_results:
+        results.append(result)
+        checks[result.name] = result.passed
+        total_duration += result.duration_ms
+        if not result.passed:
             all_passed = False
 
     summaries = []

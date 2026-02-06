@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vex Viewer</title>
+  <link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>Vex</h1>
+      <span class="status-pill">Connecting...</span>
+    </header>
+
+    <nav class="sidebar">
+      <h3>Navigation</h3>
+      <ul>
+        <li data-view="dashboard" onclick="showDashboard()">Dashboard</li>
+      </ul>
+
+      <h3>Lanes</h3>
+      <ul class="lane-list">
+        <li style="color:var(--text-muted);font-size:12px">Loading...</li>
+      </ul>
+    </nav>
+
+    <main class="content">
+      <div class="loading">Loading...</div>
+    </main>
+  </div>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>

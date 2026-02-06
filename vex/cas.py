@@ -14,6 +14,7 @@ rather than individual file tracking.
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 import tempfile
@@ -22,6 +23,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class ObjectType(Enum):

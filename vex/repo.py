@@ -29,6 +29,7 @@ modify another agent's work.
 """
 
 import json
+import logging
 import time
 import uuid
 from pathlib import Path
@@ -51,7 +52,21 @@ from .state import (
 )
 from .workspace import WorkspaceInfo, WorkspaceManager
 
+logger = logging.getLogger(__name__)
+
 REPO_DIR_NAME = ".vex"
+
+# Current config version — bump when the config schema changes
+CONFIG_VERSION = "0.3.0"
+
+# Known config keys for validation
+KNOWN_CONFIG_KEYS = frozenset({
+    "version", "default_lane", "created_at",
+    "max_blob_size", "max_tree_depth", "blob_threshold",
+    "evaluators", "remote_storage",
+    "embedding_api_url", "embedding_api_key", "embedding_model", "embedding_dimensions",
+    "api_token", "git_coexistence",
+})
 
 
 class NotARepository(ValueError):  # noqa: N818
@@ -83,6 +98,8 @@ class Repository:
             )
 
         config = self._read_config()
+        self._validate_config(config)
+
         blob_threshold = config.get("blob_threshold", 0)
         max_blob_size = config.get("max_blob_size", 0)
         max_tree_depth = config.get("max_tree_depth", 0)
@@ -106,6 +123,7 @@ class Repository:
         self.wsm = WorldStateManager(
             self.store, self.db_path, max_tree_depth=max_tree_depth)
         self.wm = WorkspaceManager(self.vex_dir, self.wsm)
+        self._hooks = None  # Lazy-loaded plugin hooks
 
     # Template for .vexignore file created on init
     VEXIGNORE_TEMPLATE = """\
@@ -151,13 +169,17 @@ class Repository:
             raise ValueError(f"Repository already exists at {root}")
 
         vex_dir.mkdir(parents=True)
-        (vex_dir / "config.json").write_text(json.dumps({
-            "version": "0.3.0",  # Bump version for git-style main
+        git_detected = (root / ".git").exists()
+        config_data = {
+            "version": CONFIG_VERSION,
             "default_lane": initial_lane,
             "created_at": time.time(),
             "max_blob_size": 100 * 1024 * 1024,  # 100 MB default
             "max_tree_depth": 100,  # 100 levels default
-        }, indent=2))
+        }
+        if git_detected:
+            config_data["git_coexistence"] = True
+        (vex_dir / "config.json").write_text(json.dumps(config_data, indent=2))
 
         # Auto-create .vexignore if it doesn't exist
         vexignore_path = root / ".vexignore"
@@ -236,6 +258,7 @@ class Repository:
 
     def workspace_remove(self, name: str, force: bool = False):
         """Remove a workspace."""
+        logger.info("Removing workspace '%s' (force=%s)", name, force)
         self.wm.remove(name, force=force)
 
     def workspace_update(self, name: str, state_id: str | None = None) -> dict:
@@ -289,6 +312,26 @@ class Repository:
 
         return self.wsm.snapshot_directory(info.path, parent_id)
 
+    def _fire_hooks(self, event: str, context: dict) -> None:
+        """Fire lifecycle hooks for a given event.
+
+        Hooks are discovered via the ``vex.hooks`` entry point group.
+        Each hook is called with the event name and a context dict.
+        Hook failures are logged but never block the operation.
+        """
+        if self._hooks is None:
+            from .plugins import discover_hooks
+            self._hooks = discover_hooks()
+
+        for name, hook_fn in self._hooks.items():
+            try:
+                hook_fn(event, context)
+            except Exception:
+                logger.warning(
+                    "Hook %s failed for event %s", name, event,
+                    exc_info=True,
+                )
+
     def propose(
         self,
         from_state: str | None,
@@ -327,7 +370,16 @@ class Repository:
             for w in budget_status.warnings:
                 print(f"Budget warning ({lane}): {w} approaching limit", file=sys.stderr)
 
-        return self.wsm.propose(from_state, to_state, intent, lane, cost)
+        self._fire_hooks("pre_propose", {
+            "lane": lane, "from_state": from_state, "to_state": to_state,
+            "prompt": prompt, "agent": agent.to_dict(),
+        })
+        tid = self.wsm.propose(from_state, to_state, intent, lane, cost)
+        self._fire_hooks("post_propose", {
+            "lane": lane, "transition_id": tid,
+            "from_state": from_state, "to_state": to_state,
+        })
+        return tid
 
     def accept(
         self,
@@ -342,6 +394,7 @@ class Repository:
         also updates the source lane's fork_base so subsequent promotes
         compute deltas correctly.
         """
+        self._fire_hooks("pre_accept", {"transition_id": transition_id})
         result = EvaluationResult(
             passed=True,
             evaluator=evaluator,
@@ -374,11 +427,14 @@ class Repository:
                                 self.wsm.conn.commit()
                                 break
             except Exception:
-                import logging
-                logging.getLogger(__name__).warning(
+                logger.warning(
                     "Failed to update fork_base after accept", exc_info=True
                 )
 
+        self._fire_hooks("post_accept", {
+            "transition_id": transition_id,
+            "status": status.value,
+        })
         return status
 
     def reject(
@@ -389,13 +445,19 @@ class Repository:
         checks: dict[str, bool] | None = None,
     ) -> TransitionStatus:
         """Reject a proposed transition (evaluation failed)."""
+        self._fire_hooks("pre_reject", {"transition_id": transition_id})
         result = EvaluationResult(
             passed=False,
             evaluator=evaluator,
             checks=checks or {},
             summary=summary,
         )
-        return self.wsm.evaluate(transition_id, result)
+        status = self.wsm.evaluate(transition_id, result)
+        self._fire_hooks("post_reject", {
+            "transition_id": transition_id,
+            "status": status.value,
+        })
+        return status
 
     def quick_commit(
         self,
@@ -415,10 +477,6 @@ class Repository:
         only produce warnings (they don't block the accept). This ensures
         evaluation data is captured even for auto-accepted commits.
         """
-        import logging
-
-        logger = logging.getLogger(__name__)
-
         info = self.wm.get(workspace)
         if info is None:
             raise ValueError(f"Workspace '{workspace}' not found")
@@ -910,6 +968,30 @@ class Repository:
         if config_path.exists():
             return json.loads(config_path.read_text())
         return {}
+
+    @staticmethod
+    def _validate_config(config: dict) -> None:
+        """Validate config version and warn on unknown keys."""
+        repo_version = config.get("version")
+        if repo_version:
+            # Refuse to open repos from a future version
+            if repo_version > CONFIG_VERSION:
+                raise ValueError(
+                    f"Repository config version {repo_version} is newer than "
+                    f"this version of Vex ({CONFIG_VERSION}). "
+                    f"Please upgrade Vex to open this repository."
+                )
+            # Run migrations for older versions
+            if repo_version < CONFIG_VERSION:
+                logger.info(
+                    "Repository config version %s is older than current %s",
+                    repo_version, CONFIG_VERSION,
+                )
+
+        # Warn on unknown keys (don't reject — forward compatibility)
+        unknown_keys = set(config.keys()) - KNOWN_CONFIG_KEYS
+        if unknown_keys:
+            logger.warning("Unknown config keys (ignored): %s", ", ".join(sorted(unknown_keys)))
 
     def _default_lane(self) -> str:
         config_path = self.vex_dir / "config.json"

@@ -5,6 +5,7 @@ All git operations use subprocess calls to the git CLI.
 No gitpython dependency required.
 """
 
+import logging
 import os
 import shutil
 import subprocess
@@ -13,6 +14,8 @@ from pathlib import Path
 
 from .repo import Repository
 from .state import AgentIdentity, EvaluationResult, Intent
+
+logger = logging.getLogger(__name__)
 
 GIT_TIMEOUT_SECONDS = 60
 

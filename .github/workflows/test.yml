@@ -6,6 +6,28 @@ on:
   pull_request:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        run: ruff check vex/ tests/
+
+      - name: Check formatting with ruff
+        run: ruff format --check vex/ tests/
+
+      - name: Type check with mypy
+        run: mypy vex/
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -25,5 +47,33 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
 
-      - name: Run tests
-        run: python -X utf8 -m pytest tests/ -v
+      - name: Run fast tests
+        run: python -X utf8 -m pytest tests/ -v -m "not stress and not slow"
+
+      - name: Run slow tests
+        run: python -X utf8 -m pytest tests/ -v -m "stress or slow"
+
+      - name: Run example smoke test
+        run: python -X utf8 examples/agent_workflow.py
+
+  benchmark:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Benchmark snapshots
+        run: python -X utf8 -m benchmarks.bench_snapshot --files 1000 --rounds 3 --json
+
+      - name: Benchmark throughput
+        run: python -X utf8 -m benchmarks.bench_throughput --scenario snapshot --files 100 500 1000 --json

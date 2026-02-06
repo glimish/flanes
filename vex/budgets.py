@@ -7,11 +7,16 @@ under the "budget" key — no schema change required.
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
+
+from .serializable import Serializable
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class BudgetConfig:
+class BudgetConfig(Serializable):
     """Budget limits for a lane."""
     max_tokens_in: int | None = None
     max_tokens_out: int | None = None
@@ -19,28 +24,9 @@ class BudgetConfig:
     max_wall_time_ms: float | None = None
     alert_threshold_pct: float = 80.0
 
-    def to_dict(self) -> dict:
-        return {
-            "max_tokens_in": self.max_tokens_in,
-            "max_tokens_out": self.max_tokens_out,
-            "max_api_calls": self.max_api_calls,
-            "max_wall_time_ms": self.max_wall_time_ms,
-            "alert_threshold_pct": self.alert_threshold_pct,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "BudgetConfig":
-        return cls(
-            max_tokens_in=d.get("max_tokens_in"),
-            max_tokens_out=d.get("max_tokens_out"),
-            max_api_calls=d.get("max_api_calls"),
-            max_wall_time_ms=d.get("max_wall_time_ms"),
-            alert_threshold_pct=d.get("alert_threshold_pct", 80.0),
-        )
-
 
 @dataclass
-class BudgetStatus:
+class BudgetStatus(Serializable):
     """Current budget usage and status."""
     config: BudgetConfig
     total_tokens_in: int = 0
@@ -49,17 +35,6 @@ class BudgetStatus:
     total_wall_time_ms: float = 0.0
     warnings: list = field(default_factory=list)
     exceeded: list = field(default_factory=list)
-
-    def to_dict(self) -> dict:
-        return {
-            "config": self.config.to_dict(),
-            "total_tokens_in": self.total_tokens_in,
-            "total_tokens_out": self.total_tokens_out,
-            "total_api_calls": self.total_api_calls,
-            "total_wall_time_ms": self.total_wall_time_ms,
-            "warnings": self.warnings,
-            "exceeded": self.exceeded,
-        }
 
 
 class BudgetError(Exception):

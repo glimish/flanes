@@ -329,3 +329,95 @@ class TestCLIErrorPaths:
     def test_restore_invalid_state(self, repo_dir):
         rc, out, err = run_vex("restore", "bad-state-id", "--force", cwd=repo_dir, expect_fail=True)
         assert rc == 1
+
+
+class TestGitCoexistence:
+    """Test that vex init detects existing Git repos and provides guidance."""
+
+    def test_init_in_git_repo(self, tmp_path):
+        """vex init in a git repo should print a note about .gitignore."""
+        (tmp_path / ".git").mkdir()
+        rc, out, err = run_vex("init", cwd=tmp_path)
+        assert rc == 0
+        assert "Git repository" in out
+        assert ".gitignore" in out
+
+    def test_init_json_git_detected(self, tmp_path):
+        """vex init --json in a git repo should include git_detected field."""
+        (tmp_path / ".git").mkdir()
+        rc, out, err = run_vex("--json", "init", cwd=tmp_path)
+        assert rc == 0
+        data = json.loads(out)
+        assert data.get("git_detected") is True
+
+    def test_init_no_git(self, tmp_path):
+        """vex init without .git/ should not mention git."""
+        rc, out, err = run_vex("init", cwd=tmp_path)
+        assert rc == 0
+        assert "Git repository" not in out
+
+    def test_init_json_no_git(self, tmp_path):
+        """vex init --json without .git/ should not include git_detected."""
+        rc, out, err = run_vex("--json", "init", cwd=tmp_path)
+        assert rc == 0
+        data = json.loads(out)
+        assert "git_detected" not in data
+
+
+class TestCLIPolish:
+    """Test CLI polish features: version, aliases, did-you-mean, error hints."""
+
+    def test_version_flag(self, empty_dir):
+        """vex --version should print the version string."""
+        rc, out, err = run_vex("--version", cwd=empty_dir)
+        assert rc == 0
+        assert "vex" in out
+        assert "0." in out  # version starts with 0.x
+
+    def test_version_short_flag(self, empty_dir):
+        """vex -V should also print the version."""
+        rc, out, err = run_vex("-V", cwd=empty_dir)
+        assert rc == 0
+        assert "vex" in out
+
+    def test_alias_ci(self, repo_dir):
+        """vex ci should resolve to commit."""
+        rc, out, err = run_vex(
+            "ci", "-m", "alias test",
+            "--agent-id", "test", "--agent-type", "human",
+            "--auto-accept", cwd=repo_dir,
+        )
+        assert rc == 0
+
+    def test_alias_st(self, repo_dir):
+        """vex st should resolve to status."""
+        rc, out, err = run_vex("st", cwd=repo_dir)
+        assert rc == 0
+
+    def test_alias_sn(self, repo_dir):
+        """vex sn should resolve to snapshot."""
+        rc, out, err = run_vex("sn", cwd=repo_dir)
+        assert rc == 0
+
+    def test_alias_hist(self, repo_dir):
+        """vex hist should resolve to history."""
+        rc, out, err = run_vex("hist", cwd=repo_dir)
+        assert rc == 0
+
+    def test_did_you_mean(self, empty_dir):
+        """Misspelled command should suggest correct one."""
+        rc, out, err = run_vex("statu", cwd=empty_dir, expect_fail=True)
+        assert rc == 1
+        assert "did you mean" in err.lower() or "Did you mean" in err
+
+    def test_did_you_mean_commit(self, empty_dir):
+        """vex comit should suggest commit."""
+        rc, out, err = run_vex("comit", cwd=empty_dir, expect_fail=True)
+        assert rc == 1
+        assert "commit" in err
+
+    def test_grouped_help(self, empty_dir):
+        """vex with no args should show grouped command help."""
+        rc, out, err = run_vex(cwd=empty_dir, expect_fail=True)
+        assert rc == 1
+        assert "Core:" in out or "Core:" in err
