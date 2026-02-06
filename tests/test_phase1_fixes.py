@@ -85,7 +85,8 @@ class TestFix2PromoteUpdatesForkBase:
         # fork_base should now be the promoted state
         fork_base = repo.wsm.get_lane_fork_base("feature-a")
         assert fork_base == new_state, (
-            f"fork_base should advance to {new_state[:12]}, got {fork_base[:12] if fork_base else None}"
+            f"fork_base should advance to {new_state[:12]}, "
+            f"got {fork_base[:12] if fork_base else None}"
         )
 
         # Second promote with no new changes should still work (no false conflicts)
@@ -138,9 +139,15 @@ class TestFix3FlaignoreFnmatch:
         """Test Fix #3: Path-based ignore patterns."""
         ignore = frozenset({"build/output/*", "docs/generated/*"})
         # Path patterns should match relative paths
-        assert WorldStateManager._should_ignore("file.json", "build/output/file.json", ignore) is True
-        assert WorldStateManager._should_ignore("file.json", "src/file.json", ignore) is False
-        assert WorldStateManager._should_ignore("readme.md", "docs/generated/readme.md", ignore) is True
+        assert WorldStateManager._should_ignore(
+            "file.json", "build/output/file.json", ignore,
+        ) is True
+        assert WorldStateManager._should_ignore(
+            "file.json", "src/file.json", ignore,
+        ) is False
+        assert WorldStateManager._should_ignore(
+            "readme.md", "docs/generated/readme.md", ignore,
+        ) is True
 
 
 # ── Fix 4: _atomic_write retries on Windows PermissionError ─────────

@@ -150,8 +150,8 @@ def test_concurrent_workspace_locking(repo):
             # Hold the lock briefly
             time.sleep(0.1)
 
-            # Clean up
-            session._workspace_lock.release()
+            # Clean up properly
+            session.end()
 
         except Exception:
             with lock:
@@ -165,7 +165,7 @@ def test_concurrent_workspace_locking(repo):
         thread.start()
 
     for thread in threads:
-        thread.join()
+        thread.join(timeout=30)
 
     # At most one should succeed at a time due to locking
     # (This test might need adjustment based on exact locking implementation)

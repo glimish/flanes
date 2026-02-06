@@ -333,7 +333,7 @@ class RemoteSyncManager:
         """
         if lanes is None:
             lane_rows = wsm.list_lanes()
-            lanes = [l["name"] for l in lane_rows]
+            lanes = [row["name"] for row in lane_rows]
 
         pushed = 0
         for lane_name in lanes:

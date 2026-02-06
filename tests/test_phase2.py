@@ -96,7 +96,9 @@ class TestNegationPatterns:
         negate = frozenset({"important.log"})
         # Updated signature: _should_ignore(name, rel_path, ignore, negate)
         assert WorldStateManager._should_ignore("debug.log", "debug.log", ignore, negate) is True
-        assert WorldStateManager._should_ignore("important.log", "important.log", ignore, negate) is False
+        assert WorldStateManager._should_ignore(
+            "important.log", "important.log", ignore, negate,
+        ) is False
         assert WorldStateManager._should_ignore("app.py", "app.py", ignore, negate) is False
 
 

@@ -72,7 +72,9 @@ def test_full_workflow():
         main_ws_path = repo.workspace_path("main")
         assert main_ws_path is not None, "Main workspace should exist"
         # Use resolve() to handle Windows 8.3 short path names (e.g., RUNNER~1 vs runneradmin)
-        assert main_ws_path.resolve() == test_dir.resolve(), "Main workspace should BE the repo root"
+        assert main_ws_path.resolve() == test_dir.resolve(), (
+            "Main workspace should BE the repo root"
+        )
         assert (test_dir / "main.py").exists(), "Files should stay at repo root"
         assert (main_ws_path / "main.py").exists(), "Files accessible via workspace path"
         print(f"✓ Main workspace is repo root (git-style): {main_ws_path}")
@@ -242,7 +244,10 @@ def test_full_workflow():
             model="claude-sonnet-4-20250514",
         )
 
-        with session.work("Refactor auth to use hashed passwords", tags=["refactor", "security"], auto_accept=True) as w:
+        with session.work(
+            "Refactor auth to use hashed passwords",
+            tags=["refactor", "security"], auto_accept=True,
+        ) as w:
             w.record_tokens(tokens_in=2000, tokens_out=1200)
             w.add_metadata("files_touched", ["lib/auth.py"])
 
@@ -377,7 +382,9 @@ def test_full_workflow():
         # Create a new lane from current main, modify README.md there
         repo.create_lane("feature-docs", repo.head("main"))
         docs_ws_path = repo.workspace_path("feature-docs")
-        (docs_ws_path / "README.md").write_text("# My Project (docs branch)\nUpdated by docs team.\n")
+        (docs_ws_path / "README.md").write_text(
+            "# My Project (docs branch)\nUpdated by docs team.\n"
+        )
         repo.quick_commit(
             workspace="feature-docs",
             prompt="Update README with docs info",
@@ -386,7 +393,9 @@ def test_full_workflow():
         )
 
         # Also modify README.md on main
-        (main_ws_path / "README.md").write_text("# My Project (main branch)\nUpdated by main team.\n")
+        (main_ws_path / "README.md").write_text(
+            "# My Project (main branch)\nUpdated by main team.\n"
+        )
         repo.quick_commit(
             workspace="main",
             prompt="Update README on main",

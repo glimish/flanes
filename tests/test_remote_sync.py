@@ -65,7 +65,10 @@ class TestRemotePushPull:
         for h, t in rows_a:
             obj_b = repo_b.store.retrieve(h)
             assert obj_b is not None, f"Missing object {h} (type={t}) after pull"
-            assert obj_b.type == ObjectType(t), f"Type mismatch for {h}: expected {t}, got {obj_b.type.value}"
+            assert obj_b.type == ObjectType(t), (
+                f"Type mismatch for {h}: expected {t}, "
+                f"got {obj_b.type.value}"
+            )
 
     def test_push_preserves_all_object_types(self, repo_pair):
         """Push uploads blobs, trees, and states with type prefixes."""
@@ -289,7 +292,7 @@ class TestMetadataSync:
         assert len(feature_conflicts) == 0
 
         # Repo B should now know about feature-a lane
-        lanes_b = {l["name"] for l in repo_b.wsm.list_lanes()}
+        lanes_b = {row["name"] for row in repo_b.wsm.list_lanes()}
         assert "feature-a" in lanes_b
 
     def test_metadata_idempotent(self, repo_pair):
@@ -299,7 +302,7 @@ class TestMetadataSync:
         sync_a.push()
         sync_a.push_metadata(repo_a.wsm)
         sync_b.pull()
-        result1 = sync_b.pull_metadata(repo_b.wsm)
+        _ = sync_b.pull_metadata(repo_b.wsm)
 
         # Pull again — should import nothing new
         result2 = sync_b.pull_metadata(repo_b.wsm)

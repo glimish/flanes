@@ -429,7 +429,9 @@ def cmd_trace(args):
                 for i, entry in enumerate(lineage):
                     connector = "  ├─" if i < len(lineage) - 1 else "  └─"
                     prefix = "  │ " if i < len(lineage) - 1 else "    "
-                    print(f"{connector} {short_hash(entry['to_state'])} ← {short_hash(entry['from_state'])}")
+                    to_h = short_hash(entry['to_state'])
+                    from_h = short_hash(entry['from_state'])
+                    print(f"{connector} {to_h} ← {from_h}")
                     agent = entry['agent']
                     print(f"{prefix}   {agent['agent_id']} ({agent['agent_type']})")
                     print(f"{prefix}   {entry['intent_prompt'][:80]}")
@@ -450,39 +452,57 @@ def cmd_diff(args):
             if show_content:
                 content_diffs = []
                 for path in sorted(result.get("added", {})):
-                    blob_hash = result["added"][path] if isinstance(result["added"], dict) else None
+                    added = result["added"]
+                    blob_hash = added[path] if isinstance(added, dict) else None
                     if blob_hash:
                         lines = _blob_lines(repo.store, blob_hash)
                         if lines is None:
-                            content_diffs.append({"path": path, "type": "added", "diff": f"Binary file {path} differs"})
+                            diff = f"Binary file {path} differs"
                         else:
-                            diff_text = ''.join(difflib.unified_diff([], lines, fromfile='/dev/null', tofile=f'b/{path}'))
-                            content_diffs.append({"path": path, "type": "added", "diff": diff_text})
+                            diff = ''.join(difflib.unified_diff(
+                                [], lines,
+                                fromfile='/dev/null', tofile=f'b/{path}',
+                            ))
                     else:
-                        content_diffs.append({"path": path, "type": "added", "diff": ""})
+                        diff = ""
+                    content_diffs.append(
+                        {"path": path, "type": "added", "diff": diff}
+                    )
                 for path in sorted(result.get("removed", {})):
-                    blob_hash = result["removed"][path] if isinstance(result["removed"], dict) else None
+                    removed = result["removed"]
+                    blob_hash = removed[path] if isinstance(removed, dict) else None
                     if blob_hash:
                         lines = _blob_lines(repo.store, blob_hash)
                         if lines is None:
-                            content_diffs.append({"path": path, "type": "removed", "diff": f"Binary file {path} differs"})
+                            diff = f"Binary file {path} differs"
                         else:
-                            diff_text = ''.join(difflib.unified_diff(lines, [], fromfile=f'a/{path}', tofile='/dev/null'))
-                            content_diffs.append({"path": path, "type": "removed", "diff": diff_text})
+                            diff = ''.join(difflib.unified_diff(
+                                lines, [],
+                                fromfile=f'a/{path}', tofile='/dev/null',
+                            ))
                     else:
-                        content_diffs.append({"path": path, "type": "removed", "diff": ""})
+                        diff = ""
+                    content_diffs.append(
+                        {"path": path, "type": "removed", "diff": diff}
+                    )
                 for path in sorted(result.get("modified", {})):
-                    mod = result["modified"][path] if isinstance(result["modified"], dict) else None
+                    modified = result["modified"]
+                    mod = modified[path] if isinstance(modified, dict) else None
                     if mod and isinstance(mod, dict):
                         old_lines = _blob_lines(repo.store, mod.get("before", ""))
                         new_lines = _blob_lines(repo.store, mod.get("after", ""))
                         if old_lines is None or new_lines is None:
-                            content_diffs.append({"path": path, "type": "modified", "diff": f"Binary file {path} differs"})
+                            diff = f"Binary file {path} differs"
                         else:
-                            diff_text = ''.join(difflib.unified_diff(old_lines, new_lines, fromfile=f'a/{path}', tofile=f'b/{path}'))
-                            content_diffs.append({"path": path, "type": "modified", "diff": diff_text})
+                            diff = ''.join(difflib.unified_diff(
+                                old_lines, new_lines,
+                                fromfile=f'a/{path}', tofile=f'b/{path}',
+                            ))
                     else:
-                        content_diffs.append({"path": path, "type": "modified", "diff": ""})
+                        diff = ""
+                    content_diffs.append(
+                        {"path": path, "type": "modified", "diff": diff}
+                    )
                 data["content_diffs"] = content_diffs
             print_json(data)
         else:
@@ -572,8 +592,11 @@ def cmd_lanes(args):
             for lane in lanes:
                 marker = "→" if lane["head_state"] == head else " "
                 ts = format_time(lane["created_at"])
-                fork = f"  fork:{short_hash(lane.get('fork_base'))}" if lane.get("fork_base") else ""
-                print(f"  {marker} {lane['name']}: {short_hash(lane['head_state'])}{fork}  (created {ts})")
+                fork_base = lane.get("fork_base")
+                fork = f"  fork:{short_hash(fork_base)}" if fork_base else ""
+                head = short_hash(lane['head_state'])
+                name = lane['name']
+                print(f"  {marker} {name}: {head}{fork}  (created {ts})")
 
 
 def cmd_lane_create(args):
@@ -928,7 +951,10 @@ def cmd_doctor(args):
             if repo_version != _fla_pkg.__version__:
                 findings.append({
                     "check": "version_mismatch",
-                    "detail": f"Repository version '{repo_version}' differs from fla version '{_fla_pkg.__version__}'",
+                    "detail": (
+                        f"Repository version '{repo_version}' differs"
+                        f" from fla version '{_fla_pkg.__version__}'"
+                    ),
                     "fixable": False,
                 })
 
@@ -1038,7 +1064,10 @@ def cmd_cat_file(args):
                     for name, entry in entries:
                         typ, h = entry[0], entry[1]
                         mode = entry[2] if len(entry) > 2 else (0o755 if typ == "tree" else 0o644)
-                        result_entries.append({"name": name, "type": typ, "hash": h, "mode": oct(mode)})
+                        result_entries.append({
+                            "name": name, "type": typ,
+                            "hash": h, "mode": oct(mode),
+                        })
                     print_json({
                         "hash": obj.hash,
                         "type": "tree",
@@ -1131,19 +1160,24 @@ def cmd_budget_show(args):
                 print(f"No budget configured for lane '{lane}'.")
             else:
                 print(f"Budget for lane '{lane}':")
-                cfg = status.config
-                if cfg.max_tokens_in is not None:
-                    pct = (status.total_tokens_in / cfg.max_tokens_in * 100) if cfg.max_tokens_in else 0
-                    print(f"  Tokens in:  {status.total_tokens_in:,} / {cfg.max_tokens_in:,} ({pct:.1f}%)")
-                if cfg.max_tokens_out is not None:
-                    pct = (status.total_tokens_out / cfg.max_tokens_out * 100) if cfg.max_tokens_out else 0
-                    print(f"  Tokens out: {status.total_tokens_out:,} / {cfg.max_tokens_out:,} ({pct:.1f}%)")
-                if cfg.max_api_calls is not None:
-                    pct = (status.total_api_calls / cfg.max_api_calls * 100) if cfg.max_api_calls else 0
-                    print(f"  API calls:  {status.total_api_calls:,} / {cfg.max_api_calls:,} ({pct:.1f}%)")
-                if cfg.max_wall_time_ms is not None:
-                    pct = (status.total_wall_time_ms / cfg.max_wall_time_ms * 100) if cfg.max_wall_time_ms else 0
-                    print(f"  Wall time:  {status.total_wall_time_ms:,.0f}ms / {cfg.max_wall_time_ms:,.0f}ms ({pct:.1f}%)")
+                c = status.config
+                s = status
+
+                def _budget_line(label, used, limit, fmt=","):
+                    p = (used / limit * 100) if limit else 0
+                    print(f"  {label}{used:{fmt}} / {limit:{fmt}} ({p:.1f}%)")
+
+                if c.max_tokens_in is not None:
+                    _budget_line("Tokens in:  ", s.total_tokens_in, c.max_tokens_in)
+                if c.max_tokens_out is not None:
+                    _budget_line("Tokens out: ", s.total_tokens_out, c.max_tokens_out)
+                if c.max_api_calls is not None:
+                    _budget_line("API calls:  ", s.total_api_calls, c.max_api_calls)
+                if c.max_wall_time_ms is not None:
+                    _budget_line(
+                        "Wall time:  ", s.total_wall_time_ms,
+                        c.max_wall_time_ms, fmt=",.0f",
+                    )
                 if status.warnings:
                     print(f"  Warnings:   {', '.join(status.warnings)}")
                 if status.exceeded:

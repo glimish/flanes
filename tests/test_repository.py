@@ -234,6 +234,6 @@ class TestInstanceLock:
         repo.close()
 
         lock_path = project / ".fla" / "instance.lock"
-        with Repository(project) as r:
+        with Repository(project) as _:
             assert lock_path.exists()
         assert not lock_path.exists()

@@ -350,8 +350,16 @@ class TestEvaluators:
     def test_required_vs_optional(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_all_evaluators
         evaluators = [
-            EvaluatorConfig(name="required-pass", command=f"{sys.executable} -c \"exit(0)\"", required=True),
-            EvaluatorConfig(name="optional-fail", command=f"{sys.executable} -c \"exit(1)\"", required=False),
+            EvaluatorConfig(
+                name="required-pass",
+                command=f"{sys.executable} -c \"exit(0)\"",
+                required=True,
+            ),
+            EvaluatorConfig(
+                name="optional-fail",
+                command=f"{sys.executable} -c \"exit(1)\"",
+                required=False,
+            ),
         ]
         result = run_all_evaluators(evaluators, tmp_path)
         # Overall should pass because the required one passed
@@ -362,8 +370,16 @@ class TestEvaluators:
     def test_required_fail_overall_fail(self, tmp_path):
         from fla.evaluators import EvaluatorConfig, run_all_evaluators
         evaluators = [
-            EvaluatorConfig(name="required-fail", command=f"{sys.executable} -c \"exit(1)\"", required=True),
-            EvaluatorConfig(name="optional-pass", command=f"{sys.executable} -c \"exit(0)\"", required=False),
+            EvaluatorConfig(
+                name="required-fail",
+                command=f"{sys.executable} -c \"exit(1)\"",
+                required=True,
+            ),
+            EvaluatorConfig(
+                name="optional-pass",
+                command=f"{sys.executable} -c \"exit(0)\"",
+                required=False,
+            ),
         ]
         result = run_all_evaluators(evaluators, tmp_path)
         assert result.passed is False

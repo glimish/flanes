@@ -84,7 +84,10 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
                 passed=False,
                 returncode=-1,
                 stdout="",
-                stderr=f"Evaluator working_directory '{evaluator.working_directory}' escapes workspace",
+                stderr=(
+                    f"Evaluator working_directory"
+                    f" '{evaluator.working_directory}' escapes workspace"
+                ),
                 duration_ms=0.0,
             )
 
