@@ -11,6 +11,7 @@ Tests multiple agents working concurrently with:
 Run with: pytest tests/test_concurrent_agents.py -v
 """
 
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -120,6 +121,10 @@ def test_concurrent_proposals(repo):
     assert len(set(tids)) == num_agents, "All transition IDs should be unique"
 
 
+@pytest.mark.skipif(
+    os.name == "nt",
+    reason="Windows filesystem locking semantics cause hangs with concurrent mkdir/rmdir",
+)
 def test_concurrent_workspace_locking(repo):
     """Test that workspace locking prevents concurrent modifications.
 
