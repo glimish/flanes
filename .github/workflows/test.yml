@@ -46,14 +46,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev]" pytest-timeout
+        run: pip install -e ".[dev]"
 
       - name: Run fast tests
-        run: python -X utf8 -m pytest tests/ -v -m "not stress and not slow" --timeout=120
+        run: python -X utf8 -m pytest tests/ -v -m "not stress and not slow"
         timeout-minutes: 10
 
       - name: Run slow tests
-        run: python -X utf8 -m pytest tests/ -v -m "stress or slow" --timeout=300
+        run: python -X utf8 -m pytest tests/ -v -m "stress or slow"
         timeout-minutes: 15
 
       - name: Run example smoke test
