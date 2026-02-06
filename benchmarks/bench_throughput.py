@@ -28,8 +28,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from vex.repo import Repository
-from vex.state import AgentIdentity
+from fla.repo import Repository
+from fla.state import AgentIdentity
 
 
 def percentile(data, p):
@@ -65,7 +65,7 @@ def bench_snapshot_latency(file_counts=None, samples=20):
     results = {}
 
     for count in file_counts:
-        tmpdir = Path(tempfile.mkdtemp(prefix="vex_bench_"))
+        tmpdir = Path(tempfile.mkdtemp(prefix="fla_bench_"))
         project = tmpdir / "project"
         project.mkdir()
 
@@ -114,7 +114,7 @@ def bench_snapshot_latency(file_counts=None, samples=20):
 
 def bench_commit_throughput(duration_seconds=30, num_lanes=10):
     """Measure commits/second with multiple concurrent agents."""
-    tmpdir = Path(tempfile.mkdtemp(prefix="vex_bench_"))
+    tmpdir = Path(tempfile.mkdtemp(prefix="fla_bench_"))
     project = tmpdir / "project"
     project.mkdir()
 
@@ -201,9 +201,9 @@ def bench_rest_api_rps(concurrent_clients=None, duration_seconds=10):
 
     import urllib.request
 
-    from vex.server import VexServer
+    from fla.server import FlaServer
 
-    tmpdir = Path(tempfile.mkdtemp(prefix="vex_bench_"))
+    tmpdir = Path(tempfile.mkdtemp(prefix="fla_bench_"))
     project = tmpdir / "project"
     project.mkdir()
 
@@ -215,7 +215,7 @@ def bench_rest_api_rps(concurrent_clients=None, duration_seconds=10):
         s.bind(('127.0.0.1', 0))
         port = s.getsockname()[1]
 
-    server = VexServer(repo, "127.0.0.1", port)
+    server = FlaServer(repo, "127.0.0.1", port)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     server_thread.start()
     time.sleep(0.2)  # Let server start
@@ -275,7 +275,7 @@ def bench_rest_api_rps(concurrent_clients=None, duration_seconds=10):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Vex throughput benchmarks")
+    parser = argparse.ArgumentParser(description="Fla throughput benchmarks")
     parser.add_argument("--scenario", choices=["snapshot", "commit", "api", "all"],
                         default="all", help="Which benchmark to run")
     parser.add_argument("--files", type=int, nargs="+", default=[100, 1000, 5000],
@@ -291,7 +291,7 @@ def main():
     args = parser.parse_args()
 
     print("=" * 60)
-    print("Vex Throughput Benchmarks")
+    print("Fla Throughput Benchmarks")
     print("=" * 60)
 
     all_results = {}

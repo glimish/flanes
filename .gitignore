@@ -4,7 +4,7 @@ __pycache__/
 dist/
 build/
 *.egg
-.vex/
+.fla/
 .env
 .venv/
 venv/
@@ -14,5 +14,5 @@ venv/
 .mypy_cache/
 .ruff_cache/
 nul
-vex.zip
+fla.zip
 audit_script.py

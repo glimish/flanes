@@ -1,5 +1,5 @@
 """
-Vex — Full Integration Test with Workspace Isolation
+Fla — Full Integration Test with Workspace Isolation
 
 This simulates a realistic multi-agent workflow where agents
 actually work in isolated directories:
@@ -25,9 +25,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from vex.agent_sdk import AgentSession
-from vex.repo import Repository
-from vex.state import (
+from fla.agent_sdk import AgentSession
+from fla.repo import Repository
+from fla.state import (
     AgentIdentity,
     CostRecord,
 )
@@ -40,7 +40,7 @@ def divider(title: str):
 
 
 def test_full_workflow():
-    test_dir = Path(tempfile.mkdtemp(prefix="vex_test_"))
+    test_dir = Path(tempfile.mkdtemp(prefix="fla_test_"))
     print(f"Test directory: {test_dir}\n")
 
     try:

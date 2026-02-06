@@ -1,17 +1,16 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="vex",
+    name="fla",
     version="0.3.0",
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "vex=vex.cli:main",
+            "fla=fla.cli:main",
         ],
     },
     python_requires=">=3.10",
-    description="Vex — Version Control for Agentic AI Systems",
-    author="Kim",
+    description="FLA — Feature Lanes for Agents: version control for agentic AI systems",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

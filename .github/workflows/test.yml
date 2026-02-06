@@ -20,13 +20,13 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Lint with ruff
-        run: ruff check vex/ tests/
+        run: ruff check fla/ tests/
 
       - name: Check formatting with ruff
-        run: ruff format --check vex/ tests/
+        run: ruff format --check fla/ tests/
 
       - name: Type check with mypy
-        run: mypy vex/
+        run: mypy fla/
 
   test:
     runs-on: ${{ matrix.os }}

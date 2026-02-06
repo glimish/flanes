@@ -30,6 +30,9 @@ modify another agent's work.
 
 import json
 import logging
+import os
+import platform
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -54,7 +57,7 @@ from .workspace import WorkspaceInfo, WorkspaceManager
 
 logger = logging.getLogger(__name__)
 
-REPO_DIR_NAME = ".vex"
+REPO_DIR_NAME = ".fla"
 
 # Current config version — bump when the config schema changes
 CONFIG_VERSION = "0.3.0"
@@ -70,31 +73,49 @@ KNOWN_CONFIG_KEYS = frozenset({
 
 
 class NotARepository(ValueError):  # noqa: N818
-    """Raised when a command is run outside a Vex repository."""
+    """Raised when a command is run outside a Fla repository."""
     def __init__(self, start_path):
         super().__init__(
-            f"Not inside a Vex repository (searched from {start_path})\n"
-            f"  Run 'vex init' to create one, or use '-C <path>' to specify a directory."
+            f"Not inside a Fla repository (searched from {start_path})\n"
+            f"  Run 'fla init' to create one, or use '-C <path>' to specify a directory."
         )
+
+
+class ConcurrentAccessError(ValueError):  # noqa: N818
+    """Raised when another machine is accessing the repository via shared filesystem."""
+    def __init__(self, lock_info: dict):
+        hostname = lock_info.get("hostname", "unknown")
+        pid = lock_info.get("pid", "?")
+        super().__init__(
+            f"Another machine is accessing this repository "
+            f"(host={hostname}, pid={pid}).\n"
+            f"  SQLite does not support concurrent access over NFS/shared filesystems.\n"
+            f"  Use 'fla remote push/pull' for multi-machine collaboration."
+        )
+        self.lock_info = lock_info
+
+
+# Maximum age (seconds) before a lock is considered stale
+_LOCK_STALE_AGE = 4 * 3600  # 4 hours
 
 
 class Repository:
     """
-    A Vex repository.
+    A Fla repository.
 
-    Stores all data in a .vex directory at the repository root.
-    Working directories live in .vex/workspaces/<name>/.
+    Stores all data in a .fla directory at the repository root.
+    Working directories live in .fla/workspaces/<name>/.
     """
 
     def __init__(self, root: Path):
         self.root = root.resolve()
-        self.vex_dir = self.root / REPO_DIR_NAME
-        self.db_path = self.vex_dir / "store.db"
+        self.fla_dir = self.root / REPO_DIR_NAME
+        self.db_path = self.fla_dir / "store.db"
 
-        if not self.vex_dir.exists():
+        if not self.fla_dir.exists():
             raise ValueError(
-                f"Not a Vex repository: {self.root}\n"
-                f"Run `vex init` to create one."
+                f"Not a Fla repository: {self.root}\n"
+                f"Run `fla init` to create one."
             )
 
         config = self._read_config()
@@ -122,12 +143,17 @@ class Repository:
             self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size)
         self.wsm = WorldStateManager(
             self.store, self.db_path, max_tree_depth=max_tree_depth)
-        self.wm = WorkspaceManager(self.vex_dir, self.wsm)
+        self.wm = WorkspaceManager(self.fla_dir, self.wsm)
         self._hooks = None  # Lazy-loaded plugin hooks
 
-    # Template for .vexignore file created on init
-    VEXIGNORE_TEMPLATE = """\
-# Vex ignore patterns (like .gitignore)
+        # NFS safety: acquire instance lock
+        self._lock_path = self.fla_dir / "instance.lock"
+        self._machine_id = self._get_machine_id()
+        self._acquire_instance_lock()
+
+    # Template for .flaignore file created on init
+    FLAIGNORE_TEMPLATE = """\
+# Fla ignore patterns (like .gitignore)
 # Lines starting with # are comments
 # Patterns ending with / match directories only
 # Patterns starting with ! negate a previous match
@@ -156,19 +182,19 @@ class Repository:
         """
         Initialize a new repository.
 
-        Creates the .vex directory, database, initial 'main' lane,
+        Creates the .fla directory, database, initial 'main' lane,
         and a workspace for it. Unlike git, the main workspace IS the
         repo root — files stay in place, no movement needed.
 
-        Feature lanes will get isolated workspaces under .vex/workspaces/.
+        Feature lanes will get isolated workspaces under .fla/workspaces/.
         """
         root = Path(path).resolve()
-        vex_dir = root / REPO_DIR_NAME
+        fla_dir = root / REPO_DIR_NAME
 
-        if vex_dir.exists():
+        if fla_dir.exists():
             raise ValueError(f"Repository already exists at {root}")
 
-        vex_dir.mkdir(parents=True)
+        fla_dir.mkdir(parents=True)
         git_detected = (root / ".git").exists()
         config_data = {
             "version": CONFIG_VERSION,
@@ -179,18 +205,18 @@ class Repository:
         }
         if git_detected:
             config_data["git_coexistence"] = True
-        (vex_dir / "config.json").write_text(json.dumps(config_data, indent=2))
+        (fla_dir / "config.json").write_text(json.dumps(config_data, indent=2))
 
-        # Auto-create .vexignore if it doesn't exist
-        vexignore_path = root / ".vexignore"
-        if not vexignore_path.exists():
-            vexignore_path.write_text(cls.VEXIGNORE_TEMPLATE)
+        # Auto-create .flaignore if it doesn't exist
+        flaignore_path = root / ".flaignore"
+        if not flaignore_path.exists():
+            flaignore_path.write_text(cls.FLAIGNORE_TEMPLATE)
 
         repo = cls(root)
         repo.wsm.create_lane(initial_lane)
 
         # If there are existing files, create initial snapshot from repo root.
-        # Include dotfiles like .env, .editorconfig — exclude only .vex itself.
+        # Include dotfiles like .env, .editorconfig — exclude only .fla itself.
         user_files = [
             f for f in root.iterdir()
             if f.name != REPO_DIR_NAME
@@ -303,6 +329,7 @@ class Repository:
         This replaces the old snapshot() that operated on the repo root.
         Now it targets a specific workspace, ensuring isolation.
         """
+        self.verify_instance_lock()
         info = self.wm.get(workspace)
         if info is None:
             raise ValueError(f"Workspace '{workspace}' not found")
@@ -315,7 +342,7 @@ class Repository:
     def _fire_hooks(self, event: str, context: dict) -> None:
         """Fire lifecycle hooks for a given event.
 
-        Hooks are discovered via the ``vex.hooks`` entry point group.
+        Hooks are discovered via the ``fla.hooks`` entry point group.
         Each hook is called with the event name and a context dict.
         Hook failures are logged but never block the operation.
         """
@@ -351,6 +378,7 @@ class Repository:
         "I was working from state X, I produced state Y,
         here's why I did it (prompt), and here's what it cost."
         """
+        self.verify_instance_lock()
         intent = Intent(
             id=str(uuid.uuid4()),
             prompt=prompt,
@@ -394,6 +422,7 @@ class Repository:
         also updates the source lane's fork_base so subsequent promotes
         compute deltas correctly.
         """
+        self.verify_instance_lock()
         self._fire_hooks("pre_accept", {"transition_id": transition_id})
         result = EvaluationResult(
             passed=True,
@@ -445,6 +474,7 @@ class Repository:
         checks: dict[str, bool] | None = None,
     ) -> TransitionStatus:
         """Reject a proposed transition (evaluation failed)."""
+        self.verify_instance_lock()
         self._fire_hooks("pre_reject", {"transition_id": transition_id})
         result = EvaluationResult(
             passed=False,
@@ -872,7 +902,7 @@ class Repository:
 
     def get_template_manager(self):
         from .templates import TemplateManager
-        return TemplateManager(self.vex_dir)
+        return TemplateManager(self.fla_dir)
 
     # ── Evaluator Operations ──────────────────────────────────────
 
@@ -880,7 +910,7 @@ class Repository:
         """Load evaluator config and run all evaluators on a workspace."""
         from .evaluators import load_evaluators, run_all_evaluators
 
-        config_path = self.vex_dir / "config.json"
+        config_path = self.fla_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         evaluators = load_evaluators(config)
         if not evaluators:
@@ -911,7 +941,7 @@ class Repository:
             get_embedding_client,
         )
 
-        config_path = self.vex_dir / "config.json"
+        config_path = self.fla_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         client = get_embedding_client(config)
 
@@ -951,20 +981,20 @@ class Repository:
         """Create a RemoteSyncManager from config."""
         from .remote import RemoteSyncManager, create_backend
 
-        config_path = self.vex_dir / "config.json"
+        config_path = self.fla_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         if "remote_storage" not in config:
             raise ValueError("No remote storage configured in config.json")
 
         backend = create_backend(config)
-        cache_dir = self.vex_dir / "remote_cache"
+        cache_dir = self.fla_dir / "remote_cache"
         return RemoteSyncManager(self.store, backend, cache_dir)
 
     # ── Helpers ───────────────────────────────────────────────────
 
     def _read_config(self) -> dict:
         """Read repository configuration."""
-        config_path = self.vex_dir / "config.json"
+        config_path = self.fla_dir / "config.json"
         if config_path.exists():
             return json.loads(config_path.read_text())
         return {}
@@ -978,8 +1008,8 @@ class Repository:
             if repo_version > CONFIG_VERSION:
                 raise ValueError(
                     f"Repository config version {repo_version} is newer than "
-                    f"this version of Vex ({CONFIG_VERSION}). "
-                    f"Please upgrade Vex to open this repository."
+                    f"this version of Fla ({CONFIG_VERSION}). "
+                    f"Please upgrade Fla to open this repository."
                 )
             # Run migrations for older versions
             if repo_version < CONFIG_VERSION:
@@ -994,7 +1024,7 @@ class Repository:
             logger.warning("Unknown config keys (ignored): %s", ", ".join(sorted(unknown_keys)))
 
     def _default_lane(self) -> str:
-        config_path = self.vex_dir / "config.json"
+        config_path = self.fla_dir / "config.json"
         if config_path.exists():
             config = json.loads(config_path.read_text())
             return config.get("default_lane", "main")
@@ -1022,4 +1052,137 @@ class Repository:
         return False
 
     def close(self):
+        self._release_instance_lock()
         self.store.close()
+
+    # ── NFS Safety: Instance Lock ─────────────────────────────────
+
+    @staticmethod
+    def _get_machine_id() -> str:
+        """Get a unique machine identifier (MAC-based via uuid.getnode)."""
+        return str(uuid.getnode())
+
+    def _acquire_instance_lock(self) -> None:
+        """Write an instance lock file for NFS safety.
+
+        If a lock exists from another machine and isn't stale, raises
+        ConcurrentAccessError. Same-machine access is allowed since
+        SQLite WAL mode handles local concurrency safely. Stale locks
+        (dead PID on different host, or older than 4 hours) are reclaimed.
+        """
+        if self._lock_path.exists():
+            try:
+                existing = json.loads(self._lock_path.read_text())
+            except (json.JSONDecodeError, OSError):
+                existing = None
+
+            if existing and not self._is_lock_stale(existing):
+                # Lock held by another machine — reject
+                if existing.get("machine_id") != self._machine_id:
+                    raise ConcurrentAccessError(existing)
+                # Same machine — safe (SQLite WAL handles concurrent local access)
+                return
+
+        # Write our lock (best-effort, tolerate races on same machine)
+        lock_data = {
+            "hostname": platform.node(),
+            "pid": os.getpid(),
+            "machine_id": self._machine_id,
+            "started_at": time.time(),
+        }
+        try:
+            self._write_lock_atomic(lock_data)
+        except OSError:
+            # Race with another process on same machine — acceptable
+            pass
+
+    def _release_instance_lock(self) -> None:
+        """Remove the instance lock if it's ours."""
+        try:
+            if self._lock_path.exists():
+                existing = json.loads(self._lock_path.read_text())
+                if (existing.get("machine_id") == self._machine_id
+                        and existing.get("pid") == os.getpid()):
+                    self._lock_path.unlink(missing_ok=True)
+        except (json.JSONDecodeError, OSError):
+            # Best-effort cleanup
+            try:
+                self._lock_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def _is_lock_stale(self, lock_info: dict) -> bool:
+        """Check if a lock file is stale (reclaimable).
+
+        A lock is stale if:
+        - The PID is dead on the same hostname
+        - The lock is older than _LOCK_STALE_AGE (4 hours)
+        """
+        age = time.time() - lock_info.get("started_at", 0)
+        if age > _LOCK_STALE_AGE:
+            logger.info("Reclaiming stale lock (age=%.0fs)", age)
+            return True
+
+        # If same hostname, check if PID is alive
+        if lock_info.get("hostname") == platform.node():
+            pid = lock_info.get("pid")
+            if pid and not self._pid_alive(pid):
+                logger.info("Reclaiming lock from dead process (pid=%s)", pid)
+                return True
+
+        return False
+
+    def _write_lock_atomic(self, data: dict) -> None:
+        """Write lock file atomically via tempfile + rename."""
+        content = json.dumps(data, indent=2).encode("utf-8")
+        fd, tmp_path = tempfile.mkstemp(
+            dir=str(self.fla_dir), prefix=".instance.lock."
+        )
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(content)
+                f.flush()
+            Path(tmp_path).replace(self._lock_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+    @staticmethod
+    def _pid_alive(pid: int) -> bool:
+        """Check if a PID is still running."""
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            # Process exists but owned by different user
+            return True
+        except OSError:
+            return False
+
+    def verify_instance_lock(self) -> None:
+        """Verify our instance lock is still valid.
+
+        Call before write operations to detect if another machine
+        has taken over. Raises ConcurrentAccessError if the lock
+        is no longer ours.
+        """
+        if not self._lock_path.exists():
+            # Lock was removed externally — reclaim it
+            self._acquire_instance_lock()
+            return
+
+        try:
+            current = json.loads(self._lock_path.read_text())
+        except (json.JSONDecodeError, OSError):
+            # Corrupt lock — reclaim
+            self._acquire_instance_lock()
+            return
+
+        if (current.get("machine_id") != self._machine_id
+                or current.get("pid") != os.getpid()):
+            raise ConcurrentAccessError(current)

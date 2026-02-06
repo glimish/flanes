@@ -1,5 +1,5 @@
 """
-Vex CLI
+Fla CLI
 
 Commands designed for both human operators and AI agents.
 Every command outputs structured JSON when --json is passed,
@@ -9,34 +9,34 @@ is the default.
 Workspace auto-detection:
     Commands that operate on a workspace (snapshot, propose, commit,
     restore) auto-detect which workspace you're in by checking if
-    your current directory is inside .vex/workspaces/<name>/. If not,
+    your current directory is inside .fla/workspaces/<name>/. If not,
     they default to the 'main' workspace. You can always override
     with --workspace.
 
 Usage:
-    vex init [path]
-    vex status
-    vex snapshot [--workspace NAME]
-    vex propose --prompt "..." --agent-id ID --agent-type TYPE [--workspace NAME]
-    vex accept TRANSITION_ID [--evaluator NAME] [--summary "..."]
-    vex reject TRANSITION_ID [--evaluator NAME] [--summary "..."]
-    vex commit --prompt "..." --agent-id ID --agent-type TYPE [--auto-accept]
-    vex history [--lane LANE] [--limit N] [--status STATUS]
-    vex log [--lane LANE] [--limit N] [--status STATUS]
-    vex trace [STATE_ID]
-    vex diff STATE_A STATE_B [--content]
-    vex search QUERY
-    vex lanes
-    vex lane create NAME [--base STATE_ID]
-    vex workspace list
-    vex workspace create NAME [--lane LANE] [--base STATE_ID]
-    vex workspace remove NAME [--force]
-    vex workspace update NAME [--state STATE_ID]
-    vex restore STATE_ID [--workspace NAME]
-    vex info STATE_ID
-    vex show STATE_ID PATH
-    vex doctor [--fix]
-    vex completion SHELL
+    fla init [path]
+    fla status
+    fla snapshot [--workspace NAME]
+    fla propose --prompt "..." --agent-id ID --agent-type TYPE [--workspace NAME]
+    fla accept TRANSITION_ID [--evaluator NAME] [--summary "..."]
+    fla reject TRANSITION_ID [--evaluator NAME] [--summary "..."]
+    fla commit --prompt "..." --agent-id ID --agent-type TYPE [--auto-accept]
+    fla history [--lane LANE] [--limit N] [--status STATUS]
+    fla log [--lane LANE] [--limit N] [--status STATUS]
+    fla trace [STATE_ID]
+    fla diff STATE_A STATE_B [--content]
+    fla search QUERY
+    fla lanes
+    fla lane create NAME [--base STATE_ID]
+    fla workspace list
+    fla workspace create NAME [--lane LANE] [--base STATE_ID]
+    fla workspace remove NAME [--force]
+    fla workspace update NAME [--state STATE_ID]
+    fla restore STATE_ID [--workspace NAME]
+    fla info STATE_ID
+    fla show STATE_ID PATH
+    fla doctor [--fix]
+    fla completion SHELL
 """
 
 import argparse
@@ -49,7 +49,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-import vex as _vex_pkg
+import fla as _fla_pkg
 
 from .completions import BASH_COMPLETION, FISH_COMPLETION, ZSH_COMPLETION
 from .repo import NotARepository, Repository
@@ -104,14 +104,14 @@ def detect_workspace(repo: Repository, explicit: str | None = None) -> str:
 
     Priority:
     1. Explicit --workspace flag
-    2. Current working directory is inside .vex/workspaces/<name>/
+    2. Current working directory is inside .fla/workspaces/<name>/
     3. Default to 'main'
     """
     if explicit:
         return explicit
 
     cwd = Path.cwd().resolve()
-    workspaces_dir = repo.vex_dir / "workspaces"
+    workspaces_dir = repo.fla_dir / "workspaces"
 
     if workspaces_dir.exists():
         try:
@@ -167,7 +167,7 @@ def cmd_init(args):
             if head:
                 print(head)
         else:
-            print(f"✓ Initialized Vex repository at {path}")
+            print(f"✓ Initialized Fla repository at {path}")
             if head:
                 print(f"  Initial snapshot: {_display_hash(head, v)}")
             print(f"  Workspace: {ws_path}")
@@ -177,8 +177,8 @@ def cmd_init(args):
             if git_detected:
                 print()
                 print("  Note: Detected existing Git repository.")
-                print("    Add '.vex/' to your .gitignore:")
-                print("      echo '.vex/' >> .gitignore")
+                print("    Add '.fla/' to your .gitignore:")
+                print("      echo '.fla/' >> .gitignore")
 
 
 def cmd_status(args):
@@ -770,17 +770,17 @@ def cmd_promote(args):
             print("\n  How to resolve:")
             print()
             print("    Option 1: Update workspace to target and manually fix")
-            print(f"      vex workspace update {ws_name} --state {_display_hash(target_head, v)}")
+            print(f"      fla workspace update {ws_name} --state {_display_hash(target_head, v)}")
             print("      # Edit conflicting files in workspace")
-            print("      vex commit -m 'Resolve conflicts' --agent-id <agent> --agent-type <type>")
-            print(f"      vex promote -w {ws_name} --target {target_lane}")
+            print("      fla commit -m 'Resolve conflicts' --agent-id <agent> --agent-type <type>")
+            print(f"      fla promote -w {ws_name} --target {target_lane}")
             print()
             print("    Option 2: Re-run agent from updated base")
-            print(f"      vex lane create {ws_name}-v2 --base {_display_hash(target_head, v)}")
+            print(f"      fla lane create {ws_name}-v2 --base {_display_hash(target_head, v)}")
             print("      # Run agent again on new lane")
             print()
             print("    Option 3: Force promote (overwrites their changes)")
-            print(f"      vex promote -w {ws_name} --target {target_lane} --force")
+            print(f"      fla promote -w {ws_name} --target {target_lane} --force")
         elif v == 0:
             print(result.get('transition_id', ''))
         else:
@@ -843,7 +843,7 @@ def cmd_doctor(args):
                     # Re-materialize from base_state
                     try:
                         ws_path = ws.path
-                        dirty_path = ws_path / ".vex_materializing"
+                        dirty_path = ws_path / ".fla_materializing"
                         dirty_path.unlink(missing_ok=True)
                         finding["fixed"] = True
                         fixed_count += 1
@@ -921,14 +921,14 @@ def cmd_doctor(args):
                     findings.append(finding)
 
         # Check 5: Version mismatch
-        config_path = repo.vex_dir / "config.json"
+        config_path = repo.fla_dir / "config.json"
         if config_path.exists():
             config = json.loads(config_path.read_text())
             repo_version = config.get("version", "unknown")
-            if repo_version != _vex_pkg.__version__:
+            if repo_version != _fla_pkg.__version__:
                 findings.append({
                     "check": "version_mismatch",
-                    "detail": f"Repository version '{repo_version}' differs from vex version '{_vex_pkg.__version__}'",
+                    "detail": f"Repository version '{repo_version}' differs from fla version '{_fla_pkg.__version__}'",
                     "fixable": False,
                 })
 
@@ -952,7 +952,7 @@ def cmd_doctor(args):
                 else:
                     fixable = sum(1 for f in findings if f.get("fixable"))
                     if fixable:
-                        print(f"  {fixable} issue(s) can be fixed with 'vex doctor --fix'.")
+                        print(f"  {fixable} issue(s) can be fixed with 'fla doctor --fix'.")
 
 
 def cmd_gc(args):
@@ -978,7 +978,7 @@ def cmd_gc(args):
             print(f"  Deletable transitions: {result.deleted_transitions}")
             print(f"  Elapsed:               {result.elapsed_ms:.1f}ms")
             if result.dry_run and (result.deleted_objects or result.deleted_transitions):
-                print("\n  Run 'vex gc --confirm' to actually delete.")
+                print("\n  Run 'fla gc --confirm' to actually delete.")
 
 
 def cmd_cat_file(args):
@@ -1062,7 +1062,7 @@ def cmd_cat_file(args):
 
 
 def cmd_export_git(args):
-    """Export Vex history to a git repository."""
+    """Export Fla history to a git repository."""
     from .git_bridge import export_to_git
 
     with open_repo(args) as repo:
@@ -1078,7 +1078,7 @@ def cmd_export_git(args):
 
 
 def cmd_import_git(args):
-    """Import git history into a Vex repository."""
+    """Import git history into a Fla repository."""
     from .git_bridge import import_from_git
 
     with open_repo(args) as repo:
@@ -1094,7 +1094,7 @@ def cmd_import_git(args):
 
 
 def cmd_serve(args):
-    """Start the Vex REST API server."""
+    """Start the Fla REST API server."""
     from .server import serve
     serve(args.path or ".", host=args.host, port=args.port, web=args.web)
 
@@ -1238,9 +1238,9 @@ def cmd_template_show(args):
                 print("Directories:")
                 for d in template.directories:
                     print(f"  {d}/")
-            if template.vexignore_patterns:
-                print("Vexignore patterns:")
-                for p in template.vexignore_patterns:
+            if template.flaignore_patterns:
+                print("Flaignore patterns:")
+                for p in template.flaignore_patterns:
                     print(f"  {p}")
 
 
@@ -1385,6 +1385,13 @@ def cmd_remote_push(args):
         else:
             print(f"Pushed {result['pushed']} objects ({result['skipped']} already synced)")
 
+        if args.metadata:
+            meta_result = sync.push_metadata(repo.wsm)
+            if args.json:
+                print_json(meta_result)
+            else:
+                print(f"Pushed metadata for {meta_result['pushed_lanes']} lanes")
+
 
 def cmd_remote_pull(args):
     """Pull objects from remote storage."""
@@ -1403,6 +1410,20 @@ def cmd_remote_pull(args):
             print_json(result)
         else:
             print(f"Pulled {result['pulled']} objects ({result['skipped']} already local)")
+
+        if args.metadata:
+            meta_result = sync.pull_metadata(repo.wsm)
+            if args.json:
+                print_json(meta_result)
+            else:
+                print(f"Pulled metadata: {meta_result['lanes_pulled']} lanes, "
+                      f"{meta_result['transitions_imported']} transitions, "
+                      f"{meta_result['intents_imported']} intents")
+                if meta_result["conflicts"]:
+                    print("\nConflicts detected:")
+                    for c in meta_result["conflicts"]:
+                        print(f"  Lane '{c['lane']}': local={c['local_head'][:12]}, "
+                              f"remote={c['remote_head'][:12]}")
 
 
 def cmd_remote_status(args):
@@ -1473,8 +1494,8 @@ commands:
     doctor            Check and fix repository health
     serve             Start REST API server
     mcp               Start MCP tool server (stdio)
-    export-git        Export Vex history to a git repository
-    import-git        Import git history into Vex
+    export-git        Export Fla history to a git repository
+    import-git        Import git history into Fla
     remote            Remote storage operations (push, pull, status)
     project           Multi-repo project management
     template          Workspace templates (list, create, show)
@@ -1485,13 +1506,13 @@ commands:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="vex",
-        description="Vex — Version Control for Agentic AI Systems",
+        prog="fla",
+        description="Fla — Version Control for Agentic AI Systems",
         epilog=GROUPED_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version=f"vex {_vex_pkg.__version__}"
+        "--version", "-V", action="version", version=f"fla {_fla_pkg.__version__}"
     )
     parser.add_argument("--path", "-C", default=".", help="Repository path")
     parser.add_argument("--json", "-j", action="store_true", help="JSON output")
@@ -1681,19 +1702,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_cat_file)
 
     # export-git
-    p = sub.add_parser("export-git", help="Export Vex history to a git repository")
+    p = sub.add_parser("export-git", help="Export Fla history to a git repository")
     p.add_argument("target_dir", help="Target directory for git repo")
     p.add_argument("--lane", default=None, help="Lane to export (default: main)")
     p.set_defaults(func=cmd_export_git)
 
     # import-git
-    p = sub.add_parser("import-git", help="Import git history into Vex")
+    p = sub.add_parser("import-git", help="Import git history into Fla")
     p.add_argument("source_dir", help="Source git repository directory")
     p.add_argument("--lane", default=None, help="Target lane (default: main)")
     p.set_defaults(func=cmd_import_git)
 
     # serve
-    p = sub.add_parser("serve", help="Start the Vex REST API server")
+    p = sub.add_parser("serve", help="Start the Fla REST API server")
     p.add_argument("--port", type=int, default=7654, help="Port (default: 7654)")
     p.add_argument("--host", default="127.0.0.1", help="Host (default: 127.0.0.1)")
     p.add_argument("--web", action="store_true", help="Serve web viewer at /web/")
@@ -1777,9 +1798,13 @@ def build_parser() -> argparse.ArgumentParser:
     remote_sub = p.add_subparsers(dest="remote_command")
 
     rpush = remote_sub.add_parser("push", help="Push objects to remote")
+    rpush.add_argument("--metadata", action="store_true",
+                       help="Also push lane metadata (transitions, intents)")
     rpush.set_defaults(func=cmd_remote_push)
 
     rpull = remote_sub.add_parser("pull", help="Pull objects from remote")
+    rpull.add_argument("--metadata", action="store_true",
+                       help="Also pull lane metadata (transitions, intents)")
     rpull.set_defaults(func=cmd_remote_pull)
 
     rstat = remote_sub.add_parser("status", help="Show remote sync status")
@@ -1792,13 +1817,13 @@ def _error_hint(msg: str) -> str | None:
     """Return a hint for common error messages, or None."""
     lower = msg.lower()
     if "workspace" in lower and "not found" in lower:
-        return "Hint: Use 'vex workspace list' to see available workspaces."
+        return "Hint: Use 'fla workspace list' to see available workspaces."
     if "lane" in lower and ("not found" in lower or "does not exist" in lower):
-        return "Hint: Use 'vex lanes' to see available lanes."
+        return "Hint: Use 'fla lanes' to see available lanes."
     if "transition" in lower and "not found" in lower:
-        return "Hint: Use 'vex history' to see recent transitions."
+        return "Hint: Use 'fla history' to see recent transitions."
     if "state" in lower and "not found" in lower:
-        return "Hint: Use 'vex history --json' to find valid state IDs."
+        return "Hint: Use 'fla history --json' to find valid state IDs."
     return None
 
 

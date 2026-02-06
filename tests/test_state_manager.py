@@ -4,8 +4,8 @@ import uuid
 
 import pytest
 
-from vex.cas import ContentStore
-from vex.state import (
+from fla.cas import ContentStore
+from fla.state import (
     AgentIdentity,
     EvaluationResult,
     Intent,

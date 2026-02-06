@@ -10,10 +10,10 @@ import pytest
 
 @pytest.fixture
 def repo_pair(tmp_path):
-    """Two Vex repos sharing a remote backend — simulates push from one, pull into another."""
-    from vex.remote import InMemoryBackend, RemoteSyncManager
-    from vex.repo import Repository
-    from vex.state import AgentIdentity
+    """Two Fla repos sharing a remote backend — simulates push from one, pull into another."""
+    from fla.remote import InMemoryBackend, RemoteSyncManager
+    from fla.repo import Repository
+    from fla.state import AgentIdentity
 
     # Repo A: has content
     dir_a = tmp_path / "repo_a"
@@ -60,7 +60,7 @@ class TestRemotePushPull:
         assert pull_result["errors"] == 0
 
         # All objects from A should now exist in B
-        from vex.cas import ObjectType
+        from fla.cas import ObjectType
         rows_a = repo_a.store.conn.execute("SELECT hash, type FROM objects").fetchall()
         for h, t in rows_a:
             obj_b = repo_b.store.retrieve(h)
@@ -130,8 +130,8 @@ class TestStaleAccept:
     @pytest.fixture
     def repo_with_two_proposals(self, tmp_path):
         """A repo with two proposed transitions from the same from_state."""
-        from vex.repo import Repository
-        from vex.state import AgentIdentity
+        from fla.repo import Repository
+        from fla.state import AgentIdentity
 
         project_dir = tmp_path / "project"
         project_dir.mkdir()
@@ -166,7 +166,7 @@ class TestStaleAccept:
     def test_second_accept_is_rejected_as_stale(self, repo_with_two_proposals):
         """When two transitions share from_state, accepting first makes second stale."""
         repo, tid1, tid2, original_head = repo_with_two_proposals
-        from vex.state import TransitionStatus
+        from fla.state import TransitionStatus
 
         # Accept first
         status1 = repo.accept(tid1, evaluator="test", summary="Accept first")
@@ -200,3 +200,108 @@ class TestStaleAccept:
         evaluation = json.loads(row[0])
         assert "Stale" in evaluation["summary"]
         assert "Re-propose" in evaluation["summary"]
+
+
+class TestMetadataSync:
+    """Tests for metadata push/pull functionality."""
+
+    def test_push_pull_metadata_round_trip(self, repo_pair):
+        """Push metadata from repo A, pull into repo B, verify it arrives."""
+        repo_a, repo_b, sync_a, sync_b, _ = repo_pair
+
+        # Push CAS objects + metadata from repo A
+        sync_a.push()
+        meta_result = sync_a.push_metadata(repo_a.wsm)
+        assert meta_result["pushed_lanes"] >= 1
+
+        # Pull CAS objects + metadata into repo B
+        sync_b.pull()
+        pull_result = sync_b.pull_metadata(repo_b.wsm)
+        assert pull_result["lanes_pulled"] >= 1
+        assert pull_result["transitions_imported"] >= 1
+        assert pull_result["intents_imported"] >= 1
+
+        # Verify repo B now has the transitions
+        history_b = repo_b.wsm.history("main", limit=10)
+        assert len(history_b) >= 1
+
+    def test_metadata_pull_detects_conflict(self, repo_pair):
+        """Divergent same-lane work produces a conflict report."""
+        from fla.state import AgentIdentity
+
+        repo_a, repo_b, sync_a, sync_b, _ = repo_pair
+
+        # Sync everything first so both repos have same base
+        sync_a.push()
+        sync_a.push_metadata(repo_a.wsm)
+        sync_b.pull()
+        sync_b.pull_metadata(repo_b.wsm)
+
+        # Now do divergent work on the same lane
+        # Repo A: make a commit
+        ws_a = repo_a.workspace_path("main")
+        (ws_a / "file_a.py").write_text("from_a\n")
+        agent_a = AgentIdentity(agent_id="agent-a", agent_type="test")
+        repo_a.quick_commit("main", "commit from A", agent_a, auto_accept=True)
+        sync_a.push()
+        sync_a.push_metadata(repo_a.wsm)
+
+        # Repo B: make a different commit on the same lane
+        ws_b = repo_b.workspace_path("main")
+        (ws_b / "file_b.py").write_text("from_b\n")
+        agent_b = AgentIdentity(agent_id="agent-b", agent_type="test")
+        repo_b.quick_commit("main", "commit from B", agent_b, auto_accept=True)
+
+        # Pull metadata — should detect conflict
+        sync_b.pull()
+        result = sync_b.pull_metadata(repo_b.wsm)
+        assert len(result["conflicts"]) >= 1
+        assert result["conflicts"][0]["lane"] == "main"
+
+    def test_metadata_pull_no_conflict_different_lanes(self, repo_pair):
+        """Metadata from a new lane merges cleanly (no conflict on that lane)."""
+        from fla.state import AgentIdentity
+
+        repo_a, repo_b, sync_a, sync_b, _ = repo_pair
+
+        # Sync initial state
+        sync_a.push()
+        sync_a.push_metadata(repo_a.wsm)
+        sync_b.pull()
+        sync_b.pull_metadata(repo_b.wsm)
+
+        # Repo A: work on a new lane (create_lane also creates workspace)
+        base = repo_a.head("main")
+        repo_a.create_lane("feature-a", base)
+        ws_a = repo_a.workspace_path("feature-a")
+        (ws_a / "feature_a.py").write_text("feature_a\n")
+        agent_a = AgentIdentity(agent_id="agent-a", agent_type="test")
+        repo_a.quick_commit("feature-a", "feature A", agent_a, auto_accept=True)
+        sync_a.push()
+        sync_a.push_metadata(repo_a.wsm)
+
+        # Pull into repo B — feature-a lane should merge cleanly (no conflict on it)
+        sync_b.pull()
+        result = sync_b.pull_metadata(repo_b.wsm)
+        assert result["lanes_pulled"] >= 1
+        # Only check for conflicts on the feature-a lane specifically
+        feature_conflicts = [c for c in result["conflicts"] if c["lane"] == "feature-a"]
+        assert len(feature_conflicts) == 0
+
+        # Repo B should now know about feature-a lane
+        lanes_b = {l["name"] for l in repo_b.wsm.list_lanes()}
+        assert "feature-a" in lanes_b
+
+    def test_metadata_idempotent(self, repo_pair):
+        """Pushing and pulling metadata twice doesn't duplicate records."""
+        repo_a, repo_b, sync_a, sync_b, _ = repo_pair
+
+        sync_a.push()
+        sync_a.push_metadata(repo_a.wsm)
+        sync_b.pull()
+        result1 = sync_b.pull_metadata(repo_b.wsm)
+
+        # Pull again — should import nothing new
+        result2 = sync_b.pull_metadata(repo_b.wsm)
+        assert result2["transitions_imported"] == 0
+        assert result2["intents_imported"] == 0

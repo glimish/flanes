@@ -115,7 +115,7 @@ def get_embedding_client(config: dict) -> EmbeddingClient | None:
     """Create an EmbeddingClient from config, or None if not configured.
 
     API key resolution order:
-        1. VEX_EMBEDDING_API_KEY environment variable
+        1. FLA_EMBEDDING_API_KEY environment variable
         2. OPENAI_API_KEY environment variable
         3. "embedding_api_key" in config dict
     """
@@ -123,7 +123,7 @@ def get_embedding_client(config: dict) -> EmbeddingClient | None:
 
     api_url = config.get("embedding_api_url")
     api_key = (
-        os.environ.get("VEX_EMBEDDING_API_KEY")
+        os.environ.get("FLA_EMBEDDING_API_KEY")
         or os.environ.get("OPENAI_API_KEY")
         or config.get("embedding_api_key")
     )

@@ -4,9 +4,9 @@ Plugin Discovery
 Discovers and loads plugins via Python entry points (importlib.metadata).
 Three plugin groups are supported:
 
-- ``vex.evaluators``  — Python callable evaluators
-- ``vex.storage``     — Remote storage backends
-- ``vex.hooks``       — Lifecycle hooks (pre/post propose, accept, reject)
+- ``fla.evaluators``  — Python callable evaluators
+- ``fla.storage``     — Remote storage backends
+- ``fla.hooks``       — Lifecycle hooks (pre/post propose, accept, reject)
 """
 
 import logging
@@ -15,9 +15,9 @@ from importlib.metadata import entry_points
 logger = logging.getLogger(__name__)
 
 # Entry point group names
-EVALUATOR_GROUP = "vex.evaluators"
-STORAGE_GROUP = "vex.storage"
-HOOK_GROUP = "vex.hooks"
+EVALUATOR_GROUP = "fla.evaluators"
+STORAGE_GROUP = "fla.storage"
+HOOK_GROUP = "fla.hooks"
 
 
 def discover(group: str) -> dict:

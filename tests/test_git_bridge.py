@@ -1,5 +1,5 @@
 """
-Tests for Git Bridge — export/import between Vex and Git repositories.
+Tests for Git Bridge — export/import between Fla and Git repositories.
 """
 
 import os
@@ -22,10 +22,10 @@ requires_git = pytest.mark.skipif(not _has_git(), reason="git not available")
 
 
 @pytest.fixture
-def vex_repo(tmp_path):
-    """Create a Vex repository with some history."""
-    from vex.repo import Repository
-    from vex.state import AgentIdentity
+def fla_repo(tmp_path):
+    """Create a Fla repository with some history."""
+    from fla.repo import Repository
+    from fla.state import AgentIdentity
 
     project_dir = tmp_path / "project"
     project_dir.mkdir()
@@ -54,20 +54,20 @@ def vex_repo(tmp_path):
 @requires_git
 class TestExportToGit:
 
-    def test_export_creates_git_repo(self, vex_repo, tmp_path):
-        from vex.git_bridge import export_to_git
+    def test_export_creates_git_repo(self, fla_repo, tmp_path):
+        from fla.git_bridge import export_to_git
 
         target = tmp_path / "export"
-        result = export_to_git(vex_repo, target, lane="main")
+        result = export_to_git(fla_repo, target, lane="main")
 
         assert result["commits"] >= 1
         assert (target / ".git").is_dir()
 
-    def test_export_contains_files(self, vex_repo, tmp_path):
-        from vex.git_bridge import export_to_git
+    def test_export_contains_files(self, fla_repo, tmp_path):
+        from fla.git_bridge import export_to_git
 
         target = tmp_path / "export"
-        export_to_git(vex_repo, target, lane="main")
+        export_to_git(fla_repo, target, lane="main")
 
         # The final state should have all files
         assert (target / "main.py").exists()
@@ -77,11 +77,11 @@ class TestExportToGit:
         # Content should match
         assert "hello world" in (target / "main.py").read_text()
 
-    def test_export_git_log_has_commits(self, vex_repo, tmp_path):
-        from vex.git_bridge import export_to_git
+    def test_export_git_log_has_commits(self, fla_repo, tmp_path):
+        from fla.git_bridge import export_to_git
 
         target = tmp_path / "export"
-        result = export_to_git(vex_repo, target, lane="main")
+        result = export_to_git(fla_repo, target, lane="main")
 
         # Verify git log works
         log = subprocess.run(
@@ -94,11 +94,11 @@ class TestExportToGit:
         lines = [line for line in log.stdout.strip().split("\n") if line]
         assert len(lines) == result["commits"]
 
-    def test_export_preserves_agent_info(self, vex_repo, tmp_path):
-        from vex.git_bridge import export_to_git
+    def test_export_preserves_agent_info(self, fla_repo, tmp_path):
+        from fla.git_bridge import export_to_git
 
         target = tmp_path / "export"
-        export_to_git(vex_repo, target, lane="main")
+        export_to_git(fla_repo, target, lane="main")
 
         # Check author in git log
         log = subprocess.run(
@@ -112,9 +112,9 @@ class TestExportToGit:
         assert log.stdout.strip() != ""
 
     def test_export_empty_lane(self, tmp_path):
-        """Exporting a lane with only the initial .vexignore commit."""
-        from vex.git_bridge import export_to_git
-        from vex.repo import Repository
+        """Exporting a lane with only the initial .flaignore commit."""
+        from fla.git_bridge import export_to_git
+        from fla.repo import Repository
 
         project_dir = tmp_path / "empty_project"
         project_dir.mkdir()
@@ -123,7 +123,7 @@ class TestExportToGit:
         target = tmp_path / "export"
         result = export_to_git(repo, target, lane="main")
 
-        # .vexignore auto-creation causes one initial commit
+        # .flaignore auto-creation causes one initial commit
         assert result["commits"] == 1
         repo.close()
 
@@ -158,17 +158,17 @@ class TestImportFromGit:
         )
 
     def test_import_creates_transitions(self, tmp_path):
-        from vex.git_bridge import import_from_git
-        from vex.repo import Repository
+        from fla.git_bridge import import_from_git
+        from fla.repo import Repository
 
         # Create git repo
         git_dir = tmp_path / "git_source"
         self._make_git_repo(git_dir)
 
-        # Create vex repo
-        vex_dir = tmp_path / "vex_target"
-        vex_dir.mkdir()
-        repo = Repository.init(vex_dir)
+        # Create fla repo
+        fla_dir = tmp_path / "fla_target"
+        fla_dir.mkdir()
+        repo = Repository.init(fla_dir)
 
         result = import_from_git(git_dir, repo, lane="main")
         assert result["commits_imported"] == 2
@@ -180,15 +180,15 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_preserves_content(self, tmp_path):
-        from vex.git_bridge import import_from_git
-        from vex.repo import Repository
+        from fla.git_bridge import import_from_git
+        from fla.repo import Repository
 
         git_dir = tmp_path / "git_source"
         self._make_git_repo(git_dir)
 
-        vex_dir = tmp_path / "vex_target"
-        vex_dir.mkdir()
-        repo = Repository.init(vex_dir)
+        fla_dir = tmp_path / "fla_target"
+        fla_dir.mkdir()
+        repo = Repository.init(fla_dir)
 
         import_from_git(git_dir, repo, lane="main")
 
@@ -207,12 +207,12 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_not_a_git_repo(self, tmp_path):
-        from vex.git_bridge import import_from_git
-        from vex.repo import Repository
+        from fla.git_bridge import import_from_git
+        from fla.repo import Repository
 
-        vex_dir = tmp_path / "vex_target"
-        vex_dir.mkdir()
-        repo = Repository.init(vex_dir)
+        fla_dir = tmp_path / "fla_target"
+        fla_dir.mkdir()
+        repo = Repository.init(fla_dir)
 
         with pytest.raises(ValueError, match="Not a git repository"):
             import_from_git(tmp_path / "nonexistent", repo)
@@ -223,28 +223,28 @@ class TestImportFromGit:
 @requires_git
 class TestRoundTrip:
 
-    def test_export_then_import(self, vex_repo, tmp_path):
-        """Export vex→git, then import git→vex, verify content matches."""
-        from vex.git_bridge import export_to_git, import_from_git
-        from vex.repo import Repository
+    def test_export_then_import(self, fla_repo, tmp_path):
+        """Export fla→git, then import git→fla, verify content matches."""
+        from fla.git_bridge import export_to_git, import_from_git
+        from fla.repo import Repository
 
         # Export
         git_dir = tmp_path / "git_export"
-        export_to_git(vex_repo, git_dir, lane="main")
+        export_to_git(fla_repo, git_dir, lane="main")
 
-        # Import into a fresh vex repo
-        vex2_dir = tmp_path / "vex2"
-        vex2_dir.mkdir()
-        repo2 = Repository.init(vex2_dir)
+        # Import into a fresh fla repo
+        fla2_dir = tmp_path / "fla2"
+        fla2_dir.mkdir()
+        repo2 = Repository.init(fla2_dir)
         result = import_from_git(git_dir, repo2, lane="main")
         assert result["commits_imported"] >= 1
 
         # Both repos should have the same files in head
-        head1 = vex_repo.head("main")
+        head1 = fla_repo.head("main")
         head2 = repo2.head("main")
-        state1 = vex_repo.wsm.get_state(head1)
+        state1 = fla_repo.wsm.get_state(head1)
         state2 = repo2.wsm.get_state(head2)
-        files1 = vex_repo.wsm._flatten_tree(state1["root_tree"])
+        files1 = fla_repo.wsm._flatten_tree(state1["root_tree"])
         files2 = repo2.wsm._flatten_tree(state2["root_tree"])
 
         assert set(files1.keys()) == set(files2.keys())

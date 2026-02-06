@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from vex.cas import ContentStore
-from vex.gc import collect_garbage
-from vex.repo import Repository
-from vex.state import (
+from fla.cas import ContentStore
+from fla.gc import collect_garbage
+from fla.repo import Repository
+from fla.state import (
     AgentIdentity,
     EvaluationResult,
     Intent,
@@ -27,8 +27,8 @@ from vex.state import (
 
 # ── Helpers ──────────────────────────────────────────────────────
 
-def run_vex(*args, cwd=None, expect_fail=False):
-    cmd = [sys.executable, "-X", "utf8", "-m", "vex.cli"] + list(args)
+def run_fla(*args, cwd=None, expect_fail=False):
+    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
     result = subprocess.run(
         cmd,
         capture_output=True,
@@ -457,16 +457,16 @@ class TestFilesystemBlobStorage:
 
 class TestGCCLI:
     def test_gc_command_dry_run(self, repo_dir):
-        """vex gc prints counts without deleting."""
-        rc, out, err = run_vex("--json", "gc", cwd=repo_dir)
+        """fla gc prints counts without deleting."""
+        rc, out, err = run_fla("--json", "gc", cwd=repo_dir)
         assert rc == 0
         data = json.loads(out)
         assert data["dry_run"] is True
         assert "reachable_objects" in data
 
     def test_gc_command_confirm(self, repo_dir):
-        """vex gc --confirm actually runs GC."""
-        rc, out, err = run_vex("--json", "gc", "--confirm", cwd=repo_dir)
+        """fla gc --confirm actually runs GC."""
+        rc, out, err = run_fla("--json", "gc", "--confirm", cwd=repo_dir)
         assert rc == 0
         data = json.loads(out)
         assert data["dry_run"] is False

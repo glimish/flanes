@@ -1,21 +1,21 @@
 import * as vscode from 'vscode';
-import { VexCli } from './cli';
+import { FlaCli } from './cli';
 
 /**
  * Status bar item showing the current lane and head hash.
  */
-export class VexStatusBar implements vscode.Disposable {
+export class FlaStatusBar implements vscode.Disposable {
   private item: vscode.StatusBarItem;
-  private cli: VexCli;
+  private cli: FlaCli;
 
-  constructor(cli: VexCli) {
+  constructor(cli: FlaCli) {
     this.cli = cli;
     this.item = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       100,
     );
-    this.item.command = 'vex.status';
-    this.item.tooltip = 'Click for Vex status';
+    this.item.command = 'fla.status';
+    this.item.tooltip = 'Click for Fla status';
     this.item.show();
   }
 
@@ -27,7 +27,7 @@ export class VexStatusBar implements vscode.Disposable {
       this.item.text = `$(git-branch) ${lane} $(git-commit) ${head}`;
       this.item.color = undefined;
     } catch {
-      this.item.text = '$(git-branch) vex (no repo)';
+      this.item.text = '$(git-branch) fla (no repo)';
       this.item.color = new vscode.ThemeColor('statusBarItem.warningForeground');
     }
   }

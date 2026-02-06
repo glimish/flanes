@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Vex Agent Workflow Example
+Fla Agent Workflow Example
 
-Demonstrates a full agent workflow using the Vex Python SDK:
+Demonstrates a full agent workflow using the Fla Python SDK:
   1. Initialize a repository
   2. Agent makes changes on main lane
   3. Agent creates a feature lane and works in isolation
@@ -20,11 +20,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Ensure the vex package is importable when running from the repo root
+# Ensure the fla package is importable when running from the repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from vex.agent_sdk import AgentSession
-from vex.repo import Repository
+from fla.agent_sdk import AgentSession
+from fla.repo import Repository
 
 
 def step(n: int, msg: str):
@@ -35,13 +35,13 @@ def step(n: int, msg: str):
 
 def run_demo(repo_path: Path):
     # ── Step 1: Initialize ──────────────────────────────────────
-    step(1, "Initialize a Vex repository")
+    step(1, "Initialize a Fla repository")
 
     # Create some starter files
     (repo_path / "app.py").write_text(
         'def main():\n    print("Hello from app")\n\nif __name__ == "__main__":\n    main()\n'
     )
-    (repo_path / "README.md").write_text("# My Project\n\nA demo project for Vex.\n")
+    (repo_path / "README.md").write_text("# My Project\n\nA demo project for Fla.\n")
 
     with Repository.init(repo_path) as repo:
         head = repo.head()
@@ -116,14 +116,14 @@ def run_demo(repo_path: Path):
     # Show that main is unaffected
     print("\n  Main workspace still has original files:")
     for f in sorted(repo_path.iterdir()):
-        if f.name not in (".vex", ".vexignore"):
+        if f.name not in (".fla", ".flaignore"):
             print(f"    {f.name}")
 
     # ── Step 4: Promote feature work to main ────────────────────
     step(4, "Promote feature-auth into main")
 
     with Repository.find(repo_path) as repo:
-        from vex.state import AgentIdentity
+        from fla.state import AgentIdentity
 
         promote_result = repo.promote(
             workspace="feature-auth",
@@ -158,7 +158,7 @@ def run_demo(repo_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Vex Agent Workflow Example")
+    parser = argparse.ArgumentParser(description="Fla Agent Workflow Example")
     parser.add_argument("--keep", action="store_true", help="Keep the repo after the demo")
     parser.add_argument("--path", type=str, default=None, help="Use a specific directory")
     args = parser.parse_args()
@@ -169,12 +169,12 @@ def main():
         run_demo(repo_path)
         print(f"\nRepository at: {repo_path}")
     elif args.keep:
-        repo_path = Path(tempfile.mkdtemp(prefix="vex-demo-"))
+        repo_path = Path(tempfile.mkdtemp(prefix="fla-demo-"))
         run_demo(repo_path)
         print(f"\nRepository kept at: {repo_path}")
-        print("  Inspect with: vex -C {repo_path} status")
+        print("  Inspect with: fla -C {repo_path} status")
     else:
-        repo_path = Path(tempfile.mkdtemp(prefix="vex-demo-"))
+        repo_path = Path(tempfile.mkdtemp(prefix="fla-demo-"))
         try:
             run_demo(repo_path)
         finally:

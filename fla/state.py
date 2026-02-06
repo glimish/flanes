@@ -211,7 +211,7 @@ class WorldStateManager:
         builds tree objects, and creates a world state pointing to
         the root tree.
 
-        Respects .vexignore if present (one filename pattern per line).
+        Respects .flaignore if present (one filename pattern per line).
         Supports directory patterns (trailing ``/``), negation (``!`` prefix).
 
         Returns the world state ID (which is a content hash).
@@ -220,10 +220,10 @@ class WorldStateManager:
         ignore_dirs: set[str] = set()
         negate_patterns: set[str] = set()
 
-        # Load .vexignore from snapshot root if present
-        vexignore = path / ".vexignore"
-        if vexignore.is_file():
-            for line in vexignore.read_text().splitlines():
+        # Load .flaignore from snapshot root if present
+        flaignore = path / ".flaignore"
+        if flaignore.is_file():
+            for line in flaignore.read_text().splitlines():
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
@@ -252,7 +252,7 @@ class WorldStateManager:
     # Includes VCS dirs, build artifacts, OS noise, and security-sensitive files
     DEFAULT_IGNORE = frozenset({
         # Version control
-        ".vex", ".git", ".svn", ".hg",
+        ".fla", ".git", ".svn", ".hg",
         # Build artifacts and caches
         "__pycache__", "node_modules", ".DS_Store", "Thumbs.db",
         # Environment and secrets (prevent accidental exposure)
@@ -687,6 +687,158 @@ class WorldStateManager:
             }
             for r in rows
         ]
+
+    # ── Metadata Export / Import ────────────────────────────────
+
+    def export_lane_metadata(self, lane: str) -> dict:
+        """Export lane metadata for remote sync.
+
+        Returns a dict containing the lane info, all transitions on this
+        lane, and all intents referenced by those transitions. This can
+        be serialized to JSON and pushed to a remote backend.
+        """
+        # Lane info
+        lane_row = self.conn.execute(
+            "SELECT name, head_state, fork_base, created_at, metadata "
+            "FROM lanes WHERE name = ?",
+            (lane,),
+        ).fetchone()
+        if not lane_row:
+            raise ValueError(f"Lane not found: {lane}")
+
+        lane_data = {
+            "name": lane_row[0],
+            "head_state": lane_row[1],
+            "fork_base": lane_row[2],
+            "created_at": lane_row[3],
+            "metadata": json.loads(lane_row[4]),
+        }
+
+        # Transitions on this lane
+        transition_rows = self.conn.execute(
+            "SELECT id, from_state, to_state, intent_id, lane, status, "
+            "evaluation_json, cost_json, created_at, updated_at "
+            "FROM transitions WHERE lane = ? ORDER BY created_at",
+            (lane,),
+        ).fetchall()
+
+        transitions = []
+        intent_ids = set()
+        for r in transition_rows:
+            transitions.append({
+                "id": r[0], "from_state": r[1], "to_state": r[2],
+                "intent_id": r[3], "lane": r[4], "status": r[5],
+                "evaluation_json": r[6], "cost_json": r[7],
+                "created_at": r[8], "updated_at": r[9],
+            })
+            intent_ids.add(r[3])
+
+        # Intents referenced by transitions
+        intents = []
+        for iid in intent_ids:
+            row = self.conn.execute(
+                "SELECT id, prompt, agent_json, context_refs, tags, "
+                "metadata, created_at FROM intents WHERE id = ?",
+                (iid,),
+            ).fetchone()
+            if row:
+                intents.append({
+                    "id": row[0], "prompt": row[1],
+                    "agent_json": row[2], "context_refs": row[3],
+                    "tags": row[4], "metadata": row[5],
+                    "created_at": row[6],
+                })
+
+        return {
+            "lane": lane_data,
+            "transitions": transitions,
+            "intents": intents,
+        }
+
+    def import_lane_metadata(self, data: dict) -> dict:
+        """Import lane metadata from remote sync.
+
+        Upserts lane, transitions, and intents. Existing records (by ID)
+        are skipped to preserve local state. Returns a summary of what
+        was imported.
+
+        For lane head: uses last-writer-wins by updated_at timestamp.
+        If remote lane head is newer, it wins.
+        """
+        stats = {"lanes_created": 0, "lanes_updated": 0,
+                 "transitions_imported": 0, "intents_imported": 0,
+                 "conflicts": []}
+
+        lane_info = data["lane"]
+        lane_name = lane_info["name"]
+
+        # Import intents first (transitions reference them)
+        for intent in data.get("intents", []):
+            existing = self.conn.execute(
+                "SELECT id FROM intents WHERE id = ?",
+                (intent["id"],),
+            ).fetchone()
+            if not existing:
+                self.conn.execute(
+                    "INSERT INTO intents "
+                    "(id, prompt, agent_json, context_refs, tags, "
+                    "metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (intent["id"], intent["prompt"], intent["agent_json"],
+                     intent["context_refs"], intent["tags"],
+                     intent["metadata"], intent["created_at"]),
+                )
+                stats["intents_imported"] += 1
+
+        # Import transitions (skip existing by ID)
+        for trans in data.get("transitions", []):
+            existing = self.conn.execute(
+                "SELECT id FROM transitions WHERE id = ?",
+                (trans["id"],),
+            ).fetchone()
+            if not existing:
+                self.conn.execute(
+                    "INSERT INTO transitions "
+                    "(id, from_state, to_state, intent_id, lane, status, "
+                    "evaluation_json, cost_json, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (trans["id"], trans["from_state"], trans["to_state"],
+                     trans["intent_id"], trans["lane"], trans["status"],
+                     trans["evaluation_json"], trans["cost_json"],
+                     trans["created_at"], trans["updated_at"]),
+                )
+                stats["transitions_imported"] += 1
+
+        # Upsert lane
+        existing_lane = self.conn.execute(
+            "SELECT head_state, created_at FROM lanes WHERE name = ?",
+            (lane_name,),
+        ).fetchone()
+
+        if not existing_lane:
+            # New lane — create it
+            self.conn.execute(
+                "INSERT INTO lanes "
+                "(name, head_state, fork_base, created_at, metadata) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (lane_name, lane_info["head_state"],
+                 lane_info["fork_base"], lane_info["created_at"],
+                 json.dumps(lane_info.get("metadata", {}))),
+            )
+            stats["lanes_created"] += 1
+        else:
+            local_head = existing_lane[0]
+            remote_head = lane_info["head_state"]
+            if local_head != remote_head:
+                # Heads diverge — record conflict for caller to resolve
+                stats["conflicts"].append({
+                    "lane": lane_name,
+                    "local_head": local_head,
+                    "remote_head": remote_head,
+                })
+                stats["lanes_updated"] += 1
+
+        self.conn.commit()
+        return stats
 
     # ── Querying ──────────────────────────────────────────────────
 

@@ -1,11 +1,11 @@
-# Contributing to Vex
+# Contributing to Fla
 
 ## Development Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/<owner>/vex.git
-cd vex
+git clone https://github.com/<owner>/fla.git
+cd fla
 
 # Install in development mode with all dev dependencies
 pip install -e ".[dev]"
@@ -28,16 +28,16 @@ python -X utf8 -m pytest tests/test_cli.py -v
 
 ```bash
 # Lint
-ruff check vex/ tests/
+ruff check fla/ tests/
 
 # Check formatting
-ruff format --check vex/ tests/
+ruff format --check fla/ tests/
 
 # Auto-format
-ruff format vex/ tests/
+ruff format fla/ tests/
 
 # Type check
-mypy vex/
+mypy fla/
 ```
 
 ## Code Style
@@ -72,4 +72,4 @@ Please file issues on GitHub with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Python version and OS
-- Vex version (`vex --version`)
+- Fla version (`fla --version`)

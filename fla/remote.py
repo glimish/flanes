@@ -5,6 +5,7 @@ Abstract backend + S3/GCS (optional deps, lazy import) + local cache.
 Provides sync between a local ContentStore and a remote backend.
 """
 
+import json
 import logging
 import os
 import tempfile
@@ -256,7 +257,8 @@ class RemoteSyncManager:
         from .cas import ObjectType
 
         if hashes is None:
-            hashes = self.backend.list_keys()
+            # Exclude metadata keys (stored under _meta/ prefix)
+            hashes = [k for k in self.backend.list_keys() if not k.startswith("_meta/")]
 
         pulled = 0
         skipped = 0
@@ -319,6 +321,70 @@ class RemoteSyncManager:
             "synced": sorted(local_hashes & remote_hashes),
         }
 
+    def push_metadata(self, wsm, lanes: list | None = None) -> dict:
+        """Push lane metadata (transitions, intents) to remote.
+
+        Exports each lane's metadata as JSON and stores it under
+        ``_meta/<lane>.json`` in the remote backend.
+
+        Args:
+            wsm: WorldStateManager instance for export.
+            lanes: Optional list of lane names. If None, pushes all lanes.
+        """
+        if lanes is None:
+            lane_rows = wsm.list_lanes()
+            lanes = [l["name"] for l in lane_rows]
+
+        pushed = 0
+        for lane_name in lanes:
+            try:
+                data = wsm.export_lane_metadata(lane_name)
+                payload = json.dumps(data, default=str).encode("utf-8")
+                key = f"_meta/{lane_name}.json"
+                self.backend.upload(key, payload)
+                pushed += 1
+            except ValueError:
+                logger.warning("Lane %s not found, skipping metadata push", lane_name)
+
+        return {"pushed_lanes": pushed, "total_lanes": len(lanes)}
+
+    def pull_metadata(self, wsm) -> dict:
+        """Pull lane metadata from remote and import into local DB.
+
+        Downloads all ``_meta/*.json`` files from the remote backend
+        and imports them into the local WorldStateManager. Existing
+        records are skipped (union merge by UUID).
+
+        Returns summary with any conflicts detected.
+        """
+        meta_keys = [k for k in self.backend.list_keys("_meta/") if k.endswith(".json")]
+
+        total_stats = {
+            "lanes_pulled": 0,
+            "transitions_imported": 0,
+            "intents_imported": 0,
+            "conflicts": [],
+        }
+
+        for key in meta_keys:
+            payload = self.backend.download(key)
+            if payload is None:
+                continue
+
+            try:
+                data = json.loads(payload.decode("utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                logger.warning("Failed to parse metadata from %s", key)
+                continue
+
+            stats = wsm.import_lane_metadata(data)
+            total_stats["lanes_pulled"] += 1
+            total_stats["transitions_imported"] += stats["transitions_imported"]
+            total_stats["intents_imported"] += stats["intents_imported"]
+            total_stats["conflicts"].extend(stats["conflicts"])
+
+        return total_stats
+
     def _all_local_hashes(self) -> list:
         """Get all object hashes from the local store."""
         rows = self.store.conn.execute("SELECT hash FROM objects").fetchall()
@@ -329,7 +395,7 @@ def create_backend(config: dict) -> RemoteBackend:
     """Create a remote backend from config.
 
     Built-in backends: s3, gcs, memory.
-    Additional backends can be registered via the ``vex.storage`` entry point
+    Additional backends can be registered via the ``fla.storage`` entry point
     group. Each entry point should be a factory callable that accepts the
     remote_storage config dict and returns a RemoteBackend instance.
     """
