@@ -10,7 +10,7 @@ setup(
         ],
     },
     python_requires=">=3.10",
-    description="FLA — Feature Lanes for Agents: version control for agentic AI systems",
+    description="Fla: Feature Lanes for Agents - version control for agentic AI systems",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

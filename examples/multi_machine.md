@@ -39,8 +39,8 @@ echo "print('hello')" > main.py
 fla snapshot -m "Initial project files"
 fla commit -m "Project setup"
 
-# Push to remote
-fla remote push
+# Push to remote (--metadata syncs lane history too)
+fla remote push --metadata
 # → Pushed 5 objects (3 blobs, 1 tree, 1 state)
 ```
 
@@ -64,8 +64,8 @@ cat > .fla/config.json << 'EOF'
 }
 EOF
 
-# Pull objects from remote
-fla remote pull
+# Pull objects and lane metadata from remote
+fla remote pull --metadata
 # → Pulled 5 objects
 ```
 
@@ -77,21 +77,21 @@ fla lane create feature-auth
 echo "def login(): pass" > auth.py
 fla snapshot -m "Auth module scaffold"
 fla commit -m "Add auth module"
-fla remote push
+fla remote push --metadata
 
 # Machine B: work on API endpoints
 fla lane create feature-api
 echo "def get_users(): pass" > api.py
 fla snapshot -m "API module scaffold"
 fla commit -m "Add API module"
-fla remote push
+fla remote push --metadata
 ```
 
 ## Step 5: Sync and Review
 
 ```bash
-# Either machine: pull everything
-fla remote pull
+# Either machine: pull everything (including lane metadata)
+fla remote pull --metadata
 
 # Check remote status
 fla remote status
@@ -104,17 +104,18 @@ fla history --lane feature-api
 # Promote approved work to main
 fla promote feature-auth --to main
 fla promote feature-api --to main
-fla remote push
+fla remote push --metadata
 ```
 
 ## Tips
 
-- **Use separate lanes per machine/agent** to avoid conflicts. Fla does not
-  merge divergent histories on the same lane.
+- **Use `--metadata`** to sync lane history, transitions, and intents alongside CAS objects.
+- **Use separate lanes per machine/agent** for the cleanest workflow. Same-lane work across machines is supported with conflict detection on pull.
 - **Push frequently** so other machines can pull the latest objects.
 - **Use `fla remote status`** to check what needs syncing before starting work.
 - **CAS deduplication** means identical file content is only stored and
   transferred once, even across lanes and machines.
+- **NFS/shared filesystems:** Fla detects and blocks cross-machine concurrent access to the same `.fla/` directory. Always use remote push/pull instead.
 
 ## Alternative: GCS Backend
 

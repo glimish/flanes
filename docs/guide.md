@@ -1,6 +1,6 @@
 # Fla User Guide
 
-Comprehensive guide for Fla — version control for agentic AI systems.
+Comprehensive guide for Fla, a version control system for agentic AI.
 
 ## Table of Contents
 
@@ -60,7 +60,7 @@ cd my-project
 fla init
 ```
 
-This creates a `.fla/` directory and takes an initial snapshot. Your files stay in place — the repo root IS the main workspace (like git). Only metadata is added.
+This creates a `.fla/` directory and takes an initial snapshot. Your files stay in place: the repo root IS the main workspace (like git). Only metadata is added.
 
 ### Make Changes and Commit
 
@@ -116,7 +116,7 @@ For a concise overview, see the [README](../README.md#core-concepts).
 
 ### World States
 
-A world state is a complete, immutable snapshot of the entire project at a point in time. Every file, every directory — captured as a Merkle tree in the content-addressed store. World states are identified by the SHA-256 hash of their root tree.
+A world state is a complete, immutable snapshot of the entire project at a point in time. Every file, every directory, captured as a Merkle tree in the content-addressed store. World states are identified by the SHA-256 hash of their root tree.
 
 There are no partial commits. When you snapshot a workspace, Fla hashes every file and builds a complete tree. If nothing changed, the hash is the same and no new state is created.
 
@@ -124,12 +124,12 @@ There are no partial commits. When you snapshot a workspace, Fla hashes every fi
 
 Every transition carries a structured intent:
 
-- **prompt** — The instruction that caused the change
-- **agent identity** — Who made it (agent_id, agent_type, model)
-- **tags** — Semantic labels for search (e.g., `["auth", "security"]`)
-- **cost** — Token usage, API calls, wall time
-- **context_refs** — References to related states or external resources
-- **metadata** — Arbitrary key-value pairs
+- **prompt:** the instruction that caused the change
+- **agent identity:** who made it (agent_id, agent_type, model)
+- **tags:** semantic labels for search (e.g., `["auth", "security"]`)
+- **cost:** token usage, API calls, wall time
+- **context_refs:** references to related states or external resources
+- **metadata:** arbitrary key-value pairs
 
 Intents make the *why* behind changes queryable, not just the *what*.
 
@@ -137,26 +137,26 @@ Intents make the *why* behind changes queryable, not just the *what*.
 
 A transition proposes moving from one world state (parent) to another (child). Transitions have a lifecycle:
 
-1. **proposed** — Created but not yet evaluated
-2. **accepted** — Passed evaluation, advances the lane head
-3. **rejected** — Failed evaluation, recorded for posterity
+1. **proposed:** created but not yet evaluated
+2. **accepted:** passed evaluation, advances the lane head
+3. **rejected:** failed evaluation, recorded for posterity
 
 Accepting a transition advances the lane's head pointer to the new state.
 
 ### Lanes
 
-Lanes are isolated workstreams, analogous to branches but with different semantics. Lanes don't merge — instead, work is *promoted* from one lane to another.
+Lanes are isolated workstreams, analogous to branches but with different semantics. Lanes don't merge. Instead, work is *promoted* from one lane to another.
 
 Lane names must use dashes, not slashes:
 - `feature-auth` (valid)
 - `bugfix-parser-edge-case` (valid)
-- `feature/auth` (invalid — rejected with error)
+- `feature/auth` (invalid, rejected with error)
 
 ### Workspaces
 
 The main workspace IS the repo root (like git). Feature lanes get physically isolated directories at `.fla/workspaces/<name>/`. This gives you familiar git-style behavior for everyday work while still enabling parallel agents to work on feature lanes without interfering with each other.
 
-Workspaces are materialized from the CAS when created and incrementally updated when the target state changes — only modified files are written.
+Workspaces are materialized from the CAS when created and incrementally updated when the target state changes; only modified files are written.
 
 ### Promote
 
@@ -301,8 +301,8 @@ fla search "authentication"
 
 | Command | Description |
 |---------|-------------|
-| `fla remote push` | Push local objects to remote storage |
-| `fla remote pull` | Pull remote objects to local store |
+| `fla remote push [--metadata]` | Push local objects to remote storage (with `--metadata`: also sync lane metadata) |
+| `fla remote pull [--metadata]` | Pull remote objects to local store (with `--metadata`: also sync lane metadata, detect conflicts) |
 | `fla remote status` | Show sync status |
 
 ### Templates
@@ -384,10 +384,10 @@ with session.work("Add authentication module", tags=["auth"], auto_accept=True) 
 
 The `w` object inside `work()` is a `WorkContext`:
 
-- **`w.path`** — `pathlib.Path` to the workspace directory. Read and write files here.
-- **`w.record_tokens(tokens_in, tokens_out)`** — Track token usage for cost accounting.
-- **`w.add_metadata(key, value)`** — Attach arbitrary metadata to the transition.
-- **`w.result`** — After `work()` exits, contains the checkpoint result dict.
+- **`w.path`:** `pathlib.Path` to the workspace directory. Read and write files here.
+- **`w.record_tokens(tokens_in, tokens_out)`:** track token usage for cost accounting.
+- **`w.add_metadata(key, value)`:** attach arbitrary metadata to the transition.
+- **`w.result`:** after `work()` exits, contains the checkpoint result dict.
 
 ### Manual Session Control
 
@@ -487,11 +487,11 @@ Repository configuration is stored in `.fla/config.json`. It is created automati
 | `max_tree_depth` | int | `100` | Maximum directory nesting depth. Set to 0 for default. |
 | `blob_threshold` | int | `0` | Size threshold for external blob storage |
 | `evaluators` | array | `[]` | List of evaluator configurations (see [Evaluators](#evaluators)) |
-| `embedding_api_url` | string | — | OpenAI-compatible embedding API URL |
-| `embedding_api_key` | string | — | API key for embedding service |
-| `embedding_model` | string | — | Embedding model name |
-| `embedding_dimensions` | int | — | Embedding vector dimensions |
-| `remote_storage` | object | — | Remote storage configuration (see [Remote Storage](#remote-storage)) |
+| `embedding_api_url` | string | - | OpenAI-compatible embedding API URL |
+| `embedding_api_key` | string | - | API key for embedding service |
+| `embedding_model` | string | - | Embedding model name |
+| `embedding_dimensions` | int | - | Embedding vector dimensions |
+| `remote_storage` | object | - | Remote storage configuration (see [Remote Storage](#remote-storage)) |
 
 ---
 
@@ -536,8 +536,8 @@ Add evaluators to `.fla/config.json`:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | string | (required) | Display name for the evaluator |
-| `command` | string | — | Shell command to execute (OS-dependent parsing) |
-| `args` | array | — | Explicit argument list (cross-platform, recommended) |
+| `command` | string | - | Shell command to execute (OS-dependent parsing) |
+| `args` | array | - | Explicit argument list (cross-platform, recommended) |
 | `working_directory` | string | `null` | Working directory for the command. If `null`, uses the workspace directory. |
 | `required` | bool | `true` | If `true`, failure blocks acceptance. If `false`, failure is recorded but doesn't block. |
 | `timeout_seconds` | int | `300` | Maximum execution time before the evaluator is killed |
@@ -654,7 +654,7 @@ Budget for lane 'feature-auth':
 
 When a budget limit is exceeded, `check_budget()` raises a `BudgetError`. This is checked during `propose()` and `checkpoint()` operations. The agent receives the error and can decide how to proceed (e.g., stop work, switch lanes, request budget increase).
 
-Budget data is stored in the lane's metadata column — no schema migration required.
+Budget data is stored in the lane's metadata column, so no schema migration is required.
 
 ---
 
@@ -677,7 +677,7 @@ Add to `.fla/config.json`:
 }
 ```
 
-Requires `boto3` — install with `pip install fla[s3]`.
+Requires `boto3`. Install with `pip install fla[s3]`.
 
 AWS credentials are resolved through the standard boto3 chain (environment variables, `~/.aws/credentials`, IAM role, etc.).
 
@@ -693,7 +693,7 @@ AWS credentials are resolved through the standard boto3 chain (environment varia
 }
 ```
 
-Requires `google-cloud-storage` — install with `pip install fla[gcs]`.
+Requires `google-cloud-storage`. Install with `pip install fla[gcs]`.
 
 GCP credentials are resolved through Application Default Credentials.
 
@@ -706,20 +706,24 @@ fla remote push
 # Pull remote objects to local store
 fla remote pull
 
+# Push/pull with lane metadata (transitions, intents, lane heads)
+fla remote push --metadata
+fla remote pull --metadata
+
 # Check sync status (what's local-only, remote-only, synced)
 fla remote status
 ```
 
 ### How It Works
 
-Remote sync operates at the CAS object level. Each blob and tree is an independently addressable object identified by its SHA-256 hash. Push uploads objects that exist locally but not remotely. Pull downloads objects that exist remotely but not locally. The content-addressed design means objects are naturally deduplicated — the same file content is only stored once regardless of how many states reference it.
+Remote sync operates at the CAS object level. Each blob and tree is an independently addressable object identified by its SHA-256 hash. Push uploads objects that exist locally but not remotely. Pull downloads objects that exist remotely but not locally. The content-addressed design means objects are naturally deduplicated: the same file content is only stored once regardless of how many states reference it.
 
 ### Integrity Verification
 
 When pulling objects from remote storage, Fla verifies the SHA-256 hash of each downloaded payload matches the expected object key. This protects against:
 
-- **Corrupted storage** — Bit rot or transfer errors
-- **Malicious backends** — Tampered data on shared or untrusted storage
+- **Corrupted storage:** bit rot or transfer errors
+- **Malicious backends:** tampered data on shared or untrusted storage
 
 Objects that fail integrity verification are logged and skipped. The pull result includes an `integrity_failures` count:
 
@@ -741,7 +745,7 @@ Fla supports collaboration across multiple machines using remote storage as the 
 
 ### Architecture
 
-Each machine has its own local Fla repository with a full CAS and SQLite database. Remote storage (S3/GCS) acts as a shared object pool. Machines push and pull CAS objects — blobs, trees, and state snapshots — to stay in sync.
+Each machine has its own local Fla repository with a full CAS and SQLite database. Remote storage (S3/GCS) acts as a shared object pool. Machines push and pull CAS objects (blobs, trees, and state snapshots) to stay in sync.
 
 ```
 Machine A                  Remote (S3/GCS)                Machine B
@@ -772,11 +776,11 @@ Machine A                  Remote (S3/GCS)                Machine B
 
 3. Push from the first machine, pull on the second:
    ```bash
-   # Machine A: push local work
-   fla remote push
+   # Machine A: push local work (use --metadata to include lane history)
+   fla remote push --metadata
 
-   # Machine B: pull remote objects
-   fla remote pull
+   # Machine B: pull remote objects and lane metadata
+   fla remote pull --metadata
    ```
 
 ### Workflow: Parallel Agents on Separate Machines
@@ -787,15 +791,15 @@ A common pattern is running independent agents on different machines, each worki
 # Machine A: agent works on feature-auth
 fla lane create feature-auth
 # ... agent does work, snapshots, proposes ...
-fla remote push
+fla remote push --metadata
 
 # Machine B: agent works on feature-api
 fla lane create feature-api
 # ... agent does work, snapshots, proposes ...
-fla remote push
+fla remote push --metadata
 
 # Either machine: pull all work, review, promote
-fla remote pull
+fla remote pull --metadata
 fla history --lane feature-auth
 fla history --lane feature-api
 fla promote feature-auth --to main
@@ -824,9 +828,9 @@ This approach trades some fidelity (Fla metadata like cost records and evaluatio
 
 ### Limitations
 
-- **SQLite is local-only.** Lane metadata, workspace state, and transition history live in the local database and are not synced via remote push/pull. Only CAS objects (blobs, trees, state snapshots) are shared.
-- **No conflict resolution.** If two machines create transitions on the same lane, they will have divergent local histories. Use separate lanes per machine to avoid conflicts.
-- **Shared filesystem is fragile.** Running two Fla instances against the same `.fla/` directory on a network filesystem (NFS, SMB) risks SQLite corruption. Always use remote push/pull instead.
+- **SQLite is local-only.** Lane metadata, workspace state, and transition history live in the local SQLite database. By default, only CAS objects (blobs, trees, state snapshots) are synced via remote push/pull. Use `--metadata` to also sync lane metadata, transitions, and intents.
+- **Conflict detection, not auto-merge.** When two machines create transitions on the same lane, `fla remote pull --metadata` detects divergent heads and reports conflicts. Clean merges (different lanes or non-overlapping changes) are handled automatically. Conflicting same-lane work requires manual resolution.
+- **NFS safety fencing.** Running two Fla instances against the same `.fla/` directory on a network filesystem (NFS, SMB) is detected and blocked. Fla uses an instance lock to prevent cross-machine concurrent access to the same repository. Use remote push/pull for multi-machine collaboration instead.
 
 ---
 
@@ -860,7 +864,7 @@ This walks the git log and creates a Fla transition for each commit. File trees 
 
 ### Notes
 
-- The git bridge uses `git` commands via subprocess — git must be installed and on PATH.
+- The git bridge uses `git` commands via subprocess, so git must be installed and on PATH.
 - Export creates a fresh git repo; it does not append to existing repos.
 - Import creates transitions with agent_type `git-import`.
 
@@ -874,11 +878,11 @@ Fla is designed to work alongside Git, not replace it. A common pattern is using
 
 | Concern | Git | Fla |
 |---------|-----|-----|
-| Human collaboration | Branches, PRs, code review | — |
+| Human collaboration | Branches, PRs, code review | - |
 | CI/CD integration | Native support everywhere | Export via git bridge |
 | Agent experiments | No quality gates | Propose/accept/reject cycle |
 | Parallel agent work | Branch conflicts | Independent lanes, no conflicts |
-| Cost tracking | — | Per-lane token and API call budgets |
+| Cost tracking | - | Per-lane token and API call budgets |
 | Rollback granularity | Commits | Snapshots (sub-commit checkpoints) |
 
 ### Setup
@@ -937,15 +941,15 @@ Garbage collection removes unreachable objects and expired transitions to reclai
 
 Fla uses a mark-and-sweep algorithm:
 
-1. **Mark phase** — Starting from lane heads, fork bases, and non-rejected transitions, walk all reachable objects (states, trees, blobs) and mark them as live.
-2. **Sweep phase** — Delete all unmarked objects and transitions older than the specified age.
+1. **Mark phase:** starting from lane heads, fork bases, and non-rejected transitions, walk all reachable objects (states, trees, blobs) and mark them as live.
+2. **Sweep phase:** delete all unmarked objects and transitions older than the specified age.
 
 A deferred transaction is used during the mark phase to prevent concurrent `accept` operations from creating objects that would be incorrectly swept.
 
 ### Usage
 
 ```bash
-# Dry run — shows what would be deleted without deleting anything
+# Dry run: shows what would be deleted without deleting anything
 fla gc
 
 # Actually delete (requires --confirm)
@@ -1061,7 +1065,7 @@ The `.fla-project.json` file:
 
 ## Templates
 
-Templates provide reusable workspace scaffolding — predefined files, directories, and ignore patterns that can be applied when creating new workspaces.
+Templates provide reusable workspace scaffolding: predefined files, directories, and ignore patterns that can be applied when creating new workspaces.
 
 ### Creating a Template
 
@@ -1108,8 +1112,8 @@ Templates are stored as JSON files in `.fla/templates/<name>.json`:
 
 Each file in a template can specify content in two ways:
 
-- **`content`** — Inline text content, stored directly in the template JSON
-- **`source_hash`** — Reference to a blob in the CAS, for binary or large files
+- **`content`:** inline text content, stored directly in the template JSON
+- **`source_hash`:** reference to a blob in the CAS, for binary or large files
 
 ### Security
 
@@ -1268,7 +1272,7 @@ Maximum file size that can be stored in the CAS.
 - **Config key:** `max_blob_size`
 - **Error:** `ContentStoreLimitError` when exceeded
 
-Deduplication is checked before the size limit — if an identical blob already exists in the store, it is accepted regardless of the current limit setting.
+Deduplication is checked before the size limit. If an identical blob already exists in the store, it is accepted regardless of the current limit setting.
 
 ### Tree Depth Limit
 
@@ -1412,7 +1416,7 @@ def worker():
 - 30-second busy timeout handles write contention
 - Writes are serialized via SQLite's internal locking
 
-For highest throughput, create one `Repository` instance per thread — they safely share the same database file.
+For highest throughput, create one `Repository` instance per thread. They safely share the same database file.
 
 ---
 
