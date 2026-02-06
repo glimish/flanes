@@ -36,6 +36,7 @@ DEFAULT_FILE_MODE = 0o644
 EXEC_BITS = stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
 from .cas import ContentStore, ObjectType  # noqa: E402
+from .serializable import Serializable  # noqa: E402
 
 
 class TreeDepthLimitError(ValueError):
@@ -51,28 +52,16 @@ class TransitionStatus(Enum):
 
 
 @dataclass
-class AgentIdentity:
+class AgentIdentity(Serializable):
     """Who made this change."""
     agent_id: str
     agent_type: str          # e.g. "coder", "reviewer", "refactorer"
     model: str | None = None  # e.g. "claude-sonnet-4-20250514"
     session_id: str | None = None
 
-    def to_dict(self) -> dict:
-        return {
-            "agent_id": self.agent_id,
-            "agent_type": self.agent_type,
-            "model": self.model,
-            "session_id": self.session_id,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "AgentIdentity":
-        return cls(**d)
-
 
 @dataclass
-class Intent:
+class Intent(Serializable):
     """
     Why a change was made. This is the key innovation over git.
 
@@ -88,32 +77,9 @@ class Intent:
     metadata: dict = field(default_factory=dict)            # Arbitrary extra context
     created_at: float = field(default_factory=time.time)
 
-    def to_dict(self) -> dict:
-        return {
-            "id": self.id,
-            "prompt": self.prompt,
-            "agent": self.agent.to_dict(),
-            "context_refs": self.context_refs,
-            "tags": self.tags,
-            "metadata": self.metadata,
-            "created_at": self.created_at,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "Intent":
-        return cls(
-            id=d["id"],
-            prompt=d["prompt"],
-            agent=AgentIdentity.from_dict(d["agent"]),
-            context_refs=d.get("context_refs", []),
-            tags=d.get("tags", []),
-            metadata=d.get("metadata", {}),
-            created_at=d.get("created_at", time.time()),
-        )
-
 
 @dataclass
-class EvaluationResult:
+class EvaluationResult(Serializable):
     """
     The result of evaluating a proposed state transition.
 
@@ -127,40 +93,14 @@ class EvaluationResult:
     duration_ms: float = 0.0
     metadata: dict = field(default_factory=dict)
 
-    def to_dict(self) -> dict:
-        return {
-            "passed": self.passed,
-            "evaluator": self.evaluator,
-            "checks": self.checks,
-            "summary": self.summary,
-            "duration_ms": self.duration_ms,
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "EvaluationResult":
-        return cls(**d)
-
 
 @dataclass
-class CostRecord:
+class CostRecord(Serializable):
     """Resource consumption for a transition."""
     tokens_in: int = 0
     tokens_out: int = 0
     wall_time_ms: float = 0.0
     api_calls: int = 0
-
-    def to_dict(self) -> dict:
-        return {
-            "tokens_in": self.tokens_in,
-            "tokens_out": self.tokens_out,
-            "wall_time_ms": self.wall_time_ms,
-            "api_calls": self.api_calls,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "CostRecord":
-        return cls(**d)
 
 
 class WorldStateManager:

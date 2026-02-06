@@ -6,57 +6,32 @@ Configuration is stored in .vex-project.json at the project root.
 """
 
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from .serializable import Serializable
+
+logger = logging.getLogger(__name__)
 
 PROJECT_FILE = ".vex-project.json"
 
 
 @dataclass
-class RepoMount:
+class RepoMount(Serializable):
     """A vex repo mounted in the project."""
     repo_path: str
     mount_point: str
     lane: str = "main"
 
-    def to_dict(self) -> dict:
-        return {
-            "repo_path": self.repo_path,
-            "mount_point": self.mount_point,
-            "lane": self.lane,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "RepoMount":
-        return cls(
-            repo_path=d["repo_path"],
-            mount_point=d["mount_point"],
-            lane=d.get("lane", "main"),
-        )
-
 
 @dataclass
-class ProjectConfig:
+class ProjectConfig(Serializable):
     """Configuration for a multi-repo project."""
     name: str
-    repos: list = field(default_factory=list)
+    repos: list[RepoMount] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
-
-    def to_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "repos": [r.to_dict() if isinstance(r, RepoMount) else r for r in self.repos],
-            "created_at": self.created_at,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict) -> "ProjectConfig":
-        return cls(
-            name=d["name"],
-            repos=[RepoMount.from_dict(r) for r in d.get("repos", [])],
-            created_at=d.get("created_at", time.time()),
-        )
 
 
 class Project:

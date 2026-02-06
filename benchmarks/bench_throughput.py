@@ -14,6 +14,7 @@ Usage:
 """
 
 import argparse
+import json
 import random
 import shutil
 import socket
@@ -198,7 +199,6 @@ def bench_rest_api_rps(concurrent_clients=None, duration_seconds=10):
     if concurrent_clients is None:
         concurrent_clients = [1, 5, 10, 25, 50]
 
-    import json
     import urllib.request
 
     from vex.server import VexServer
@@ -286,6 +286,8 @@ def main():
                         help="Client counts for API benchmark")
     parser.add_argument("--samples", type=int, default=20,
                         help="Samples for latency measurements")
+    parser.add_argument("--json", action="store_true",
+                        help="Output results as JSON")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -323,6 +325,27 @@ def main():
         print("\nREST API RPS:")
         for clients, data in all_results["api"].items():
             print(f"  {clients:3d} clients: {data['rps']:7.1f} req/sec")
+
+    if args.json:
+        # Convert int keys to strings for JSON serialization
+        json_results = {}
+        for key, val in all_results.items():
+            if isinstance(val, dict) and any(isinstance(k, int) for k in val):
+                json_results[key] = {str(k): v for k, v in val.items()}
+            else:
+                json_results[key] = val
+        output = {
+            "benchmark": "throughput",
+            "params": {
+                "scenario": args.scenario,
+                "files": args.files,
+                "duration": args.duration,
+                "clients": args.clients,
+                "samples": args.samples,
+            },
+            "results": json_results,
+        }
+        print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":

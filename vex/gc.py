@@ -9,15 +9,19 @@ GC is never automatic — it must be explicitly invoked.
 """
 
 import json
+import logging
 import time
 from dataclasses import dataclass
 
 from .cas import ContentStore, ObjectType
+from .serializable import Serializable
 from .state import WorldStateManager
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
-class GCResult:
+class GCResult(Serializable):
     reachable_objects: int
     deleted_objects: int
     deleted_bytes: int
@@ -26,18 +30,6 @@ class GCResult:
     pruned_cache_entries: int  # Fix #4: Track pruned stat cache entries
     dry_run: bool
     elapsed_ms: float
-
-    def to_dict(self) -> dict:
-        return {
-            "reachable_objects": self.reachable_objects,
-            "deleted_objects": self.deleted_objects,
-            "deleted_bytes": self.deleted_bytes,
-            "deleted_states": self.deleted_states,
-            "deleted_transitions": self.deleted_transitions,
-            "pruned_cache_entries": self.pruned_cache_entries,
-            "dry_run": self.dry_run,
-            "elapsed_ms": self.elapsed_ms,
-        }
 
 
 def _mark_phase(conn, store, max_age_days):

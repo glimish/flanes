@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import json
 import random
 import shutil
 import sys
@@ -136,9 +137,18 @@ def main():
     parser.add_argument("--files", type=int, default=1000, help="Number of files")
     parser.add_argument("--dirs", type=int, default=50, help="Number of directories")
     parser.add_argument("--rounds", type=int, default=3, help="Rounds per benchmark")
+    parser.add_argument("--json", action="store_true", help="Output results as JSON")
     args = parser.parse_args()
 
-    run_benchmark(args.files, args.dirs, args.rounds)
+    results = run_benchmark(args.files, args.dirs, args.rounds)
+
+    if args.json:
+        output = {
+            "benchmark": "snapshot",
+            "params": {"files": args.files, "dirs": args.dirs, "rounds": args.rounds},
+            "results": results,
+        }
+        print(json.dumps(output, indent=2))
 
 
 if __name__ == "__main__":

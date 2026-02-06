@@ -3,11 +3,17 @@ REST API Server for Vex.
 
 Uses stdlib http.server with ThreadingHTTPServer for concurrent request handling.
 Each request acquires a repo lock to serialize SQLite access safely.
+
+Authentication:
+    When a token is configured (via VEX_API_TOKEN env var or "api_token" in config),
+    all endpoints except /health require a Bearer token in the Authorization header.
+    If no token is configured, the server runs without authentication (local-only use).
 """
 
 import base64
 import json
 import logging
+import os
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -22,6 +28,8 @@ logger = logging.getLogger(__name__)
 class VexHandler(BaseHTTPRequestHandler):
     """HTTP request handler for the Vex REST API."""
 
+    server: "VexServer"  # type: ignore[assignment]
+
     @property
     def repo(self) -> Repository:
         return self.server.repo
@@ -34,6 +42,21 @@ class VexHandler(BaseHTTPRequestHandler):
         """Route HTTP request logging through the standard logging module."""
         logger.debug(format, *args)
 
+    def _check_auth(self) -> bool:
+        """Check bearer token if authentication is configured.
+
+        Returns True if the request is authorized, False otherwise.
+        When False, an error response has already been sent.
+        """
+        token = self.server._api_token
+        if not token:
+            return True  # No auth configured
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header == f"Bearer {token}":
+            return True
+        self._send_json({"error": "Unauthorized"}, status=401)
+        return False
+
     def _send_json(self, data, status=200):
         body = json.dumps(data, indent=2, default=str).encode("utf-8")
         self.send_response(status)
@@ -45,7 +68,8 @@ class VexHandler(BaseHTTPRequestHandler):
     def _send_error(self, status, message):
         self._send_json({"error": message}, status=status)
 
-    def _read_body(self) -> dict:
+    def _read_body(self) -> dict | None:
+        """Read and parse JSON body. Returns None on malformed JSON (sends 400)."""
         length = int(self.headers.get("Content-Length", 0))
         if length == 0:
             return {}
@@ -53,7 +77,8 @@ class VexHandler(BaseHTTPRequestHandler):
         try:
             return json.loads(raw.decode("utf-8"))
         except json.JSONDecodeError:
-            return {}
+            self._send_error(400, "Malformed JSON in request body")
+            return None
 
     def _parse_path(self) -> tuple:
         """Parse request path and query parameters."""
@@ -61,16 +86,71 @@ class VexHandler(BaseHTTPRequestHandler):
         params = {k: v[0] if len(v) == 1 else v for k, v in parse_qs(parsed.query).items()}
         return parsed.path.rstrip("/"), params
 
+    # MIME types for static files
+    _MIME_TYPES = {
+        ".html": "text/html",
+        ".css": "text/css",
+        ".js": "application/javascript",
+        ".json": "application/json",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".ico": "image/x-icon",
+    }
+
+    def _serve_static(self, url_path: str) -> bool:
+        """Serve a static file from vex/web/. Returns True if handled."""
+        if not self.server._web_enabled:
+            return False
+        if not url_path.startswith("/web/") and url_path != "/web":
+            return False
+
+        web_dir = Path(__file__).parent / "web"
+
+        if url_path == "/web" or url_path == "/web/":
+            file_path = web_dir / "index.html"
+        else:
+            rel = url_path[len("/web/"):]
+            file_path = web_dir / rel
+
+        # Prevent path traversal
+        try:
+            file_path.resolve().relative_to(web_dir.resolve())
+        except ValueError:
+            self._send_error(403, "Forbidden")
+            return True
+
+        if not file_path.is_file():
+            self._send_error(404, f"Not found: {url_path}")
+            return True
+
+        suffix = file_path.suffix.lower()
+        mime = self._MIME_TYPES.get(suffix, "application/octet-stream")
+        body = file_path.read_bytes()
+
+        self.send_response(200)
+        self.send_header("Content-Type", mime)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+        return True
+
     def do_GET(self):
         path, params = self._parse_path()
 
+        # Static web files (no auth needed)
+        if self._serve_static(path):
+            return
+
         try:
-            # Health endpoint doesn't need repo lock
+            # Health endpoint doesn't need repo lock or auth
             if path == "/health":
                 self._send_json({
                     "status": "healthy",
                     "version": "0.3.0",
                 })
+                return
+
+            if not self._check_auth():
                 return
 
             # All other endpoints need repo lock for thread safety
@@ -182,8 +262,13 @@ class VexHandler(BaseHTTPRequestHandler):
             self._send_error(500, "Internal server error")
 
     def do_POST(self):
+        if not self._check_auth():
+            return
+
         path, params = self._parse_path()
         body = self._read_body()
+        if body is None:
+            return  # Malformed JSON — error already sent
 
         try:
             with self.repo_lock:
@@ -290,6 +375,9 @@ class VexHandler(BaseHTTPRequestHandler):
             self._send_error(500, "Internal server error")
 
     def do_DELETE(self):
+        if not self._check_auth():
+            return
+
         path, params = self._parse_path()
 
         try:
@@ -313,14 +401,25 @@ class VexServer(ThreadingHTTPServer):
 
     Uses ThreadingHTTPServer for concurrent request handling.
     A lock serializes access to the Repository to ensure SQLite thread safety.
+
+    Authentication:
+        Set VEX_API_TOKEN env var or pass api_token to enable bearer auth.
+        Without a token, the server is unauthenticated (suitable for localhost only).
     """
 
     repo: Repository | None
     _repo_path: str | None
     _repo_lock: threading.Lock
+    _api_token: str | None
+    _web_enabled: bool
 
-    def __init__(self, repo_or_path, host: str = "127.0.0.1", port: int = 7654):
+    def __init__(
+        self, repo_or_path, host: str = "127.0.0.1", port: int = 7654,
+        api_token: str | None = None, web: bool = False,
+    ):
         self._repo_lock = threading.Lock()
+        self._api_token = api_token or os.environ.get("VEX_API_TOKEN")
+        self._web_enabled = web
         if isinstance(repo_or_path, Repository):
             self.repo = repo_or_path
             self._repo_path = None
@@ -341,12 +440,24 @@ class VexServer(ThreadingHTTPServer):
         super().process_request(request, client_address)
 
 
-def serve(repo_path, host="127.0.0.1", port=7654):
-    """Start the Vex REST API server."""
+def serve(
+    repo_path, host="127.0.0.1", port=7654,
+    api_token: str | None = None, web: bool = False,
+):
+    """Start the Vex REST API server.
+
+    Args:
+        api_token: Bearer token for authentication. If not provided, reads from
+                   VEX_API_TOKEN env var. If neither is set, runs without auth.
+        web: If True, serve the web viewer at /web/.
+    """
     repo = Repository.find(Path(repo_path))
-    server = VexServer(repo, host, port)
+    server = VexServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
-    print(f"Vex server listening on {host}:{actual_port}")
+    auth_status = "with auth" if server._api_token else "without auth (set VEX_API_TOKEN to enable)"
+    print(f"Vex server listening on {host}:{actual_port} ({auth_status})")
+    if web:
+        print(f"  Web viewer: http://{host}:{actual_port}/web/")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

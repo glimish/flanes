@@ -48,6 +48,7 @@ Locking:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import socket
@@ -56,6 +57,10 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+
+from .serializable import Serializable
+
+logger = logging.getLogger(__name__)
 
 
 def _hostname() -> str:
@@ -121,7 +126,7 @@ class WorkspaceStatus(Enum):
 
 
 @dataclass
-class WorkspaceInfo:
+class WorkspaceInfo(Serializable):
     """Metadata about a workspace."""
     name: str                    # Matches lane name by default
     lane: str                    # Which lane this workspace tracks
@@ -131,18 +136,6 @@ class WorkspaceInfo:
     agent_id: str | None      # Agent currently using this workspace
     created_at: float
     updated_at: float
-
-    def to_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "lane": self.lane,
-            "path": str(self.path),
-            "base_state": self.base_state,
-            "status": self.status,
-            "agent_id": self.agent_id,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-        }
 
 
 class WorkspaceManager:

@@ -735,6 +735,101 @@ Objects that fail integrity verification are logged and skipped. The pull result
 
 ---
 
+## Multi-Machine Collaboration
+
+Vex supports collaboration across multiple machines using remote storage as the synchronization layer.
+
+### Architecture
+
+Each machine has its own local Vex repository with a full CAS and SQLite database. Remote storage (S3/GCS) acts as a shared object pool. Machines push and pull CAS objects — blobs, trees, and state snapshots — to stay in sync.
+
+```
+Machine A                  Remote (S3/GCS)                Machine B
+┌──────────┐              ┌──────────────┐              ┌──────────┐
+│ .vex/    │──push──→     │ blobs/       │     ←──pull──│ .vex/    │
+│  cas/    │              │ trees/       │              │  cas/    │
+│  db      │←──pull──     │ states/      │     ──push──→│  db      │
+└──────────┘              └──────────────┘              └──────────┘
+```
+
+### Setup
+
+1. Initialize Vex on each machine:
+   ```bash
+   vex init --lane main
+   ```
+
+2. Configure the same remote backend on each machine (`.vex/config.json`):
+   ```json
+   {
+     "remote_storage": {
+       "backend": "s3",
+       "bucket": "team-vex-bucket",
+       "prefix": "my-project/"
+     }
+   }
+   ```
+
+3. Push from the first machine, pull on the second:
+   ```bash
+   # Machine A: push local work
+   vex remote push
+
+   # Machine B: pull remote objects
+   vex remote pull
+   ```
+
+### Workflow: Parallel Agents on Separate Machines
+
+A common pattern is running independent agents on different machines, each working on a separate lane:
+
+```bash
+# Machine A: agent works on feature-auth
+vex lane create feature-auth
+# ... agent does work, snapshots, proposes ...
+vex remote push
+
+# Machine B: agent works on feature-api
+vex lane create feature-api
+# ... agent does work, snapshots, proposes ...
+vex remote push
+
+# Either machine: pull all work, review, promote
+vex remote pull
+vex history --lane feature-auth
+vex history --lane feature-api
+vex promote feature-auth --to main
+vex promote feature-api --to main
+```
+
+### Alternative: Git Bridge as Middleware
+
+For teams already using Git, the git bridge can serve as a synchronization layer:
+
+1. Each machine exports its Vex history to a git repo
+2. Git handles the multi-machine sync (push/pull/merge)
+3. Other machines import from the shared git repo
+
+```bash
+# Machine A: export and push via git
+vex export-git ./sync-repo --lane main
+cd ./sync-repo && git push origin main
+
+# Machine B: pull via git and import
+cd ./sync-repo && git pull origin main
+vex import-git ./sync-repo --lane imported
+```
+
+This approach trades some fidelity (Vex metadata like cost records and evaluations are not preserved in git) for compatibility with existing git workflows.
+
+### Limitations
+
+- **SQLite is local-only.** Lane metadata, workspace state, and transition history live in the local database and are not synced via remote push/pull. Only CAS objects (blobs, trees, state snapshots) are shared.
+- **No conflict resolution.** If two machines create transitions on the same lane, they will have divergent local histories. Use separate lanes per machine to avoid conflicts.
+- **Shared filesystem is fragile.** Running two Vex instances against the same `.vex/` directory on a network filesystem (NFS, SMB) risks SQLite corruption. Always use remote push/pull instead.
+
+---
+
 ## Git Bridge
 
 The git bridge allows importing from and exporting to standard git repositories. This is useful for CI integration, sharing work with git-based tools, or migrating projects.
@@ -768,6 +863,69 @@ This walks the git log and creates a Vex transition for each commit. File trees 
 - The git bridge uses `git` commands via subprocess — git must be installed and on PATH.
 - Export creates a fresh git repo; it does not append to existing repos.
 - Import creates transitions with agent_type `git-import`.
+
+---
+
+## Git + Vex Coexistence
+
+Vex is designed to work alongside Git, not replace it. A common pattern is using Git as the source of truth for human collaboration and CI, while Vex manages agent experiments and quality-gated work.
+
+### Why Use Both?
+
+| Concern | Git | Vex |
+|---------|-----|-----|
+| Human collaboration | Branches, PRs, code review | — |
+| CI/CD integration | Native support everywhere | Export via git bridge |
+| Agent experiments | No quality gates | Propose/accept/reject cycle |
+| Parallel agent work | Branch conflicts | Independent lanes, no conflicts |
+| Cost tracking | — | Per-lane token and API call budgets |
+| Rollback granularity | Commits | Snapshots (sub-commit checkpoints) |
+
+### Setup
+
+When you run `vex init` inside an existing Git repository, Vex detects this and reminds you to add `.vex/` to your `.gitignore`:
+
+```bash
+cd my-git-project
+vex init
+# Note: Detected existing Git repository.
+#   Add '.vex/' to your .gitignore:  echo '.vex/' >> .gitignore
+```
+
+Add `.vex/` to `.gitignore` to prevent Git from tracking Vex's internal state:
+
+```bash
+echo '.vex/' >> .gitignore
+git add .gitignore
+git commit -m "Ignore vex directory"
+```
+
+### Recommended Workflow
+
+1. **Git is the source of truth.** The `main` branch in Git represents the canonical project state.
+2. **Vex manages agent work.** Agents use Vex lanes for experimental work with quality gates.
+3. **Export approved work back to Git.** Use `vex export-git` to create git commits from accepted Vex transitions.
+
+```bash
+# Agent does work in Vex
+vex lane create agent-feature
+# ... agent proposes, evaluator accepts ...
+
+# Export the approved lane to a git branch
+vex export-git ./export-dir --lane agent-feature
+cd ./export-dir
+git remote add origin <your-repo-url>
+git push origin main:agent-feature
+
+# Create a PR from the agent's work
+# Review and merge as normal
+```
+
+### What Gets Tracked Where
+
+- **Git tracks:** Source code, configuration, documentation, `.gitignore`
+- **Vex tracks (in `.vex/`):** Agent snapshots, transition history, evaluations, cost records, CAS objects
+- **Neither tracks:** Build artifacts, node_modules, virtual environments (add to both `.gitignore` and `.vexignore`)
 
 ---
 
@@ -1255,3 +1413,119 @@ def worker():
 - Writes are serialized via SQLite's internal locking
 
 For highest throughput, create one `Repository` instance per thread — they safely share the same database file.
+
+---
+
+## Writing Plugins
+
+Vex supports plugins via Python entry points. Third-party packages can register evaluators, storage backends, and lifecycle hooks.
+
+### Plugin Groups
+
+| Entry Point Group | Purpose | Signature |
+|-------------------|---------|-----------|
+| `vex.evaluators` | Custom evaluators (Python callables) | `(workspace_path: Path) -> EvaluatorResult` |
+| `vex.storage` | Remote storage backends | `(config: dict) -> RemoteBackend` |
+| `vex.hooks` | Lifecycle hooks | `(event: str, context: dict) -> None` |
+
+### Evaluator Plugins
+
+An evaluator plugin is a Python callable that receives the workspace path and returns an `EvaluatorResult`. Plugin evaluators run alongside configured shell-command evaluators.
+
+```python
+# my_plugin/evaluator.py
+from pathlib import Path
+from vex.evaluators import EvaluatorResult
+
+def check_readme(workspace_path: Path) -> EvaluatorResult:
+    """Evaluator that checks if README.md exists."""
+    readme = workspace_path / "README.md"
+    return EvaluatorResult(
+        name="readme-check",
+        passed=readme.exists(),
+        returncode=0 if readme.exists() else 1,
+        stdout="README.md found" if readme.exists() else "",
+        stderr="" if readme.exists() else "README.md missing",
+        duration_ms=0.0,
+    )
+```
+
+Register in `pyproject.toml`:
+
+```toml
+[project.entry-points."vex.evaluators"]
+readme-check = "my_plugin.evaluator:check_readme"
+```
+
+### Storage Backend Plugins
+
+A storage backend plugin is a factory callable that receives the `remote_storage` config dict and returns a `RemoteBackend` instance.
+
+```python
+# my_plugin/storage.py
+from vex.remote import RemoteBackend
+
+class AzureBackend(RemoteBackend):
+    def __init__(self, container, prefix=""):
+        # ... setup Azure Blob Storage client ...
+        pass
+
+    def upload(self, key, data): ...
+    def download(self, key): ...
+    def exists(self, key): ...
+    def list_keys(self, prefix=""): ...
+    def delete(self, key): ...
+
+def create_azure_backend(config):
+    return AzureBackend(
+        container=config["container"],
+        prefix=config.get("prefix", ""),
+    )
+```
+
+Register and configure:
+
+```toml
+# pyproject.toml
+[project.entry-points."vex.storage"]
+azure = "my_plugin.storage:create_azure_backend"
+```
+
+```json
+// .vex/config.json
+{
+  "remote_storage": {
+    "type": "azure",
+    "container": "my-container",
+    "prefix": "vex/"
+  }
+}
+```
+
+### Hook Plugins
+
+Hooks run before and after key lifecycle events. They are called with the event name and a context dict. Hook failures are logged but never block the operation.
+
+Available events: `pre_propose`, `post_propose`, `pre_accept`, `post_accept`, `pre_reject`, `post_reject`.
+
+```python
+# my_plugin/hooks.py
+import logging
+
+logger = logging.getLogger(__name__)
+
+def audit_hook(event, context):
+    """Log all lifecycle events for auditing."""
+    logger.info("Vex event: %s context=%s", event, context)
+```
+
+Register:
+
+```toml
+[project.entry-points."vex.hooks"]
+audit = "my_plugin.hooks:audit_hook"
+```
+
+### Plugin Discovery
+
+Plugins are discovered automatically at runtime via `importlib.metadata.entry_points()`. Install a plugin package (e.g., `pip install my-vex-plugin`) and Vex will find it on the next operation. No configuration changes needed beyond installing the package.

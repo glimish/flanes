@@ -25,13 +25,25 @@ classifiers = [
 vex = "vex.cli:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0", "ruff>=0.4", "mypy>=1.10"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "mypy>=1.10"]
 s3 = ["boto3>=1.26"]
 gcs = ["google-cloud-storage>=2.0"]
 remote = ["boto3>=1.26", "google-cloud-storage>=2.0"]
 
+# Entry point groups for plugins — third-party packages register here
+# See docs/guide.md "Writing Plugins" for details
+[project.entry-points."vex.evaluators"]
+# example: my_evaluator = "my_package:evaluate_func"
+[project.entry-points."vex.storage"]
+# example: my_backend = "my_package:create_backend"
+[project.entry-points."vex.hooks"]
+# example: my_hook = "my_package:hook_handler"
+
 [tool.setuptools.packages.find]
 include = ["vex*"]
+
+[tool.setuptools.package-data]
+"vex" = ["web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

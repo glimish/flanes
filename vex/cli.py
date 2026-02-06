@@ -151,14 +151,18 @@ def cmd_init(args):
     with Repository.init(path) as repo:
         head = repo.head()
         ws_path = repo.workspace_path(repo._default_lane())
+        git_detected = repo._read_config().get("git_coexistence", False)
 
         if args.json:
-            print_json({
+            result = {
                 "root": str(path),
                 "head": head,
                 "workspace": str(ws_path),
                 "lane": repo._default_lane(),
-            })
+            }
+            if git_detected:
+                result["git_detected"] = True
+            print_json(result)
         elif v == 0:
             if head:
                 print(head)
@@ -170,6 +174,11 @@ def cmd_init(args):
             print(f"  Lane: {repo._default_lane()}")
             if v >= 2 and head:
                 print(f"  Full head: {head}")
+            if git_detected:
+                print()
+                print("  Note: Detected existing Git repository.")
+                print("    Add '.vex/' to your .gitignore:")
+                print("      echo '.vex/' >> .gitignore")
 
 
 def cmd_status(args):
@@ -1087,7 +1096,7 @@ def cmd_import_git(args):
 def cmd_serve(args):
     """Start the Vex REST API server."""
     from .server import serve
-    serve(args.path or ".", host=args.host, port=args.port)
+    serve(args.path or ".", host=args.host, port=args.port, web=args.web)
 
 
 def cmd_mcp(args):
@@ -1420,10 +1429,69 @@ def cmd_remote_status(args):
 
 # ── Argument Parser ───────────────────────────────────────────
 
+COMMAND_ALIASES = {
+    "ci": "commit",
+    "st": "status",
+    "sn": "snapshot",
+    "hist": "history",
+}
+
+GROUPED_HELP = """\
+commands:
+  Core:
+    init              Initialize a new repository
+    status (st)       Show repository status
+    snapshot (sn)     Snapshot a workspace
+    commit (ci)       Quick commit: snapshot + propose + accept
+    propose           Propose a state transition
+    accept            Accept a proposed transition
+    reject            Reject a proposed transition
+
+  History & Query:
+    history (hist)    Show transition history
+    log               Alias for history
+    trace             Show causal lineage of a state
+    diff              Compare two world states
+    search            Search intents by text/tags
+    semantic-search   Embedding-based semantic search
+    info              Show state details
+    show              Display file content at a given state
+
+  Lanes & Workspaces:
+    lanes             List all lanes
+    lane create       Create a new lane
+    workspace         Manage workspaces (list, create, remove, update)
+    restore           Restore a workspace to any state
+    promote           Promote workspace work into a target lane
+
+  Evaluators & Budgets:
+    evaluate          Run evaluators on a workspace or transition
+    budget            Show or set budget limits for a lane
+
+  Admin & Integration:
+    gc                Garbage collect unreachable objects
+    doctor            Check and fix repository health
+    serve             Start REST API server
+    mcp               Start MCP tool server (stdio)
+    export-git        Export Vex history to a git repository
+    import-git        Import git history into Vex
+    remote            Remote storage operations (push, pull, status)
+    project           Multi-repo project management
+    template          Workspace templates (list, create, show)
+    cat-file          Low-level CAS object inspector
+    completion        Generate shell completion scripts
+"""
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vex",
         description="Vex — Version Control for Agentic AI Systems",
+        epilog=GROUPED_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version", "-V", action="version", version=f"vex {_vex_pkg.__version__}"
     )
     parser.add_argument("--path", "-C", default=".", help="Repository path")
     parser.add_argument("--json", "-j", action="store_true", help="JSON output")
@@ -1432,7 +1500,7 @@ def build_parser() -> argparse.ArgumentParser:
     verbosity.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     verbosity.add_argument("--quiet", "-q", action="store_true", help="Quiet output")
 
-    sub = parser.add_subparsers(dest="command", help="Available commands")
+    sub = parser.add_subparsers(dest="command")
 
     # init
     p = sub.add_parser("init", help="Initialize a new repository")
@@ -1628,6 +1696,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("serve", help="Start the Vex REST API server")
     p.add_argument("--port", type=int, default=7654, help="Port (default: 7654)")
     p.add_argument("--host", default="127.0.0.1", help="Host (default: 127.0.0.1)")
+    p.add_argument("--web", action="store_true", help="Serve web viewer at /web/")
     p.set_defaults(func=cmd_serve)
 
     # mcp
@@ -1719,7 +1788,46 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _error_hint(msg: str) -> str | None:
+    """Return a hint for common error messages, or None."""
+    lower = msg.lower()
+    if "workspace" in lower and "not found" in lower:
+        return "Hint: Use 'vex workspace list' to see available workspaces."
+    if "lane" in lower and ("not found" in lower or "does not exist" in lower):
+        return "Hint: Use 'vex lanes' to see available lanes."
+    if "transition" in lower and "not found" in lower:
+        return "Hint: Use 'vex history' to see recent transitions."
+    if "state" in lower and "not found" in lower:
+        return "Hint: Use 'vex history --json' to find valid state IDs."
+    return None
+
+
+_KNOWN_COMMANDS = [
+    "init", "status", "snapshot", "commit", "propose", "accept", "reject",
+    "history", "log", "trace", "diff", "search", "semantic-search",
+    "lanes", "lane", "workspace", "restore", "promote", "info", "show",
+    "evaluate", "budget", "gc", "doctor", "serve", "mcp",
+    "export-git", "import-git", "remote", "project", "template",
+    "cat-file", "completion",
+]
+
+
 def main():
+    # Resolve command aliases before parsing
+    if len(sys.argv) > 1 and sys.argv[1] in COMMAND_ALIASES:
+        sys.argv[1] = COMMAND_ALIASES[sys.argv[1]]
+
+    # Check for "did you mean?" before argparse (which exits with code 2)
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        attempted = sys.argv[1]
+        all_names = _KNOWN_COMMANDS + list(COMMAND_ALIASES.keys())
+        if attempted not in all_names:
+            matches = difflib.get_close_matches(attempted, all_names, n=3, cutoff=0.6)
+            if matches:
+                print(f"Unknown command: '{attempted}'", file=sys.stderr)
+                print(f"  Did you mean: {', '.join(matches)}?", file=sys.stderr)
+                sys.exit(1)
+
     parser = build_parser()
     args = parser.parse_args()
 
@@ -1737,10 +1845,14 @@ def main():
                 print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
         except Exception as e:
+            msg = str(e)
             if getattr(args, "json", False):
-                print_json({"error": str(e)})
+                print_json({"error": msg})
             else:
-                print(f"Error: {e}", file=sys.stderr)
+                print(f"Error: {msg}", file=sys.stderr)
+                hint = _error_hint(msg)
+                if hint:
+                    print(f"  {hint}", file=sys.stderr)
             sys.exit(1)
     else:
         parser.print_help()

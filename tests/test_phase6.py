@@ -460,6 +460,7 @@ class TestMCPServer:
 
         self.mcp = MCPServer.__new__(MCPServer)
         self.mcp.repo = self.repo
+        self.mcp._repo_lock = __import__("threading").Lock()
 
         yield
 
