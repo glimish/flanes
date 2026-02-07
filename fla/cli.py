@@ -627,6 +627,18 @@ def cmd_lane_create(args):
             print(f"  Workspace: {ws_path}")
 
 
+def cmd_lane_delete(args):
+    with open_repo(args) as repo:
+        deleted = repo.delete_lane(args.name, force=args.force)
+
+        if args.json:
+            print_json({"name": args.name, "deleted": deleted})
+        elif deleted:
+            print(f"✓ Deleted lane '{args.name}' (lane record + workspace)")
+        else:
+            print(f"Lane '{args.name}' not found")
+
+
 # ── Workspace commands ────────────────────────────────────────
 
 
@@ -961,7 +973,57 @@ def cmd_doctor(args):
                             finding["fix_error"] = str(e)
                     findings.append(finding)
 
-        # Check 5: Version mismatch
+        # Check 5: Lane-workspace desync (lane in DB but no workspace)
+        known_ws_names = {ws.name for ws in repo.wm.list()}
+        for lane in repo.lanes():
+            lane_name = lane["name"]
+            if lane_name == "main":
+                continue  # Main workspace is always the repo root
+            if lane_name not in known_ws_names:
+                finding = {
+                    "check": "lane_without_workspace",
+                    "workspace": lane_name,
+                    "detail": (
+                        f"Lane '{lane_name}' exists in database but has no workspace "
+                        f"(use 'fla lane delete {lane_name}' to clean up)"
+                    ),
+                    "fixable": True,
+                }
+                if fix:
+                    try:
+                        repo.delete_lane(lane_name, force=True)
+                        finding["fixed"] = True
+                        fixed_count += 1
+                    except Exception as e:
+                        finding["fixed"] = False
+                        finding["fix_error"] = str(e)
+                findings.append(finding)
+
+        # Check 6: Workspace without lane (workspace on disk but lane deleted from DB)
+        for ws in repo.wm.list():
+            if ws.name == "main":
+                continue
+            if not repo.wsm.lane_exists(ws.lane):
+                finding = {
+                    "check": "workspace_without_lane",
+                    "workspace": ws.name,
+                    "detail": (
+                        f"Workspace '{ws.name}' tracks lane '{ws.lane}' "
+                        f"which no longer exists in database"
+                    ),
+                    "fixable": True,
+                }
+                if fix:
+                    try:
+                        repo.wm.remove(ws.name, force=True)
+                        finding["fixed"] = True
+                        fixed_count += 1
+                    except Exception as e:
+                        finding["fixed"] = False
+                        finding["fix_error"] = str(e)
+                findings.append(finding)
+
+        # Check 7: Version mismatch
         config_path = repo.fla_dir / "config.json"
         if config_path.exists():
             config = json.loads(config_path.read_text())
@@ -1709,6 +1771,11 @@ def build_parser() -> argparse.ArgumentParser:
     lc.add_argument("name")
     lc.add_argument("--base", default=None)
     lc.set_defaults(func=cmd_lane_create)
+
+    ld = lane_sub.add_parser("delete", help="Delete a lane and its workspace")
+    ld.add_argument("name")
+    ld.add_argument("--force", action="store_true", help="Force delete even if workspace is locked")
+    ld.set_defaults(func=cmd_lane_delete)
 
     # workspace
     p = sub.add_parser("workspace", help="Workspace management")

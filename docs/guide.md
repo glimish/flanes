@@ -30,17 +30,17 @@ Comprehensive guide for Fla, a version control system for agentic AI.
 ### Basic Install
 
 ```bash
-pip install fla
+pip install flanes
 ```
 
 ### Optional Dependencies
 
 ```bash
 # Amazon S3 remote storage
-pip install fla[s3]
+pip install flanes[s3]
 
 # Google Cloud Storage remote storage
-pip install fla[gcs]
+pip install flanes[gcs]
 ```
 
 ### Verify Installation
@@ -219,6 +219,7 @@ fla commit \
 |---------|-------------|
 | `fla lanes` | List all lanes with head states |
 | `fla lane create NAME [--base STATE_ID]` | Create a new lane (and workspace) |
+| `fla lane delete NAME [--force]` | Delete a lane and its workspace |
 
 ```bash
 # Create a lane branching from current main head
@@ -226,6 +227,12 @@ fla lane create feature-auth
 
 # Create a lane from a specific state
 fla lane create experiment-v2 --base abc123
+
+# Delete a lane and its workspace
+fla lane delete feature-auth
+
+# Force delete even if workspace is locked
+fla lane delete feature-auth --force
 ```
 
 ### Workspaces
@@ -677,7 +684,7 @@ Add to `.fla/config.json`:
 }
 ```
 
-Requires `boto3`. Install with `pip install fla[s3]`.
+Requires `boto3`. Install with `pip install flanes[s3]`.
 
 AWS credentials are resolved through the standard boto3 chain (environment variables, `~/.aws/credentials`, IAM role, etc.).
 
@@ -693,7 +700,7 @@ AWS credentials are resolved through the standard boto3 chain (environment varia
 }
 ```
 
-Requires `google-cloud-storage`. Install with `pip install fla[gcs]`.
+Requires `google-cloud-storage`. Install with `pip install flanes[gcs]`.
 
 GCP credentials are resolved through Application Default Credentials.
 
@@ -1238,6 +1245,8 @@ fla doctor --json
 | Stale locks | Yes | Workspace lock held by a process that no longer exists (checked by PID) |
 | Orphaned directories | Yes | Workspace directory exists but has no metadata file (`.json`) |
 | Missing directories | Yes | Metadata file exists but workspace directory is missing |
+| Lane without workspace | Yes | Lane exists in database but workspace was never created or was deleted |
+| Workspace without lane | Yes | Workspace exists on disk but the lane record was deleted from the database |
 | Version mismatch | No | Repository version doesn't match installed Fla version (informational) |
 
 ### Example Output

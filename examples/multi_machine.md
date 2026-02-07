@@ -5,7 +5,7 @@ project using S3 remote storage.
 
 ## Prerequisites
 
-- Fla installed on both machines (`pip install fla[s3]`)
+- Fla installed on both machines (`pip install flanes[s3]`)
 - An S3 bucket accessible from both machines
 - AWS credentials configured (`~/.aws/credentials` or environment variables)
 
@@ -131,5 +131,5 @@ Replace the S3 config with GCS:
 }
 ```
 
-Install with `pip install fla[gcs]` and configure Application Default
+Install with `pip install flanes[gcs]` and configure Application Default
 Credentials.
