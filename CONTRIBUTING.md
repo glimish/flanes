@@ -4,8 +4,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/glimish/fla.git
-cd fla
+git clone https://github.com/glimish/flanes.git
+cd flanes
 
 # Install in development mode with all dev dependencies
 pip install -e ".[dev]"
