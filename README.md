@@ -8,7 +8,7 @@
 
 Version control designed from the ground up for AI agents. Replaces git's line-diff model with intent-based snapshots, physically isolated workspaces, and evaluation gating.
 
-## Why Fla?
+## Why Flanes?
 
 Git assumes a single human making small, curated edits. AI agents break every part of that model.
 
