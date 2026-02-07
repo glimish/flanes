@@ -32,20 +32,34 @@ __all__ = [
     "collect_garbage",
 ]
 
+
 # Lazy imports — only resolve when accessed
 def __getattr__(name):
     if name in ("Repository", "NotARepository"):
         from .repo import NotARepository, Repository
+
         return Repository if name == "Repository" else NotARepository
     if name in ("AgentSession", "WorkContext"):
         from .agent_sdk import AgentSession, WorkContext
+
         return AgentSession if name == "AgentSession" else WorkContext
     if name in ("ContentStore", "CASObject", "ObjectType", "ContentStoreLimitError"):
         from .cas import CASObject, ContentStore, ContentStoreLimitError, ObjectType
-        return {"ContentStore": ContentStore, "CASObject": CASObject,
-                "ObjectType": ObjectType, "ContentStoreLimitError": ContentStoreLimitError}[name]
-    if name in ("WorldStateManager", "AgentIdentity", "CostRecord",
-                "EvaluationResult", "TransitionStatus", "TreeDepthLimitError"):
+
+        return {
+            "ContentStore": ContentStore,
+            "CASObject": CASObject,
+            "ObjectType": ObjectType,
+            "ContentStoreLimitError": ContentStoreLimitError,
+        }[name]
+    if name in (
+        "WorldStateManager",
+        "AgentIdentity",
+        "CostRecord",
+        "EvaluationResult",
+        "TransitionStatus",
+        "TreeDepthLimitError",
+    ):
         from .state import (
             AgentIdentity,
             CostRecord,
@@ -54,6 +68,7 @@ def __getattr__(name):
             TreeDepthLimitError,
             WorldStateManager,
         )
+
         mapping = {
             "WorldStateManager": WorldStateManager,
             "AgentIdentity": AgentIdentity,
@@ -65,5 +80,6 @@ def __getattr__(name):
         return mapping[name]
     if name in ("GCResult", "collect_garbage"):
         from .gc import GCResult, collect_garbage
+
         return GCResult if name == "GCResult" else collect_garbage
     raise AttributeError(f"module 'fla' has no attribute {name!r}")

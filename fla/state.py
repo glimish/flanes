@@ -44,18 +44,19 @@ class TreeDepthLimitError(ValueError):
 
 
 class TransitionStatus(Enum):
-    PROPOSED = "proposed"       # Agent has proposed this state
-    EVALUATING = "evaluating"   # Currently being evaluated (tests, review)
-    ACCEPTED = "accepted"       # Passed evaluation, part of canonical history
-    REJECTED = "rejected"       # Failed evaluation
-    SUPERSEDED = "superseded"   # Another transition replaced this one
+    PROPOSED = "proposed"  # Agent has proposed this state
+    EVALUATING = "evaluating"  # Currently being evaluated (tests, review)
+    ACCEPTED = "accepted"  # Passed evaluation, part of canonical history
+    REJECTED = "rejected"  # Failed evaluation
+    SUPERSEDED = "superseded"  # Another transition replaced this one
 
 
 @dataclass
 class AgentIdentity(Serializable):
     """Who made this change."""
+
     agent_id: str
-    agent_type: str          # e.g. "coder", "reviewer", "refactorer"
+    agent_type: str  # e.g. "coder", "reviewer", "refactorer"
     model: str | None = None  # e.g. "claude-sonnet-4-20250514"
     session_id: str | None = None
 
@@ -69,12 +70,13 @@ class Intent(Serializable):
     structured, searchable records of the *instruction* that caused
     a change, not just a description of the change itself.
     """
+
     id: str
-    prompt: str                      # The instruction/prompt that triggered this
+    prompt: str  # The instruction/prompt that triggered this
     agent: AgentIdentity
     context_refs: list[str] = field(default_factory=list)  # Referenced state/file IDs
-    tags: list[str] = field(default_factory=list)           # Semantic tags for search
-    metadata: dict = field(default_factory=dict)            # Arbitrary extra context
+    tags: list[str] = field(default_factory=list)  # Semantic tags for search
+    metadata: dict = field(default_factory=dict)  # Arbitrary extra context
     created_at: float = field(default_factory=time.time)
 
 
@@ -86,8 +88,9 @@ class EvaluationResult(Serializable):
     This is a first-class concept, not a bolted-on CI check.
     Every transition carries its evaluation result permanently.
     """
+
     passed: bool
-    evaluator: str                    # Who/what evaluated (agent ID, "test_suite", "human:kim")
+    evaluator: str  # Who/what evaluated (agent ID, "test_suite", "human:kim")
     checks: dict[str, bool] = field(default_factory=dict)  # Individual check results
     summary: str = ""
     duration_ms: float = 0.0
@@ -97,6 +100,7 @@ class EvaluationResult(Serializable):
 @dataclass
 class CostRecord(Serializable):
     """Resource consumption for a transition."""
+
     tokens_in: int = 0
     tokens_out: int = 0
     wall_time_ms: float = 0.0
@@ -202,7 +206,10 @@ class WorldStateManager:
     # ── World State Creation ──────────────────────────────────────
 
     def snapshot_directory(
-        self, path: Path, parent_id: str | None = None, use_cache: bool = True,
+        self,
+        path: Path,
+        parent_id: str | None = None,
+        use_cache: bool = True,
     ) -> str:
         """
         Create a world state from a directory on disk.
@@ -250,20 +257,37 @@ class WorldStateManager:
 
     # Paths to always ignore when snapshotting (matched against filename)
     # Includes VCS dirs, build artifacts, OS noise, and security-sensitive files
-    DEFAULT_IGNORE = frozenset({
-        # Version control
-        ".fla", ".git", ".svn", ".hg",
-        # Build artifacts and caches
-        "__pycache__", "node_modules", ".DS_Store", "Thumbs.db",
-        # Environment and secrets (prevent accidental exposure)
-        ".env", ".env.local", ".env.development", ".env.production",
-        ".env.test", ".env.staging",
-        # Credentials and keys
-        "*.pem", "*.key", "*.p12", "*.pfx",
-        "credentials.json", "service-account.json",
-        # IDE and editor
-        ".idea", ".vscode",
-    })
+    DEFAULT_IGNORE = frozenset(
+        {
+            # Version control
+            ".fla",
+            ".git",
+            ".svn",
+            ".hg",
+            # Build artifacts and caches
+            "__pycache__",
+            "node_modules",
+            ".DS_Store",
+            "Thumbs.db",
+            # Environment and secrets (prevent accidental exposure)
+            ".env",
+            ".env.local",
+            ".env.development",
+            ".env.production",
+            ".env.test",
+            ".env.staging",
+            # Credentials and keys
+            "*.pem",
+            "*.key",
+            "*.p12",
+            "*.pfx",
+            "credentials.json",
+            "service-account.json",
+            # IDE and editor
+            ".idea",
+            ".vscode",
+        }
+    )
 
     def _hash_directory(
         self,
@@ -331,7 +355,8 @@ class WorldStateManager:
                     blob_hash = self.store.store_blob(content)
                     if use_cache:
                         self.store.update_stat_cache(
-                            str(item), st.st_mtime_ns, st.st_size, blob_hash)
+                            str(item), st.st_mtime_ns, st.st_size, blob_hash
+                        )
 
                 # Fix #2: Capture file mode (especially executable bit)
                 file_mode = st.st_mode & 0o777
@@ -342,7 +367,12 @@ class WorldStateManager:
                 if self._should_ignore(item.name, rel_path, ignore_names | ignore_dirs, negate):
                     continue
                 subtree_hash = self._hash_directory(
-                    item, ignore_names, ignore_dirs, negate, use_cache, current_depth + 1,
+                    item,
+                    ignore_names,
+                    ignore_dirs,
+                    negate,
+                    use_cache,
+                    current_depth + 1,
                     relative_prefix=f"{rel_path}/",
                 )
                 entries[item.name] = ("tree", subtree_hash, 0o755)
@@ -372,7 +402,7 @@ class WorldStateManager:
             """Check if pattern matches name or path."""
             # If pattern contains '/', match against relative path
             # Otherwise match against basename only
-            target = check_path if '/' in pattern else check_name
+            target = check_path if "/" in pattern else check_name
             if target == pattern:
                 return True
             if any(c in pattern for c in ("*", "?", "[")):
@@ -413,19 +443,21 @@ class WorldStateManager:
         # even if two states have the same tree (e.g., a revert) or are created
         # within the same time.time() tick (especially on Windows with ~15ms granularity)
         now = time.time()
-        state_content = json.dumps({
-            "root_tree": root_tree,
-            "parent_id": parent_id,
-            "created_at": now,
-            "nonce": str(uuid.uuid4()),
-        }).encode()
+        state_content = json.dumps(
+            {
+                "root_tree": root_tree,
+                "parent_id": parent_id,
+                "created_at": now,
+                "nonce": str(uuid.uuid4()),
+            }
+        ).encode()
         state_id = self.store.hash_content(state_content, ObjectType.STATE)
 
         self.conn.execute(
             """INSERT OR IGNORE INTO world_states
                (id, root_tree, parent_id, created_at, metadata)
                VALUES (?, ?, ?, ?, ?)""",
-            (state_id, root_tree, parent_id, now, json.dumps(metadata or {}))
+            (state_id, root_tree, parent_id, now, json.dumps(metadata or {})),
         )
         self.conn.commit()
         return state_id
@@ -455,7 +487,7 @@ class WorldStateManager:
                 json.dumps(intent.tags),
                 json.dumps(intent.metadata),
                 intent.created_at,
-            )
+            ),
         )
         self.conn.commit()
         return intent.id
@@ -464,7 +496,7 @@ class WorldStateManager:
         row = self.conn.execute(
             """SELECT id, prompt, agent_json, context_refs, tags, metadata, created_at
                FROM intents WHERE id = ?""",
-            (intent_id,)
+            (intent_id,),
         ).fetchone()
         if row is None:
             return None
@@ -518,14 +550,14 @@ class WorldStateManager:
                 json.dumps((cost or CostRecord()).to_dict()),
                 now,
                 now,
-            )
+            ),
         )
 
         # Ensure lane exists
         self.conn.execute(
             """INSERT OR IGNORE INTO lanes
                (name, head_state, fork_base, created_at) VALUES (?, ?, ?, ?)""",
-            (lane, from_state, from_state, now)
+            (lane, from_state, from_state, now),
         )
 
         self.conn.commit()
@@ -557,7 +589,7 @@ class WorldStateManager:
         try:
             row = self.conn.execute(
                 "SELECT from_state, to_state, lane, status FROM transitions WHERE id = ?",
-                (transition_id,)
+                (transition_id,),
             ).fetchone()
 
             if row is None:
@@ -566,9 +598,7 @@ class WorldStateManager:
             from_state, to_state, lane, current_status = row
 
             if current_status != TransitionStatus.PROPOSED.value:
-                raise ValueError(
-                    f"Transition {transition_id} is {current_status}, not proposed"
-                )
+                raise ValueError(f"Transition {transition_id} is {current_status}, not proposed")
 
             new_status = TransitionStatus.ACCEPTED if result.passed else TransitionStatus.REJECTED
             now = time.time()
@@ -580,7 +610,9 @@ class WorldStateManager:
                 if from_state is not None and current_head != from_state:
                     logger.warning(
                         "Stale accept: transition %s from_state %s != lane head %s",
-                        transition_id, from_state, current_head,
+                        transition_id,
+                        from_state,
+                        current_head,
                     )
                     new_status = TransitionStatus.REJECTED
                     result = EvaluationResult(
@@ -588,21 +620,20 @@ class WorldStateManager:
                         evaluator=result.evaluator,
                         checks=result.checks,
                         summary=f"Stale: lane head moved to {current_head} "
-                                f"(expected {from_state}). Re-propose from current head.",
+                        f"(expected {from_state}). Re-propose from current head.",
                     )
 
             self.conn.execute(
                 """UPDATE transitions
                    SET status = ?, evaluation_json = ?, updated_at = ?
                    WHERE id = ?""",
-                (new_status.value, json.dumps(result.to_dict()), now, transition_id)
+                (new_status.value, json.dumps(result.to_dict()), now, transition_id),
             )
 
             # If accepted, advance the lane head
             if new_status == TransitionStatus.ACCEPTED:
                 self.conn.execute(
-                    "UPDATE lanes SET head_state = ? WHERE name = ?",
-                    (to_state, lane)
+                    "UPDATE lanes SET head_state = ? WHERE name = ?", (to_state, lane)
                 )
 
             self.conn.commit()
@@ -650,25 +681,19 @@ class WorldStateManager:
         self.conn.execute(
             """INSERT INTO lanes (name, head_state, fork_base, created_at, metadata)
                VALUES (?, ?, ?, ?, ?)""",
-            (name, base_state, base_state, now, json.dumps(metadata or {}))
+            (name, base_state, base_state, now, json.dumps(metadata or {})),
         )
         self.conn.commit()
         return name
 
     def get_lane_head(self, lane: str = "main") -> str | None:
         """Get the current head state of a lane."""
-        row = self.conn.execute(
-            "SELECT head_state FROM lanes WHERE name = ?",
-            (lane,)
-        ).fetchone()
+        row = self.conn.execute("SELECT head_state FROM lanes WHERE name = ?", (lane,)).fetchone()
         return row[0] if row else None
 
     def get_lane_fork_base(self, lane: str) -> str | None:
         """Get the fork base of a lane — the state it was forked from."""
-        row = self.conn.execute(
-            "SELECT fork_base FROM lanes WHERE name = ?",
-            (lane,)
-        ).fetchone()
+        row = self.conn.execute("SELECT fork_base FROM lanes WHERE name = ?", (lane,)).fetchone()
         return row[0] if row else None
 
     def list_lanes(self) -> list[dict]:
@@ -699,8 +724,7 @@ class WorldStateManager:
         """
         # Lane info
         lane_row = self.conn.execute(
-            "SELECT name, head_state, fork_base, created_at, metadata "
-            "FROM lanes WHERE name = ?",
+            "SELECT name, head_state, fork_base, created_at, metadata FROM lanes WHERE name = ?",
             (lane,),
         ).fetchone()
         if not lane_row:
@@ -725,12 +749,20 @@ class WorldStateManager:
         transitions = []
         intent_ids = set()
         for r in transition_rows:
-            transitions.append({
-                "id": r[0], "from_state": r[1], "to_state": r[2],
-                "intent_id": r[3], "lane": r[4], "status": r[5],
-                "evaluation_json": r[6], "cost_json": r[7],
-                "created_at": r[8], "updated_at": r[9],
-            })
+            transitions.append(
+                {
+                    "id": r[0],
+                    "from_state": r[1],
+                    "to_state": r[2],
+                    "intent_id": r[3],
+                    "lane": r[4],
+                    "status": r[5],
+                    "evaluation_json": r[6],
+                    "cost_json": r[7],
+                    "created_at": r[8],
+                    "updated_at": r[9],
+                }
+            )
             intent_ids.add(r[3])
 
         # Intents referenced by transitions
@@ -742,12 +774,17 @@ class WorldStateManager:
                 (iid,),
             ).fetchone()
             if row:
-                intents.append({
-                    "id": row[0], "prompt": row[1],
-                    "agent_json": row[2], "context_refs": row[3],
-                    "tags": row[4], "metadata": row[5],
-                    "created_at": row[6],
-                })
+                intents.append(
+                    {
+                        "id": row[0],
+                        "prompt": row[1],
+                        "agent_json": row[2],
+                        "context_refs": row[3],
+                        "tags": row[4],
+                        "metadata": row[5],
+                        "created_at": row[6],
+                    }
+                )
 
         return {
             "lane": lane_data,
@@ -765,9 +802,13 @@ class WorldStateManager:
         For lane head: uses last-writer-wins by updated_at timestamp.
         If remote lane head is newer, it wins.
         """
-        stats = {"lanes_created": 0, "lanes_updated": 0,
-                 "transitions_imported": 0, "intents_imported": 0,
-                 "conflicts": []}
+        stats = {
+            "lanes_created": 0,
+            "lanes_updated": 0,
+            "transitions_imported": 0,
+            "intents_imported": 0,
+            "conflicts": [],
+        }
 
         lane_info = data["lane"]
         lane_name = lane_info["name"]
@@ -783,9 +824,15 @@ class WorldStateManager:
                     "INSERT INTO intents "
                     "(id, prompt, agent_json, context_refs, tags, "
                     "metadata, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (intent["id"], intent["prompt"], intent["agent_json"],
-                     intent["context_refs"], intent["tags"],
-                     intent["metadata"], intent["created_at"]),
+                    (
+                        intent["id"],
+                        intent["prompt"],
+                        intent["agent_json"],
+                        intent["context_refs"],
+                        intent["tags"],
+                        intent["metadata"],
+                        intent["created_at"],
+                    ),
                 )
                 stats["intents_imported"] += 1
 
@@ -801,10 +848,18 @@ class WorldStateManager:
                     "(id, from_state, to_state, intent_id, lane, status, "
                     "evaluation_json, cost_json, created_at, updated_at) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (trans["id"], trans["from_state"], trans["to_state"],
-                     trans["intent_id"], trans["lane"], trans["status"],
-                     trans["evaluation_json"], trans["cost_json"],
-                     trans["created_at"], trans["updated_at"]),
+                    (
+                        trans["id"],
+                        trans["from_state"],
+                        trans["to_state"],
+                        trans["intent_id"],
+                        trans["lane"],
+                        trans["status"],
+                        trans["evaluation_json"],
+                        trans["cost_json"],
+                        trans["created_at"],
+                        trans["updated_at"],
+                    ),
                 )
                 stats["transitions_imported"] += 1
 
@@ -820,9 +875,13 @@ class WorldStateManager:
                 "INSERT INTO lanes "
                 "(name, head_state, fork_base, created_at, metadata) "
                 "VALUES (?, ?, ?, ?, ?)",
-                (lane_name, lane_info["head_state"],
-                 lane_info["fork_base"], lane_info["created_at"],
-                 json.dumps(lane_info.get("metadata", {}))),
+                (
+                    lane_name,
+                    lane_info["head_state"],
+                    lane_info["fork_base"],
+                    lane_info["created_at"],
+                    json.dumps(lane_info.get("metadata", {})),
+                ),
             )
             stats["lanes_created"] += 1
         else:
@@ -830,11 +889,13 @@ class WorldStateManager:
             remote_head = lane_info["head_state"]
             if local_head != remote_head:
                 # Heads diverge — record conflict for caller to resolve
-                stats["conflicts"].append({
-                    "lane": lane_name,
-                    "local_head": local_head,
-                    "remote_head": remote_head,
-                })
+                stats["conflicts"].append(
+                    {
+                        "lane": lane_name,
+                        "local_head": local_head,
+                        "remote_head": remote_head,
+                    }
+                )
                 stats["lanes_updated"] += 1
 
         self.conn.commit()
@@ -846,7 +907,7 @@ class WorldStateManager:
         """Get a world state by ID."""
         row = self.conn.execute(
             "SELECT id, root_tree, parent_id, created_at, metadata FROM world_states WHERE id = ?",
-            (state_id,)
+            (state_id,),
         ).fetchone()
         if row is None:
             return None
@@ -926,22 +987,24 @@ class WorldStateManager:
                    JOIN intents i ON t.intent_id = i.id
                    WHERE t.to_state = ? AND t.status = 'accepted'
                    ORDER BY t.created_at DESC LIMIT 1""",
-                (current,)
+                (current,),
             ).fetchone()
 
             if row is None:
                 break
 
-            lineage.append({
-                "transition_id": row[0],
-                "from_state": row[1],
-                "to_state": row[2],
-                "status": row[3],
-                "intent_prompt": row[4],
-                "agent": json.loads(row[5]),
-                "tags": json.loads(row[6]),
-                "created_at": row[7],
-            })
+            lineage.append(
+                {
+                    "transition_id": row[0],
+                    "from_state": row[1],
+                    "to_state": row[2],
+                    "status": row[3],
+                    "intent_prompt": row[4],
+                    "agent": json.loads(row[5]),
+                    "tags": json.loads(row[6]),
+                    "created_at": row[7],
+                }
+            )
 
             current = row[1]  # Follow to parent
             if current is None:
@@ -965,7 +1028,7 @@ class WorldStateManager:
                WHERE i.prompt LIKE ? OR i.tags LIKE ?
                ORDER BY i.created_at DESC
                LIMIT ?""",
-            (f"%{query}%", f"%{query}%", limit)
+            (f"%{query}%", f"%{query}%", limit),
         ).fetchall()
 
         return [
@@ -1007,9 +1070,7 @@ class WorldStateManager:
 
     def all_embeddings(self) -> list:
         """Get all stored embeddings as (intent_id, embedding_bytes) pairs."""
-        rows = self.conn.execute(
-            "SELECT intent_id, embedding FROM intent_embeddings"
-        ).fetchall()
+        rows = self.conn.execute("SELECT intent_id, embedding FROM intent_embeddings").fetchall()
         return [(r[0], r[1]) for r in rows]
 
     # ── Diff Support ──────────────────────────────────────────────
@@ -1148,7 +1209,8 @@ class WorldStateManager:
                 else:
                     logger.warning(
                         "Missing blob %s for file %s during materialization",
-                        hash_val, target,
+                        hash_val,
+                        target,
                     )
 
             elif typ == "tree":

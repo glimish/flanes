@@ -28,12 +28,18 @@ except (FileNotFoundError, subprocess.CalledProcessError):
 def run_fla(*args, cwd=None, expect_fail=False):
     """Run a fla CLI command and return (returncode, stdout, stderr)."""
     cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
+    # from the CI runner reaching the child process.
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         cwd=cwd,
         env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent)},
+        **kwargs,
     )
     if not expect_fail:
         if result.returncode != 0:
@@ -56,9 +62,15 @@ def repo_dir(tmp_path):
 def repo_with_commit(repo_dir):
     """A repo with at least one commit."""
     rc, _, _ = run_fla(
-        "commit", "-m", "initial commit",
-        "--agent-id", "test", "--agent-type", "human",
-        "--auto-accept", cwd=repo_dir,
+        "commit",
+        "-m",
+        "initial commit",
+        "--agent-id",
+        "test",
+        "--agent-type",
+        "human",
+        "--auto-accept",
+        cwd=repo_dir,
     )
     assert rc == 0
     return repo_dir
@@ -68,6 +80,7 @@ def repo_with_commit(repo_dir):
 def repo(tmp_path):
     """A Repository object for direct API testing."""
     from fla.repo import Repository
+
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     repo = Repository.init(tmp_path)
     return repo
@@ -137,8 +150,10 @@ class TestCatFileState:
 class TestCatFileNotFound:
     def test_cat_file_not_found(self, repo_with_commit):
         rc, out, err = run_fla(
-            "cat-file", "deadbeef" * 8,
-            cwd=repo_with_commit, expect_fail=True,
+            "cat-file",
+            "deadbeef" * 8,
+            cwd=repo_with_commit,
+            expect_fail=True,
         )
         assert rc == 1
 
@@ -154,8 +169,12 @@ class TestCatFileTypeMismatch:
 
         # Try to cat-file with --type blob on a tree → should fail
         rc, out, err = run_fla(
-            "cat-file", root_tree, "--type", "blob",
-            cwd=repo_with_commit, expect_fail=True,
+            "cat-file",
+            root_tree,
+            "--type",
+            "blob",
+            cwd=repo_with_commit,
+            expect_fail=True,
         )
         assert rc == 1
 
@@ -183,7 +202,8 @@ class TestGitExport:
     def test_export_creates_git_repo(self, repo_with_commit, tmp_path):
         target = tmp_path / "git-export"
         rc, out, err = run_fla(
-            "export-git", str(target),
+            "export-git",
+            str(target),
             cwd=repo_with_commit,
         )
         assert rc == 0, f"Export failed: {err}"
@@ -202,12 +222,15 @@ class TestGitExport:
 
         result = subprocess.run(
             ["git", "log", "--format=%s"],
-            cwd=str(target), capture_output=True, text=True,
+            cwd=str(target),
+            capture_output=True,
+            text=True,
         )
         messages = result.stdout.strip().split("\n")
         # Should contain at least the initial commit message
-        assert any("initial commit" in m.lower() or "initial snapshot" in m.lower()
-                    for m in messages)
+        assert any(
+            "initial commit" in m.lower() or "initial snapshot" in m.lower() for m in messages
+        )
 
     def test_export_multiple_commits(self, repo_with_commit, tmp_path):
         # Make a second commit
@@ -215,9 +238,15 @@ class TestGitExport:
         ws_path = repo_with_commit
         (ws_path / "second.txt").write_text("Second file\n")
         run_fla(
-            "commit", "-m", "add second file",
-            "--agent-id", "test", "--agent-type", "human",
-            "--auto-accept", cwd=repo_with_commit,
+            "commit",
+            "-m",
+            "add second file",
+            "--agent-id",
+            "test",
+            "--agent-type",
+            "human",
+            "--auto-accept",
+            cwd=repo_with_commit,
         )
 
         target = tmp_path / "git-export"
@@ -226,7 +255,9 @@ class TestGitExport:
 
         result = subprocess.run(
             ["git", "log", "--oneline"],
-            cwd=str(target), capture_output=True, text=True,
+            cwd=str(target),
+            capture_output=True,
+            text=True,
         )
         commits = [line for line in result.stdout.strip().split("\n") if line]
         assert len(commits) >= 2
@@ -241,34 +272,46 @@ class TestGitImport:
         """Create a git repo with some commits."""
         path.mkdir(parents=True, exist_ok=True)
         subprocess.run(["git", "init"], cwd=str(path), capture_output=True, check=True)
-        subprocess.run(["git", "config", "user.email", "test@test.com"],
-                       cwd=str(path), capture_output=True, check=True)
-        subprocess.run(["git", "config", "user.name", "Test"],
-                       cwd=str(path), capture_output=True, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"],
+            cwd=str(path),
+            capture_output=True,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test"], cwd=str(path), capture_output=True, check=True
+        )
 
         (path / "readme.txt").write_text("Hello from git\n")
         subprocess.run(["git", "add", "-A"], cwd=str(path), capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "first commit"],
-                       cwd=str(path), capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "first commit"], cwd=str(path), capture_output=True, check=True
+        )
 
         (path / "extra.txt").write_text("Extra file\n")
         subprocess.run(["git", "add", "-A"], cwd=str(path), capture_output=True, check=True)
-        subprocess.run(["git", "commit", "-m", "add extra file"],
-                       cwd=str(path), capture_output=True, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "add extra file"],
+            cwd=str(path),
+            capture_output=True,
+            check=True,
+        )
 
     def test_import_creates_states(self, repo_with_commit, tmp_path):
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
         rc, out, err = run_fla(
-            "import-git", str(git_repo), "--lane", "imported",
+            "import-git",
+            str(git_repo),
+            "--lane",
+            "imported",
             cwd=repo_with_commit,
         )
         assert rc == 0, f"Import failed: {err}"
 
         # Check that states exist on the imported lane
-        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
-                             cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "history", "--lane", "imported", cwd=repo_with_commit)
         assert rc == 0
         history = json.loads(out)
         assert len(history) >= 2
@@ -277,18 +320,17 @@ class TestGitImport:
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
-        run_fla("import-git", str(git_repo), "--lane", "imported",
-                cwd=repo_with_commit)
+        run_fla("import-git", str(git_repo), "--lane", "imported", cwd=repo_with_commit)
 
         # Get head of imported lane
-        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
-                             "--status", "accepted", cwd=repo_with_commit)
+        rc, out, _ = run_fla(
+            "--json", "history", "--lane", "imported", "--status", "accepted", cwd=repo_with_commit
+        )
         history = json.loads(out)
         latest_state = history[0]["to_state"]
 
         # Check file content
-        rc, out, _ = run_fla("--json", "show", latest_state, "readme.txt",
-                             cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "show", latest_state, "readme.txt", cwd=repo_with_commit)
         assert rc == 0
         data = json.loads(out)
         content = base64.b64decode(data["content_base64"])
@@ -298,11 +340,9 @@ class TestGitImport:
         git_repo = tmp_path / "git-source"
         self._create_git_repo(git_repo)
 
-        run_fla("import-git", str(git_repo), "--lane", "imported",
-                cwd=repo_with_commit)
+        run_fla("import-git", str(git_repo), "--lane", "imported", cwd=repo_with_commit)
 
-        rc, out, _ = run_fla("--json", "history", "--lane", "imported",
-                             cwd=repo_with_commit)
+        rc, out, _ = run_fla("--json", "history", "--lane", "imported", cwd=repo_with_commit)
         history = json.loads(out)
         for t in history:
             assert t["status"] == "accepted"
@@ -327,14 +367,18 @@ class TestGitRoundtrip:
 
         # Import from the git export
         rc, _, err = run_fla(
-            "import-git", str(git_dir), "--lane", "roundtrip",
+            "import-git",
+            str(git_dir),
+            "--lane",
+            "roundtrip",
             cwd=import_dir,
         )
         assert rc == 0, f"Import failed: {err}"
 
         # Verify file content survived the roundtrip
-        rc, out, _ = run_fla("--json", "history", "--lane", "roundtrip",
-                             "--status", "accepted", cwd=import_dir)
+        rc, out, _ = run_fla(
+            "--json", "history", "--lane", "roundtrip", "--status", "accepted", cwd=import_dir
+        )
         history = json.loads(out)
         assert len(history) > 0
 
@@ -361,6 +405,7 @@ class TestRESTServer:
 
         # Make a commit
         from fla.state import AgentIdentity
+
         repo.quick_commit(
             workspace="main",
             prompt="test commit",
@@ -416,13 +461,16 @@ class TestRESTServer:
         assert len(data) >= 1
 
     def test_commit_endpoint(self):
-        data = self._post("/commit", {
-            "workspace": "main",
-            "prompt": "api commit",
-            "agent_id": "api-test",
-            "agent_type": "test",
-            "auto_accept": True,
-        })
+        data = self._post(
+            "/commit",
+            {
+                "workspace": "main",
+                "prompt": "api commit",
+                "agent_id": "api-test",
+                "agent_type": "test",
+                "auto_accept": True,
+            },
+        )
         assert "transition_id" in data
 
     def test_workspaces_endpoint(self):
@@ -451,6 +499,7 @@ class TestMCPServer:
 
         # Make a commit
         from fla.state import AgentIdentity
+
         self.repo.quick_commit(
             workspace="main",
             prompt="test commit",
@@ -467,24 +516,28 @@ class TestMCPServer:
         self.repo.close()
 
     def test_initialize(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 1,
-            "method": "initialize",
-            "params": {},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {},
+            }
+        )
         assert resp["id"] == 1
         assert "protocolVersion" in resp["result"]
         assert "capabilities" in resp["result"]
         assert "serverInfo" in resp["result"]
 
     def test_tools_list(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 2,
-            "method": "tools/list",
-            "params": {},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+                "params": {},
+            }
+        )
         tools = resp["result"]["tools"]
         assert len(tools) == 12
         names = {t["name"] for t in tools}
@@ -492,42 +545,48 @@ class TestMCPServer:
         assert "fla_commit" in names
 
     def test_tool_status(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 3,
-            "method": "tools/call",
-            "params": {"name": "fla_status", "arguments": {}},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {"name": "fla_status", "arguments": {}},
+            }
+        )
         content = resp["result"]["content"]
         assert len(content) == 1
         data = json.loads(content[0]["text"])
         assert "current_head" in data
 
     def test_tool_commit(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 4,
-            "method": "tools/call",
-            "params": {
-                "name": "fla_commit",
-                "arguments": {
-                    "prompt": "mcp commit",
-                    "agent_id": "mcp-test",
-                    "agent_type": "test",
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "fla_commit",
+                    "arguments": {
+                        "prompt": "mcp commit",
+                        "agent_id": "mcp-test",
+                        "agent_type": "test",
+                    },
                 },
-            },
-        })
+            }
+        )
         content = resp["result"]["content"]
         data = json.loads(content[0]["text"])
         assert "transition_id" in data
 
     def test_tool_lanes(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 5,
-            "method": "tools/call",
-            "params": {"name": "fla_lanes", "arguments": {}},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {"name": "fla_lanes", "arguments": {}},
+            }
+        )
         content = resp["result"]["content"]
         data = json.loads(content[0]["text"])
         assert isinstance(data, list)
@@ -535,20 +594,24 @@ class TestMCPServer:
         assert "main" in names
 
     def test_unknown_tool(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 6,
-            "method": "tools/call",
-            "params": {"name": "nonexistent_tool", "arguments": {}},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tools/call",
+                "params": {"name": "nonexistent_tool", "arguments": {}},
+            }
+        )
         assert resp["result"].get("isError") is True
 
     def test_unknown_method(self):
-        resp = self.mcp.handle_request({
-            "jsonrpc": "2.0",
-            "id": 7,
-            "method": "nonexistent/method",
-            "params": {},
-        })
+        resp = self.mcp.handle_request(
+            {
+                "jsonrpc": "2.0",
+                "id": 7,
+                "method": "nonexistent/method",
+                "params": {},
+            }
+        )
         assert "error" in resp
         assert resp["error"]["code"] == -32601

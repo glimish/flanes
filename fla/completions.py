@@ -5,7 +5,7 @@ Each constant contains a complete shell completion script
 that can be eval'd or sourced by the user's shell.
 """
 
-BASH_COMPLETION = r'''
+BASH_COMPLETION = r"""
 _fla_completions() {
     local cur prev commands global_flags
     COMPREPLY=()
@@ -57,9 +57,9 @@ _fla_completions() {
     fi
 }
 complete -F _fla_completions fla
-'''
+"""
 
-ZSH_COMPLETION = r'''
+ZSH_COMPLETION = r"""
 #compdef fla
 
 _fla() {
@@ -192,9 +192,9 @@ _fla() {
 }
 
 compdef _fla fla
-'''
+"""
 
-FISH_COMPLETION = r'''
+FISH_COMPLETION = r"""
 # Disable file completions by default
 complete -c fla -f
 
@@ -274,4 +274,4 @@ complete -c fla -n '__fish_seen_subcommand_from project' -a snapshot -d 'Snapsho
 complete -c fla -n '__fish_seen_subcommand_from remote' -a push -d 'Push objects to remote'
 complete -c fla -n '__fish_seen_subcommand_from remote' -a pull -d 'Pull objects from remote'
 complete -c fla -n '__fish_seen_subcommand_from remote' -a status -d 'Show remote sync status'
-'''
+"""

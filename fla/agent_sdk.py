@@ -225,7 +225,9 @@ class AgentSession:
         except Exception:
             logger.warning(
                 "Failed to release workspace '%s' during create_lane",
-                self.workspace_name, exc_info=True)
+                self.workspace_name,
+                exc_info=True,
+            )
         self.repo.create_lane(name, self.base_state)
         self.lane = name
         self.workspace_name = name
@@ -241,7 +243,9 @@ class AgentSession:
         except Exception:
             logger.warning(
                 "Failed to release workspace '%s' during switch_lane",
-                self.workspace_name, exc_info=True)
+                self.workspace_name,
+                exc_info=True,
+            )
 
         self.lane = name
         self.workspace_name = name

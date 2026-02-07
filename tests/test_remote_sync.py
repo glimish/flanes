@@ -45,7 +45,6 @@ def repo_pair(tmp_path):
 
 
 class TestRemotePushPull:
-
     def test_push_then_pull_round_trip(self, repo_pair):
         """Objects pushed from repo A can be pulled into repo B with correct types."""
         repo_a, repo_b, sync_a, sync_b, backend = repo_pair
@@ -61,11 +60,14 @@ class TestRemotePushPull:
 
         # All objects from A should now exist in B
         from fla.cas import ObjectType
+
         rows_a = repo_a.store.conn.execute("SELECT hash, type FROM objects").fetchall()
         for h, t in rows_a:
             obj_b = repo_b.store.retrieve(h)
             assert obj_b is not None, f"Missing object {h} (type={t}) after pull"
-            assert obj_b.type == ObjectType(t), f"Type mismatch for {h}: expected {t}, got {obj_b.type.value}"
+            assert obj_b.type == ObjectType(t), (
+                f"Type mismatch for {h}: expected {t}, got {obj_b.type.value}"
+            )
 
     def test_push_preserves_all_object_types(self, repo_pair):
         """Push uploads blobs, trees, and states with type prefixes."""
@@ -126,7 +128,6 @@ class TestRemotePushPull:
 
 
 class TestStaleAccept:
-
     @pytest.fixture
     def repo_with_two_proposals(self, tmp_path):
         """A repo with two proposed transitions from the same from_state."""
@@ -146,8 +147,11 @@ class TestStaleAccept:
         (ws_path / "file.txt").write_text("change from agent 1\n")
         state1 = repo.snapshot("main", parent_id=head)
         tid1 = repo.propose(
-            from_state=head, to_state=state1,
-            prompt="Agent 1 change", agent=agent, lane="main",
+            from_state=head,
+            to_state=state1,
+            prompt="Agent 1 change",
+            agent=agent,
+            lane="main",
         )
 
         # Proposal 2: different agent changes file.txt differently
@@ -155,8 +159,11 @@ class TestStaleAccept:
         state2 = repo.snapshot("main", parent_id=head)
         agent2 = AgentIdentity(agent_id="agent2", agent_type="test")
         tid2 = repo.propose(
-            from_state=head, to_state=state2,
-            prompt="Agent 2 change", agent=agent2, lane="main",
+            from_state=head,
+            to_state=state2,
+            prompt="Agent 2 change",
+            agent=agent2,
+            lane="main",
         )
 
         yield repo, tid1, tid2, head
@@ -194,8 +201,7 @@ class TestStaleAccept:
 
         # Check the evaluation summary
         row = repo.wsm.conn.execute(
-            "SELECT evaluation_json FROM transitions WHERE id = ?",
-            (tid2,)
+            "SELECT evaluation_json FROM transitions WHERE id = ?", (tid2,)
         ).fetchone()
         evaluation = json.loads(row[0])
         assert "Stale" in evaluation["summary"]
@@ -289,7 +295,7 @@ class TestMetadataSync:
         assert len(feature_conflicts) == 0
 
         # Repo B should now know about feature-a lane
-        lanes_b = {l["name"] for l in repo_b.wsm.list_lanes()}
+        lanes_b = {row["name"] for row in repo_b.wsm.list_lanes()}
         assert "feature-a" in lanes_b
 
     def test_metadata_idempotent(self, repo_pair):
@@ -299,7 +305,7 @@ class TestMetadataSync:
         sync_a.push()
         sync_a.push_metadata(repo_a.wsm)
         sync_b.pull()
-        result1 = sync_b.pull_metadata(repo_b.wsm)
+        _ = sync_b.pull_metadata(repo_b.wsm)
 
         # Pull again — should import nothing new
         result2 = sync_b.pull_metadata(repo_b.wsm)

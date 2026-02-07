@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 class EmbeddingError(Exception):
     """Raised when an embedding API call fails."""
+
     pass
 
 
@@ -32,11 +33,13 @@ class EmbeddingClient:
     def embed(self, texts: list) -> list:
         """Embed a list of texts, returning a list of embedding vectors."""
         url = f"{self.api_url}/embeddings"
-        payload = json.dumps({
-            "input": texts,
-            "model": self.model,
-            "dimensions": self.dimensions,
-        }).encode("utf-8")
+        payload = json.dumps(
+            {
+                "input": texts,
+                "model": self.model,
+                "dimensions": self.dimensions,
+            }
+        ).encode("utf-8")
 
         req = urllib.request.Request(
             url,
@@ -52,22 +55,14 @@ class EmbeddingClient:
             with urllib.request.urlopen(req, timeout=60) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
-            raise EmbeddingError(
-                f"Embedding API returned HTTP {e.code}: {e.reason}"
-            ) from e
+            raise EmbeddingError(f"Embedding API returned HTTP {e.code}: {e.reason}") from e
         except urllib.error.URLError as e:
-            raise EmbeddingError(
-                f"Failed to connect to embedding API at {url}: {e.reason}"
-            ) from e
+            raise EmbeddingError(f"Failed to connect to embedding API at {url}: {e.reason}") from e
         except json.JSONDecodeError as e:
-            raise EmbeddingError(
-                f"Embedding API returned invalid JSON: {e}"
-            ) from e
+            raise EmbeddingError(f"Embedding API returned invalid JSON: {e}") from e
 
         if "data" not in body:
-            raise EmbeddingError(
-                f"Embedding API response missing 'data' key: {list(body.keys())}"
-            )
+            raise EmbeddingError(f"Embedding API response missing 'data' key: {list(body.keys())}")
 
         # Sort by index to ensure correct order
         sorted_data = sorted(body["data"], key=lambda x: x.get("index", 0))
@@ -85,9 +80,7 @@ def cosine_similarity(a: list, b: list) -> float:
     Raises ValueError if vectors have different lengths.
     """
     if len(a) != len(b):
-        raise ValueError(
-            f"Vector length mismatch: {len(a)} vs {len(b)}"
-        )
+        raise ValueError(f"Vector length mismatch: {len(a)} vs {len(b)}")
     dot = sum(x * y for x, y in zip(a, b))
     norm_a = math.sqrt(sum(x * x for x in a))
     norm_b = math.sqrt(sum(x * x for x in b))
@@ -104,9 +97,7 @@ def embedding_to_bytes(embedding: list) -> bytes:
 def bytes_to_embedding(data: bytes) -> list:
     """Unpack bytes back to a float list."""
     if len(data) % 4 != 0:
-        raise ValueError(
-            f"Embedding data length {len(data)} is not a multiple of 4 bytes"
-        )
+        raise ValueError(f"Embedding data length {len(data)} is not a multiple of 4 bytes")
     count = len(data) // 4
     return list(struct.unpack(f"{count}f", data))
 

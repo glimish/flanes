@@ -53,7 +53,6 @@ def fla_repo(tmp_path):
 
 @requires_git
 class TestExportToGit:
-
     def test_export_creates_git_repo(self, fla_repo, tmp_path):
         from fla.git_bridge import export_to_git
 
@@ -130,12 +129,16 @@ class TestExportToGit:
 
 @requires_git
 class TestImportFromGit:
-
     def _make_git_repo(self, path: Path):
         """Create a simple git repo with commits."""
         path.mkdir(parents=True, exist_ok=True)
-        env = {**os.environ, "GIT_AUTHOR_NAME": "Test", "GIT_AUTHOR_EMAIL": "test@test.com",
-               "GIT_COMMITTER_NAME": "Test", "GIT_COMMITTER_EMAIL": "test@test.com"}
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "Test",
+            "GIT_AUTHOR_EMAIL": "test@test.com",
+            "GIT_COMMITTER_NAME": "Test",
+            "GIT_COMMITTER_EMAIL": "test@test.com",
+        }
         subprocess.run(["git", "init"], cwd=str(path), capture_output=True, check=True, env=env)
 
         (path / "file1.txt").write_text("content1\n")
@@ -144,7 +147,10 @@ class TestImportFromGit:
         )
         subprocess.run(
             ["git", "commit", "-m", "First commit"],
-            cwd=str(path), capture_output=True, check=True, env=env
+            cwd=str(path),
+            capture_output=True,
+            check=True,
+            env=env,
         )
 
         (path / "file2.txt").write_text("content2\n")
@@ -154,7 +160,10 @@ class TestImportFromGit:
         )
         subprocess.run(
             ["git", "commit", "-m", "Second commit"],
-            cwd=str(path), capture_output=True, check=True, env=env
+            cwd=str(path),
+            capture_output=True,
+            check=True,
+            env=env,
         )
 
     def test_import_creates_transitions(self, tmp_path):
@@ -222,7 +231,6 @@ class TestImportFromGit:
 
 @requires_git
 class TestRoundTrip:
-
     def test_export_then_import(self, fla_repo, tmp_path):
         """Export fla→git, then import git→fla, verify content matches."""
         from fla.git_bridge import export_to_git, import_from_git

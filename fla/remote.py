@@ -70,8 +70,7 @@ class S3Backend(RemoteBackend):
             import botocore.exceptions  # noqa: F401
         except ImportError:
             raise ImportError(
-                "boto3 is required for S3 remote storage. "
-                "Install it with: pip install boto3"
+                "boto3 is required for S3 remote storage. Install it with: pip install boto3"
             )
         self.bucket = bucket
         self.prefix = prefix
@@ -110,7 +109,7 @@ class S3Backend(RemoteBackend):
             for obj in page.get("Contents", []):
                 k = obj["Key"]
                 if self.prefix:
-                    k = k[len(self.prefix):]
+                    k = k[len(self.prefix) :]
                 keys.append(k)
         return sorted(keys)
 
@@ -142,6 +141,7 @@ class GCSBackend(RemoteBackend):
 
     def download(self, key: str) -> bytes | None:
         from google.cloud import exceptions as gcs_exceptions
+
         blob = self.bucket_obj.blob(self._key(key))
         try:
             return blob.download_as_bytes()
@@ -158,7 +158,7 @@ class GCSBackend(RemoteBackend):
         for blob in self.bucket_obj.list_blobs(prefix=full_prefix):
             k = blob.name
             if self.prefix:
-                k = k[len(self.prefix):]
+                k = k[len(self.prefix) :]
             keys.append(k)
         return sorted(keys)
 
@@ -275,7 +275,7 @@ class RemoteSyncManager:
                 newline_idx = payload.find(b"\n")
                 if newline_idx > 0:
                     type_str = payload[:newline_idx].decode("utf-8", errors="replace")
-                    data = payload[newline_idx + 1:]
+                    data = payload[newline_idx + 1 :]
                     try:
                         obj_type = ObjectType(type_str)
                     except ValueError:
@@ -292,7 +292,9 @@ class RemoteSyncManager:
                     logger.warning(
                         "Integrity check failed for %s: expected hash %s, got %s. "
                         "Payload corrupted or malicious — skipping.",
-                        h[:12], h[:12], computed_hash[:12]
+                        h[:12],
+                        h[:12],
+                        computed_hash[:12],
                     )
                     integrity_failures += 1
                     continue
@@ -333,7 +335,7 @@ class RemoteSyncManager:
         """
         if lanes is None:
             lane_rows = wsm.list_lanes()
-            lanes = [l["name"] for l in lane_rows]
+            lanes = [row["name"] for row in lane_rows]
 
         pushed = 0
         for lane_name in lanes:
@@ -418,6 +420,7 @@ def create_backend(config: dict) -> RemoteBackend:
     else:
         # Check plugin backends
         from .plugins import discover_storage_backends
+
         plugins = discover_storage_backends()
         if backend_type in plugins:
             return plugins[backend_type](remote_config)

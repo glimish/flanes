@@ -75,9 +75,7 @@ class TestConcurrentSnapshots:
 
                 ws = thread_repo.workspace_path(lane)
                 for i in range(10):
-                    (ws / f"file_{agent_num}_{i}.py").write_text(
-                        f"# Agent {agent_num} file {i}\n"
-                    )
+                    (ws / f"file_{agent_num}_{i}.py").write_text(f"# Agent {agent_num} file {i}\n")
 
                 state_id = thread_repo.snapshot(lane)
                 with lock:
@@ -314,7 +312,7 @@ class TestRESTAPIConcurrency:
 
         # Find free port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('127.0.0.1', 0))
+            s.bind(("127.0.0.1", 0))
             port = s.getsockname()[1]
 
         server = FlaServer(repo, "127.0.0.1", port)

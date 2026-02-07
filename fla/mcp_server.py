@@ -261,6 +261,7 @@ class MCPServer:
             if not obj:
                 raise ValueError(f"Blob not found: {blob_hash}")
             import base64
+
             return {
                 "path": args["file_path"],
                 "blob_hash": blob_hash,
@@ -326,8 +327,10 @@ class MCPServer:
         """Main loop: read stdin, dispatch, write stdout."""
         # On Windows, stdin/stdout default to text mode which corrupts binary framing
         import os
+
         if os.name == "nt":
             import msvcrt
+
             msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
             msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         try:
@@ -340,11 +343,13 @@ class MCPServer:
                 try:
                     request = json.loads(message)
                 except json.JSONDecodeError:
-                    self._write_message({
-                        "jsonrpc": "2.0",
-                        "id": None,
-                        "error": {"code": -32700, "message": "Parse error"},
-                    })
+                    self._write_message(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": None,
+                            "error": {"code": -32700, "message": "Parse error"},
+                        }
+                    )
                     continue
 
                 response = self.handle_request(request)

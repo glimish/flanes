@@ -66,6 +66,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+"fla/completions.py" = ["E501"]  # Shell script strings have long lines
+
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true

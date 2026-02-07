@@ -63,17 +63,29 @@ REPO_DIR_NAME = ".fla"
 CONFIG_VERSION = "0.3.0"
 
 # Known config keys for validation
-KNOWN_CONFIG_KEYS = frozenset({
-    "version", "default_lane", "created_at",
-    "max_blob_size", "max_tree_depth", "blob_threshold",
-    "evaluators", "remote_storage",
-    "embedding_api_url", "embedding_api_key", "embedding_model", "embedding_dimensions",
-    "api_token", "git_coexistence",
-})
+KNOWN_CONFIG_KEYS = frozenset(
+    {
+        "version",
+        "default_lane",
+        "created_at",
+        "max_blob_size",
+        "max_tree_depth",
+        "blob_threshold",
+        "evaluators",
+        "remote_storage",
+        "embedding_api_url",
+        "embedding_api_key",
+        "embedding_model",
+        "embedding_dimensions",
+        "api_token",
+        "git_coexistence",
+    }
+)
 
 
 class NotARepository(ValueError):  # noqa: N818
     """Raised when a command is run outside a Fla repository."""
+
     def __init__(self, start_path):
         super().__init__(
             f"Not inside a Fla repository (searched from {start_path})\n"
@@ -83,6 +95,7 @@ class NotARepository(ValueError):  # noqa: N818
 
 class ConcurrentAccessError(ValueError):  # noqa: N818
     """Raised when another machine is accessing the repository via shared filesystem."""
+
     def __init__(self, lock_info: dict):
         hostname = lock_info.get("hostname", "unknown")
         pid = lock_info.get("pid", "?")
@@ -113,10 +126,7 @@ class Repository:
         self.db_path = self.fla_dir / "store.db"
 
         if not self.fla_dir.exists():
-            raise ValueError(
-                f"Not a Fla repository: {self.root}\n"
-                f"Run `fla init` to create one."
-            )
+            raise ValueError(f"Not a Fla repository: {self.root}\nRun `fla init` to create one.")
 
         config = self._read_config()
         self._validate_config(config)
@@ -140,9 +150,9 @@ class Repository:
             )
 
         self.store = ContentStore(
-            self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size)
-        self.wsm = WorldStateManager(
-            self.store, self.db_path, max_tree_depth=max_tree_depth)
+            self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size
+        )
+        self.wsm = WorldStateManager(self.store, self.db_path, max_tree_depth=max_tree_depth)
         self.wm = WorkspaceManager(self.fla_dir, self.wsm)
         self._hooks = None  # Lazy-loaded plugin hooks
 
@@ -217,10 +227,7 @@ class Repository:
 
         # If there are existing files, create initial snapshot from repo root.
         # Include dotfiles like .env, .editorconfig — exclude only .fla itself.
-        user_files = [
-            f for f in root.iterdir()
-            if f.name != REPO_DIR_NAME
-        ]
+        user_files = [f for f in root.iterdir() if f.name != REPO_DIR_NAME]
 
         if user_files:
             state_id = repo.wsm.snapshot_directory(root, parent_id=None)
@@ -237,11 +244,14 @@ class Repository:
                 intent=intent,
                 lane=initial_lane,
             )
-            repo.wsm.evaluate(tid, EvaluationResult(
-                passed=True,
-                evaluator="system",
-                summary="Initial snapshot accepted",
-            ))
+            repo.wsm.evaluate(
+                tid,
+                EvaluationResult(
+                    passed=True,
+                    evaluator="system",
+                    summary="Initial snapshot accepted",
+                ),
+            )
 
             # Create main workspace metadata pointing to repo root
             # Files stay in place — no movement needed (git-style)
@@ -348,6 +358,7 @@ class Repository:
         """
         if self._hooks is None:
             from .plugins import discover_hooks
+
             self._hooks = discover_hooks()
 
         for name, hook_fn in self._hooks.items():
@@ -355,7 +366,9 @@ class Repository:
                 hook_fn(event, context)
             except Exception:
                 logger.warning(
-                    "Hook %s failed for event %s", name, event,
+                    "Hook %s failed for event %s",
+                    name,
+                    event,
                     exc_info=True,
                 )
 
@@ -395,18 +408,30 @@ class Repository:
         budget_status = check_budget(self.wsm, lane, additional_cost=additional)
         if budget_status and budget_status.warnings:
             import sys
+
             for w in budget_status.warnings:
                 print(f"Budget warning ({lane}): {w} approaching limit", file=sys.stderr)
 
-        self._fire_hooks("pre_propose", {
-            "lane": lane, "from_state": from_state, "to_state": to_state,
-            "prompt": prompt, "agent": agent.to_dict(),
-        })
+        self._fire_hooks(
+            "pre_propose",
+            {
+                "lane": lane,
+                "from_state": from_state,
+                "to_state": to_state,
+                "prompt": prompt,
+                "agent": agent.to_dict(),
+            },
+        )
         tid = self.wsm.propose(from_state, to_state, intent, lane, cost)
-        self._fire_hooks("post_propose", {
-            "lane": lane, "transition_id": tid,
-            "from_state": from_state, "to_state": to_state,
-        })
+        self._fire_hooks(
+            "post_propose",
+            {
+                "lane": lane,
+                "transition_id": tid,
+                "from_state": from_state,
+                "to_state": to_state,
+            },
+        )
         return tid
 
     def accept(
@@ -439,8 +464,7 @@ class Repository:
             # delta), not data corruption.
             try:
                 row = self.wsm.conn.execute(
-                    "SELECT to_state, intent_id FROM transitions WHERE id = ?",
-                    (transition_id,)
+                    "SELECT to_state, intent_id FROM transitions WHERE id = ?", (transition_id,)
                 ).fetchone()
                 if row:
                     to_state = row[0]
@@ -456,14 +480,15 @@ class Repository:
                                 self.wsm.conn.commit()
                                 break
             except Exception:
-                logger.warning(
-                    "Failed to update fork_base after accept", exc_info=True
-                )
+                logger.warning("Failed to update fork_base after accept", exc_info=True)
 
-        self._fire_hooks("post_accept", {
-            "transition_id": transition_id,
-            "status": status.value,
-        })
+        self._fire_hooks(
+            "post_accept",
+            {
+                "transition_id": transition_id,
+                "status": status.value,
+            },
+        )
         return status
 
     def reject(
@@ -483,10 +508,13 @@ class Repository:
             summary=summary,
         )
         status = self.wsm.evaluate(transition_id, result)
-        self._fire_hooks("post_reject", {
-            "transition_id": transition_id,
-            "status": status.value,
-        })
+        self._fire_hooks(
+            "post_reject",
+            {
+                "transition_id": transition_id,
+                "status": status.value,
+            },
+        )
         return status
 
     def quick_commit(
@@ -705,8 +733,17 @@ class Repository:
         if fork_base == target_head:
             new_state = self.snapshot(workspace, parent_id=target_head)
             return self._finalize_promote(
-                workspace, target_lane, target_head, new_state,
-                prompt, agent, source_lane, fork_base, tags, auto_accept, evaluator,
+                workspace,
+                target_lane,
+                target_head,
+                new_state,
+                prompt,
+                agent,
+                source_lane,
+                fork_base,
+                tags,
+                auto_accept,
+                evaluator,
             )
 
         # Snapshot the workspace to capture the agent's current work
@@ -718,7 +755,11 @@ class Repository:
 
         # Detect conflicts: paths touched on both sides
         conflict_info = self._detect_path_conflicts(
-            lane_delta, target_delta, fork_base, source_lane, target_lane,
+            lane_delta,
+            target_delta,
+            fork_base,
+            source_lane,
+            target_lane,
         )
 
         if conflict_info["has_conflicts"] and not force:
@@ -736,8 +777,17 @@ class Repository:
         new_state = self.snapshot(workspace, parent_id=target_head)
 
         return self._finalize_promote(
-            workspace, target_lane, target_head, new_state,
-            prompt, agent, source_lane, fork_base, tags, auto_accept, evaluator,
+            workspace,
+            target_lane,
+            target_head,
+            new_state,
+            prompt,
+            agent,
+            source_lane,
+            fork_base,
+            tags,
+            auto_accept,
+            evaluator,
         )
 
     def _detect_path_conflicts(
@@ -768,20 +818,26 @@ class Repository:
         conflicts = []
         for path in conflicting_paths:
             lane_action = (
-                "added" if path in lane_delta["added"]
-                else "modified" if path in lane_delta["modified"]
+                "added"
+                if path in lane_delta["added"]
+                else "modified"
+                if path in lane_delta["modified"]
                 else "removed"
             )
             target_action = (
-                "added" if path in target_delta["added"]
-                else "modified" if path in target_delta["modified"]
+                "added"
+                if path in target_delta["added"]
+                else "modified"
+                if path in target_delta["modified"]
                 else "removed"
             )
-            conflicts.append({
-                "path": path,
-                "lane_action": lane_action,
-                "target_action": target_action,
-            })
+            conflicts.append(
+                {
+                    "path": path,
+                    "lane_action": lane_action,
+                    "target_action": target_action,
+                }
+            )
 
         return {
             "status": "conflicts",
@@ -902,6 +958,7 @@ class Repository:
 
     def get_template_manager(self):
         from .templates import TemplateManager
+
         return TemplateManager(self.fla_dir)
 
     # ── Evaluator Operations ──────────────────────────────────────
@@ -967,12 +1024,14 @@ class Repository:
         for score, intent_id in top:
             intent = self.wsm.get_intent(intent_id)
             if intent:
-                results.append({
-                    "intent_id": intent_id,
-                    "prompt": intent.prompt,
-                    "score": score,
-                    "tags": intent.tags,
-                })
+                results.append(
+                    {
+                        "intent_id": intent_id,
+                        "prompt": intent.prompt,
+                        "score": score,
+                        "tags": intent.tags,
+                    }
+                )
         return results
 
     # ── Remote Operations ─────────────────────────────────────────
@@ -1015,7 +1074,8 @@ class Repository:
             if repo_version < CONFIG_VERSION:
                 logger.info(
                     "Repository config version %s is older than current %s",
-                    repo_version, CONFIG_VERSION,
+                    repo_version,
+                    CONFIG_VERSION,
                 )
 
         # Warn on unknown keys (don't reject — forward compatibility)
@@ -1101,8 +1161,10 @@ class Repository:
         try:
             if self._lock_path.exists():
                 existing = json.loads(self._lock_path.read_text())
-                if (existing.get("machine_id") == self._machine_id
-                        and existing.get("pid") == os.getpid()):
+                if (
+                    existing.get("machine_id") == self._machine_id
+                    and existing.get("pid") == os.getpid()
+                ):
                     self._lock_path.unlink(missing_ok=True)
         except (json.JSONDecodeError, OSError):
             # Best-effort cleanup
@@ -1135,9 +1197,7 @@ class Repository:
     def _write_lock_atomic(self, data: dict) -> None:
         """Write lock file atomically via tempfile + rename."""
         content = json.dumps(data, indent=2).encode("utf-8")
-        fd, tmp_path = tempfile.mkstemp(
-            dir=str(self.fla_dir), prefix=".instance.lock."
-        )
+        fd, tmp_path = tempfile.mkstemp(dir=str(self.fla_dir), prefix=".instance.lock.")
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(content)
@@ -1183,6 +1243,5 @@ class Repository:
             self._acquire_instance_lock()
             return
 
-        if (current.get("machine_id") != self._machine_id
-                or current.get("pid") != os.getpid()):
+        if current.get("machine_id") != self._machine_id or current.get("pid") != os.getpid():
             raise ConcurrentAccessError(current)

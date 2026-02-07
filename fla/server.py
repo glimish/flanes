@@ -109,7 +109,7 @@ class FlaHandler(BaseHTTPRequestHandler):
         if url_path == "/web" or url_path == "/web/":
             file_path = web_dir / "index.html"
         else:
-            rel = url_path[len("/web/"):]
+            rel = url_path[len("/web/") :]
             file_path = web_dir / rel
 
         # Prevent path traversal
@@ -144,10 +144,12 @@ class FlaHandler(BaseHTTPRequestHandler):
         try:
             # Health endpoint doesn't need repo lock or auth
             if path == "/health":
-                self._send_json({
-                    "status": "healthy",
-                    "version": "0.3.0",
-                })
+                self._send_json(
+                    {
+                        "status": "healthy",
+                        "version": "0.3.0",
+                    }
+                )
                 return
 
             if not self._check_auth():
@@ -173,7 +175,7 @@ class FlaHandler(BaseHTTPRequestHandler):
                     self._send_json(self.repo.history(lane=lane, limit=limit, status=status))
 
                 elif path.startswith("/states/"):
-                    rest = path[len("/states/"):]
+                    rest = path[len("/states/") :]
                     if "/files/" in rest:
                         # /states/<id>/files/<path>
                         state_id, file_path = rest.split("/files/", 1)
@@ -190,12 +192,14 @@ class FlaHandler(BaseHTTPRequestHandler):
                         if not obj:
                             self._send_error(404, f"Blob not found: {blob_hash}")
                             return
-                        self._send_json({
-                            "path": file_path,
-                            "blob_hash": blob_hash,
-                            "size": obj.size,
-                            "content_base64": base64.b64encode(obj.data).decode("ascii"),
-                        })
+                        self._send_json(
+                            {
+                                "path": file_path,
+                                "blob_hash": blob_hash,
+                                "size": obj.size,
+                                "content_base64": base64.b64encode(obj.data).decode("ascii"),
+                            }
+                        )
 
                     elif "/files" in rest:
                         # /states/<id>/files
@@ -232,17 +236,19 @@ class FlaHandler(BaseHTTPRequestHandler):
                     self._send_json(self.repo.search(q))
 
                 elif path.startswith("/objects/"):
-                    obj_hash = path[len("/objects/"):]
+                    obj_hash = path[len("/objects/") :]
                     obj = self.repo.store.retrieve(obj_hash)
                     if not obj:
                         self._send_error(404, f"Object not found: {obj_hash}")
                         return
-                    self._send_json({
-                        "hash": obj.hash,
-                        "type": obj.type.value,
-                        "size": obj.size,
-                        "content_base64": base64.b64encode(obj.data).decode("ascii"),
-                    })
+                    self._send_json(
+                        {
+                            "hash": obj.hash,
+                            "type": obj.type.value,
+                            "size": obj.size,
+                            "content_base64": base64.b64encode(obj.data).decode("ascii"),
+                        }
+                    )
 
                 elif path == "/trace":
                     state = params.get("state")
@@ -316,7 +322,7 @@ class FlaHandler(BaseHTTPRequestHandler):
                     self._send_json({"transition_id": tid})
 
                 elif path.startswith("/accept/"):
-                    tid = path[len("/accept/"):]
+                    tid = path[len("/accept/") :]
                     status = self.repo.accept(
                         tid,
                         evaluator=body.get("evaluator", "api"),
@@ -325,7 +331,7 @@ class FlaHandler(BaseHTTPRequestHandler):
                     self._send_json({"status": status.value})
 
                 elif path.startswith("/reject/"):
-                    tid = path[len("/reject/"):]
+                    tid = path[len("/reject/") :]
                     status = self.repo.reject(
                         tid,
                         evaluator=body.get("evaluator", "api"),
@@ -355,15 +361,17 @@ class FlaHandler(BaseHTTPRequestHandler):
                         dry_run=body.get("dry_run", True),
                         max_age_days=body.get("max_age_days", 30),
                     )
-                    self._send_json({
-                        "reachable_objects": result.reachable_objects,
-                        "deleted_objects": result.deleted_objects,
-                        "deleted_bytes": result.deleted_bytes,
-                        "deleted_states": result.deleted_states,
-                        "deleted_transitions": result.deleted_transitions,
-                        "dry_run": result.dry_run,
-                        "elapsed_ms": result.elapsed_ms,
-                    })
+                    self._send_json(
+                        {
+                            "reachable_objects": result.reachable_objects,
+                            "deleted_objects": result.deleted_objects,
+                            "deleted_bytes": result.deleted_bytes,
+                            "deleted_states": result.deleted_states,
+                            "deleted_transitions": result.deleted_transitions,
+                            "dry_run": result.dry_run,
+                            "elapsed_ms": result.elapsed_ms,
+                        }
+                    )
 
                 else:
                     self._send_error(404, f"Not found: {path}")
@@ -383,7 +391,7 @@ class FlaHandler(BaseHTTPRequestHandler):
         try:
             with self.repo_lock:
                 if path.startswith("/workspaces/"):
-                    name = path[len("/workspaces/"):]
+                    name = path[len("/workspaces/") :]
                     self.repo.workspace_remove(name, force=True)
                     self._send_json({"deleted": name})
                 else:
@@ -414,8 +422,12 @@ class FlaServer(ThreadingHTTPServer):
     _web_enabled: bool
 
     def __init__(
-        self, repo_or_path, host: str = "127.0.0.1", port: int = 7654,
-        api_token: str | None = None, web: bool = False,
+        self,
+        repo_or_path,
+        host: str = "127.0.0.1",
+        port: int = 7654,
+        api_token: str | None = None,
+        web: bool = False,
     ):
         self._repo_lock = threading.Lock()
         self._api_token = api_token or os.environ.get("FLA_API_TOKEN")
@@ -441,8 +453,11 @@ class FlaServer(ThreadingHTTPServer):
 
 
 def serve(
-    repo_path, host="127.0.0.1", port=7654,
-    api_token: str | None = None, web: bool = False,
+    repo_path,
+    host="127.0.0.1",
+    port=7654,
+    api_token: str | None = None,
+    web: bool = False,
 ):
     """Start the Fla REST API server.
 

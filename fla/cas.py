@@ -28,14 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 class ObjectType(Enum):
-    BLOB = "blob"       # Raw file content
-    TREE = "tree"       # Directory listing: name -> (type, hash)
-    STATE = "state"     # World state: root tree + metadata
+    BLOB = "blob"  # Raw file content
+    TREE = "tree"  # Directory listing: name -> (type, hash)
+    STATE = "state"  # World state: root tree + metadata
 
 
 @dataclass(frozen=True)
 class CASObject:
     """An immutable content-addressed object."""
+
     hash: str
     type: ObjectType
     data: bytes
@@ -153,8 +154,7 @@ class ContentStore:
 
         # Check if already exists (dedup) - do this FIRST
         existing = self.conn.execute(
-            "SELECT hash FROM objects WHERE hash = ?",
-            (content_hash,)
+            "SELECT hash FROM objects WHERE hash = ?", (content_hash,)
         ).fetchone()
 
         if existing is not None:
@@ -169,9 +169,11 @@ class ContentStore:
             )
 
         # Check if this blob should go to filesystem
-        if (self.blob_threshold > 0
-                and obj_type == ObjectType.BLOB
-                and len(content) > self.blob_threshold):
+        if (
+            self.blob_threshold > 0
+            and obj_type == ObjectType.BLOB
+            and len(content) > self.blob_threshold
+        ):
             # Write fs blob first, then record in DB.
             # If fs write fails, no DB entry is created.
             # If DB insert fails, clean up the fs blob.
@@ -181,7 +183,7 @@ class ContentStore:
                     """INSERT OR IGNORE INTO objects
                        (hash, type, data, size, created_at, location)
                        VALUES (?, ?, ?, ?, ?, ?)""",
-                    (content_hash, obj_type.value, b"", len(content), time.time(), "fs")
+                    (content_hash, obj_type.value, b"", len(content), time.time(), "fs"),
                 )
             except Exception:
                 # DB insert failed — remove orphaned fs blob
@@ -191,7 +193,7 @@ class ContentStore:
             self.conn.execute(
                 """INSERT OR IGNORE INTO objects
                    (hash, type, data, size, created_at) VALUES (?, ?, ?, ?, ?)""",
-                (content_hash, obj_type.value, content, len(content), time.time())
+                (content_hash, obj_type.value, content, len(content), time.time()),
             )
         if not self._in_batch:
             self.conn.commit()
@@ -201,8 +203,7 @@ class ContentStore:
     def retrieve(self, content_hash: str) -> CASObject | None:
         """Retrieve an object by its hash."""
         row = self.conn.execute(
-            "SELECT hash, type, data, size, location FROM objects WHERE hash = ?",
-            (content_hash,)
+            "SELECT hash, type, data, size, location FROM objects WHERE hash = ?", (content_hash,)
         ).fetchone()
 
         if row is None:
@@ -226,10 +227,7 @@ class ContentStore:
         )
 
     def exists(self, content_hash: str) -> bool:
-        row = self.conn.execute(
-            "SELECT 1 FROM objects WHERE hash = ?",
-            (content_hash,)
-        ).fetchone()
+        row = self.conn.execute("SELECT 1 FROM objects WHERE hash = ?", (content_hash,)).fetchone()
         return row is not None
 
     def store_blob(self, content: bytes) -> str:
@@ -294,7 +292,7 @@ class ContentStore:
         """Returns cached blob hash if stat matches, else None."""
         row = self.conn.execute(
             "SELECT blob_hash FROM stat_cache WHERE path = ? AND mtime_ns = ? AND size = ?",
-            (path, mtime_ns, size)
+            (path, mtime_ns, size),
         ).fetchone()
         return row[0] if row else None
 
@@ -303,7 +301,7 @@ class ContentStore:
         self.conn.execute(
             """INSERT OR REPLACE INTO stat_cache
                (path, mtime_ns, size, blob_hash) VALUES (?, ?, ?, ?)""",
-            (path, mtime_ns, size, blob_hash)
+            (path, mtime_ns, size, blob_hash),
         )
         if not self._in_batch:
             self.conn.commit()
@@ -350,9 +348,7 @@ class ContentStore:
 
     def stats(self) -> dict:
         """Storage statistics."""
-        row = self.conn.execute(
-            "SELECT COUNT(*), COALESCE(SUM(size), 0) FROM objects"
-        ).fetchone()
+        row = self.conn.execute("SELECT COUNT(*), COALESCE(SUM(size), 0) FROM objects").fetchone()
         by_type = {}
         for row2 in self.conn.execute(
             "SELECT type, COUNT(*), COALESCE(SUM(size), 0) FROM objects GROUP BY type"

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BudgetConfig(Serializable):
     """Budget limits for a lane."""
+
     max_tokens_in: int | None = None
     max_tokens_out: int | None = None
     max_api_calls: int | None = None
@@ -28,6 +29,7 @@ class BudgetConfig(Serializable):
 @dataclass
 class BudgetStatus(Serializable):
     """Current budget usage and status."""
+
     config: BudgetConfig
     total_tokens_in: int = 0
     total_tokens_out: int = 0
@@ -39,14 +41,13 @@ class BudgetStatus(Serializable):
 
 class BudgetError(Exception):
     """Raised when a budget limit is exceeded."""
+
     pass
 
 
 def get_lane_budget(wsm, lane: str) -> BudgetConfig | None:
     """Get the budget config for a lane, if any."""
-    row = wsm.conn.execute(
-        "SELECT metadata FROM lanes WHERE name = ?", (lane,)
-    ).fetchone()
+    row = wsm.conn.execute("SELECT metadata FROM lanes WHERE name = ?", (lane,)).fetchone()
     if row is None:
         return None
     metadata = json.loads(row[0]) if row[0] else {}
@@ -58,9 +59,7 @@ def get_lane_budget(wsm, lane: str) -> BudgetConfig | None:
 
 def set_lane_budget(wsm, lane: str, config: BudgetConfig) -> None:
     """Store budget config in lane metadata."""
-    row = wsm.conn.execute(
-        "SELECT metadata FROM lanes WHERE name = ?", (lane,)
-    ).fetchone()
+    row = wsm.conn.execute("SELECT metadata FROM lanes WHERE name = ?", (lane,)).fetchone()
     if row is None:
         raise ValueError(f"Lane not found: {lane}")
     metadata = json.loads(row[0]) if row[0] else {}
@@ -78,9 +77,7 @@ def compute_budget_status(wsm, lane: str) -> BudgetStatus | None:
     if config is None:
         return None
 
-    rows = wsm.conn.execute(
-        "SELECT cost_json FROM transitions WHERE lane = ?", (lane,)
-    ).fetchall()
+    rows = wsm.conn.execute("SELECT cost_json FROM transitions WHERE lane = ?", (lane,)).fetchall()
 
     total_in = 0
     total_out = 0
@@ -155,8 +152,6 @@ def check_budget(wsm, lane: str, additional_cost: dict | None = None) -> BudgetS
         _check("wall_time_ms", status.total_wall_time_ms, config.max_wall_time_ms)
 
     if status.exceeded:
-        raise BudgetError(
-            f"Budget exceeded for lane '{lane}': {', '.join(status.exceeded)}"
-        )
+        raise BudgetError(f"Budget exceeded for lane '{lane}': {', '.join(status.exceeded)}")
 
     return status

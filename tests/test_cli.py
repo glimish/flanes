@@ -17,12 +17,18 @@ import pytest
 def run_fla(*args, cwd=None, expect_fail=False):
     """Run a fla CLI command and return (returncode, stdout, stderr)."""
     cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
+    # from the CI runner reaching the child process.
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     result = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
         cwd=cwd,
         env={**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent)},
+        **kwargs,
     )
     if not expect_fail:
         if result.returncode != 0:
@@ -69,9 +75,15 @@ class TestLogAlias:
     def test_log_alias_matches_history(self, repo_dir):
         # First create a commit so there's history
         rc, _, _ = run_fla(
-            "commit", "-m", "test commit",
-            "--agent-id", "test", "--agent-type", "human",
-            "--auto-accept", cwd=repo_dir,
+            "commit",
+            "-m",
+            "test commit",
+            "--agent-id",
+            "test",
+            "--agent-type",
+            "human",
+            "--auto-accept",
+            cwd=repo_dir,
         )
         assert rc == 0
 
@@ -95,9 +107,16 @@ class TestDiffContent:
         (ws_dir / "hello.txt").write_text("Hello, Modified World!\n")
 
         rc, out, _ = run_fla(
-            "--json", "commit", "-m", "modify hello",
-            "--agent-id", "test", "--agent-type", "human",
-            "--auto-accept", cwd=repo_dir,
+            "--json",
+            "commit",
+            "-m",
+            "modify hello",
+            "--agent-id",
+            "test",
+            "--agent-type",
+            "human",
+            "--auto-accept",
+            cwd=repo_dir,
         )
         assert rc == 0
         commit_result = json.loads(out)
@@ -162,7 +181,7 @@ class TestVerboseQuiet:
         rc, out, _ = run_fla("-q", "snapshot", cwd=repo_dir)
         assert rc == 0
         # Should be just the state ID, one line
-        lines = out.strip().split('\n')
+        lines = out.strip().split("\n")
         assert len(lines) == 1
         assert len(lines[0]) > 20  # full hash
 
@@ -224,6 +243,7 @@ class TestCompletions:
 
 
 # ── CLI Error Path Tests ─────────────────────────────────────
+
 
 class TestCLIErrorPaths:
     """Test that CLI commands fail gracefully with proper error messages and exit codes."""
@@ -311,8 +331,7 @@ class TestCLIErrorPaths:
         # First init a repo
         run_fla("init", cwd=empty_dir)
         rc, out, err = run_fla(
-            "commit", "--agent-id", "x", "--agent-type", "y",
-            cwd=empty_dir, expect_fail=True
+            "commit", "--agent-id", "x", "--agent-type", "y", cwd=empty_dir, expect_fail=True
         )
         assert rc != 0
         assert "required" in err.lower() or "prompt" in err.lower()
@@ -383,9 +402,15 @@ class TestCLIPolish:
     def test_alias_ci(self, repo_dir):
         """fla ci should resolve to commit."""
         rc, out, err = run_fla(
-            "ci", "-m", "alias test",
-            "--agent-id", "test", "--agent-type", "human",
-            "--auto-accept", cwd=repo_dir,
+            "ci",
+            "-m",
+            "alias test",
+            "--agent-id",
+            "test",
+            "--agent-type",
+            "human",
+            "--auto-accept",
+            cwd=repo_dir,
         )
         assert rc == 0
 

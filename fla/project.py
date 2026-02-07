@@ -21,6 +21,7 @@ PROJECT_FILE = ".fla-project.json"
 @dataclass
 class RepoMount(Serializable):
     """A fla repo mounted in the project."""
+
     repo_path: str
     mount_point: str
     lane: str = "main"
@@ -29,6 +30,7 @@ class RepoMount(Serializable):
 @dataclass
 class ProjectConfig(Serializable):
     """Configuration for a multi-repo project."""
+
     name: str
     repos: list[RepoMount] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
@@ -42,9 +44,7 @@ class Project:
         self.config_path = self.root / PROJECT_FILE
         if not self.config_path.exists():
             raise ValueError(f"Not a fla project: {self.root} (no {PROJECT_FILE})")
-        self.config = ProjectConfig.from_dict(
-            json.loads(self.config_path.read_text())
-        )
+        self.config = ProjectConfig.from_dict(json.loads(self.config_path.read_text()))
 
     @classmethod
     def init(cls, path: Path, name: str | None = None) -> "Project":
