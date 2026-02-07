@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
 setup(
-    name="fla",
-    version="0.3.0",
+    name="flanes",
+    version="0.3.1",
     packages=find_packages(),
     entry_points={
         "console_scripts": [
