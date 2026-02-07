@@ -656,6 +656,7 @@ class Repository:
                 # If workspace removal fails but we're forcing, try harder
                 if force:
                     import shutil
+
                     ws_path = self.wm._workspace_path(name)
                     if ws_path.exists():
                         shutil.rmtree(ws_path, ignore_errors=True)
