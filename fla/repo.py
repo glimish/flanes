@@ -607,15 +607,68 @@ class Repository:
 
         If base is None, forks from the current main lane head.
         By default, also creates a workspace for the new lane.
+
+        This operation is atomic: if workspace creation fails, the lane
+        record in the database is rolled back to prevent desync.
         """
         if base is None:
             base = self.head()
         self.wsm.create_lane(name, base)
 
         if create_workspace and base:
-            self.wm.create(name, lane=name, state_id=base)
+            try:
+                self.wm.create(name, lane=name, state_id=base)
+            except Exception:
+                # Workspace creation failed — roll back the lane record
+                # to prevent lane-exists-but-no-workspace desync
+                try:
+                    self.wsm.delete_lane(name)
+                except Exception:
+                    pass
+                raise
 
         return name
+
+    def delete_lane(self, name: str, force: bool = False) -> bool:
+        """
+        Delete a lane and its associated workspace.
+
+        Cleans up both the lane record in the database AND the workspace
+        on disk (directory, metadata JSON, lock). This is the safe way to
+        remove a lane — it prevents desync between DB and filesystem.
+
+        Args:
+            name:  Lane name to delete. Cannot be 'main'.
+            force: If True, remove workspace even if an agent holds the lock.
+
+        Returns True if the lane existed and was deleted.
+
+        Raises ValueError if attempting to delete 'main'.
+        """
+        if name == "main":
+            raise ValueError("Cannot delete the 'main' lane")
+
+        # Remove workspace first (if it exists)
+        if self.wm.exists(name):
+            try:
+                self.wm.remove(name, force=force)
+            except Exception:
+                # If workspace removal fails but we're forcing, try harder
+                if force:
+                    import shutil
+                    ws_path = self.wm._workspace_path(name)
+                    if ws_path.exists():
+                        shutil.rmtree(ws_path, ignore_errors=True)
+                    meta_path = self.wm._meta_path(name)
+                    meta_path.unlink(missing_ok=True)
+                    lock_path = self.wm._lock_path(name)
+                    if lock_path.exists():
+                        shutil.rmtree(lock_path, ignore_errors=True)
+                else:
+                    raise
+
+        # Then remove the lane record from DB
+        return self.wsm.delete_lane(name)
 
     def lanes(self) -> list[dict]:
         return self.wsm.list_lanes()

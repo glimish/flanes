@@ -686,6 +686,29 @@ class WorldStateManager:
         self.conn.commit()
         return name
 
+    def delete_lane(self, name: str) -> bool:
+        """
+        Delete a lane record from the database.
+
+        This removes ONLY the lane record (DB row). It does NOT remove
+        the associated workspace — use ``Repository.delete_lane()`` for
+        the full cleanup that handles both lane and workspace.
+
+        Returns True if the lane existed and was deleted, False if it didn't exist.
+
+        Raises ValueError if attempting to delete the 'main' lane.
+        """
+        if name == "main":
+            raise ValueError("Cannot delete the 'main' lane")
+        cursor = self.conn.execute("DELETE FROM lanes WHERE name = ?", (name,))
+        self.conn.commit()
+        return cursor.rowcount > 0
+
+    def lane_exists(self, name: str) -> bool:
+        """Check if a lane exists in the database."""
+        row = self.conn.execute("SELECT 1 FROM lanes WHERE name = ?", (name,)).fetchone()
+        return row is not None
+
     def get_lane_head(self, lane: str = "main") -> str | None:
         """Get the current head state of a lane."""
         row = self.conn.execute("SELECT head_state FROM lanes WHERE name = ?", (lane,)).fetchone()
