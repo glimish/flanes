@@ -4,7 +4,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/<owner>/fla.git
+git clone https://github.com/glimish/fla.git
 cd fla
 
 # Install in development mode with all dev dependencies
