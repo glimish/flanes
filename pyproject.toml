@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fla"
+name = "flanes"
 version = "0.3.0"
 description = "Fla: Feature Lanes for Agents - version control for agentic AI systems"
 authors = [{name = "Kim Ranzani (Glimish)"}]
