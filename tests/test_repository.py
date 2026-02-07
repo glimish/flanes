@@ -186,8 +186,6 @@ class TestDeleteLane:
         """If workspace creation fails, lane record should be rolled back."""
         repo = repo_with_files
 
-        original_create = repo.wm.create
-
         def failing_create(*args, **kwargs):
             raise OSError("Simulated workspace creation failure")
 
