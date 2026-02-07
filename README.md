@@ -82,26 +82,7 @@ pip install fla[gcs]   # Google Cloud Storage
 
 ## Architecture
 
-```
-+--------------------------------------------------+
-|                 CLI / Agent SDK                    |
-|       (fla commands / AgentSession API)            |
-+--------------------------------------------------+
-|                  Repository                        |
-|   (propose, accept, promote, restore, etc)         |
-+--------------------+-----------------------------+
-|  WorkspaceManager  |     WorldStateManager        |
-|  (isolation,       |  (states, transitions,        |
-|   locking,         |   lanes, history, trace,      |
-|   materialization) |   conflict detection)          |
-+--------------------+-----------------------------+
-|             Content-Addressed Store                |
-|    (SHA-256 blobs + trees, dedup, integrity)       |
-+--------------------------------------------------+
-|                    SQLite                           |
-|         (WAL mode, single-file database)           |
-+--------------------------------------------------+
-```
+<img width="1536" height="1024" alt="fla_architecture" src="https://github.com/user-attachments/assets/a664e27a-8739-4b39-8297-94fef913c1cb" />
 
 ## Key Features
 
