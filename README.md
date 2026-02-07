@@ -2,7 +2,7 @@
 
 **Version Control for Agentic AI Systems**
 
-[![Tests](https://github.com/glimish/fla/actions/workflows/test.yml/badge.svg)](https://github.com/glimish/fla/actions/workflows/test.yml)
+[![Tests](https://github.com/glimish/flanes/actions/workflows/test.yml/badge.svg)](https://github.com/glimish/flanes/actions/workflows/test.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -61,11 +61,11 @@ See [`examples/`](examples/) for runnable demos.
 ## Installation
 
 ```bash
-pip install fla
+pip install flanes
 
 # Optional: remote storage backends
-pip install fla[s3]    # Amazon S3 (boto3)
-pip install fla[gcs]   # Google Cloud Storage
+pip install flanes[s3]    # Amazon S3 (boto3)
+pip install flanes[gcs]   # Google Cloud Storage
 ```
 
 ## Core Concepts

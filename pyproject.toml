@@ -22,10 +22,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/glimish/fla"
-Repository = "https://github.com/glimish/fla"
-Issues = "https://github.com/glimish/fla/issues"
-Documentation = "https://github.com/glimish/fla/tree/main/docs"
+Homepage = "https://github.com/glimish/flanes"
+Repository = "https://github.com/glimish/flanes"
+Issues = "https://github.com/glimish/flanes/issues"
+Documentation = "https://github.com/glimish/flanes/tree/main/docs"
 
 [project.scripts]
 fla = "fla.cli:main"
