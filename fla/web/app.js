@@ -98,10 +98,9 @@ async function showDashboard() {
   }
 
   try {
-    const [status, laneData, history] = await Promise.all([
+    const [status, laneData] = await Promise.all([
       api('/status'),
       api('/lanes'),
-      api('/history?limit=20'),
     ]);
 
     // Fetch history for ALL lanes to compute cumulative totals
@@ -110,7 +109,7 @@ async function showDashboard() {
     );
 
     // Anti-flash: skip DOM update if data hasn't changed
-    if (!isFirstLoad && !dataChanged({ status, laneData, history, allLaneHistories })) {
+    if (!isFirstLoad && !dataChanged({ status, laneData, allLaneHistories })) {
       return;
     }
 
@@ -122,19 +121,25 @@ async function showDashboard() {
     const laneCount = lanes.length;
     const pendingCount = status.pending_proposals || 0;
 
-    // Compute cumulative tokens and wall time across ALL lanes
+    // Flatten all lane histories into one list and compute cumulative totals
+    const allTransitions = [];
     let totalTokens = 0;
     let totalWallMs = 0;
     let totalTransitions = 0;
     for (const laneHistory of allLaneHistories) {
       for (const t of laneHistory) {
         totalTransitions++;
+        allTransitions.push(t);
         if (t.cost) {
           totalTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
           totalWallMs += (t.cost.wall_time_ms || 0);
         }
       }
     }
+
+    // Sort by created_at descending and take top 20 for the table
+    allTransitions.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    const recentHistory = allTransitions.slice(0, 20);
 
     // Update header stats
     const headerStats = $('#header-stats');
@@ -176,7 +181,7 @@ async function showDashboard() {
 
       <div class="card">
         <h2>Recent History</h2>
-        ${renderHistoryTable(history)}
+        ${renderHistoryTable(recentHistory)}
       </div>
     `);
 
