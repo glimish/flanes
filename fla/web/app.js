@@ -104,8 +104,13 @@ async function showDashboard() {
       api('/history?limit=20'),
     ]);
 
+    // Fetch history for ALL lanes to compute cumulative totals
+    const allLaneHistories = await Promise.all(
+      laneData.map(l => api(`/history?lane=${encodeURIComponent(l.name)}&limit=200`).catch(() => []))
+    );
+
     // Anti-flash: skip DOM update if data hasn't changed
-    if (!isFirstLoad && !dataChanged({ status, laneData, history })) {
+    if (!isFirstLoad && !dataChanged({ status, laneData, history, allLaneHistories })) {
       return;
     }
 
@@ -115,16 +120,19 @@ async function showDashboard() {
 
     const headHash = safeSubstring(status.current_head, 12) || 'none';
     const laneCount = lanes.length;
-    const transCount = history.length;
     const pendingCount = status.pending_proposals || 0;
 
-    // Compute total tokens and wall time from history
+    // Compute cumulative tokens and wall time across ALL lanes
     let totalTokens = 0;
     let totalWallMs = 0;
-    for (const t of history) {
-      if (t.cost) {
-        totalTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
-        totalWallMs += (t.cost.wall_time_ms || 0);
+    let totalTransitions = 0;
+    for (const laneHistory of allLaneHistories) {
+      for (const t of laneHistory) {
+        totalTransitions++;
+        if (t.cost) {
+          totalTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
+          totalWallMs += (t.cost.wall_time_ms || 0);
+        }
       }
     }
 
@@ -150,7 +158,7 @@ async function showDashboard() {
         </div>
         <div class="stat-card">
           <div class="label">Transitions</div>
-          <div class="value">${transCount}</div>
+          <div class="value">${totalTransitions}</div>
         </div>
         <div class="stat-card">
           <div class="label">Pending</div>
