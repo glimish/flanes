@@ -517,6 +517,22 @@ class Repository:
         )
         return status
 
+    def update_transition_cost(
+        self,
+        transition_id: str,
+        cost: CostRecord,
+        merge: bool = True,
+    ) -> None:
+        """Update the cost record on an existing transition.
+
+        If *merge* is True (default), the provided costs are **added** to
+        any existing values.  If False, the cost record is replaced entirely.
+
+        This is useful for recording costs from pipeline stages that run
+        after the initial transition is proposed (e.g. reviewer, integrator).
+        """
+        self.wsm.update_transition_cost(transition_id, cost, merge=merge)
+
     def quick_commit(
         self,
         workspace: str,
@@ -732,6 +748,7 @@ class Repository:
         prompt: str | None = None,
         agent: AgentIdentity | None = None,
         tags: list[str] | None = None,
+        cost: CostRecord | None = None,
         auto_accept: bool = False,
         evaluator: str = "auto",
         force: bool = False,
@@ -759,6 +776,9 @@ class Repository:
 
         This is NOT a merge. No three-way content resolution ever happens.
         The orchestrator decides how to handle conflicts.
+
+        Args:
+            cost: Optional CostRecord to attach to the promote transition.
 
         Returns:
             {"status": "conflicts", "conflicts": [...]}  — if paths collide
@@ -796,6 +816,7 @@ class Repository:
                 source_lane,
                 fork_base,
                 tags,
+                cost,
                 auto_accept,
                 evaluator,
             )
@@ -840,6 +861,7 @@ class Repository:
             source_lane,
             fork_base,
             tags,
+            cost,
             auto_accept,
             evaluator,
         )
@@ -947,6 +969,7 @@ class Repository:
         source_lane: str,
         fork_base: str,
         tags: list[str] | None,
+        cost: CostRecord | None,
         auto_accept: bool,
         evaluator: str,
     ) -> dict:
@@ -962,6 +985,7 @@ class Repository:
             agent=agent,
             lane=target_lane,
             tags=tags,
+            cost=cost,
         )
 
         status = TransitionStatus.PROPOSED
