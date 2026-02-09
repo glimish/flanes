@@ -88,6 +88,12 @@ function safeSubstring(s, len) {
 
 // ── Views ──
 
+function showDashboardClick() {
+  // Reset anti-flash hash so the view always refreshes on explicit navigation
+  lastDataHash = null;
+  showDashboard();
+}
+
 async function showDashboard() {
   currentView = 'dashboard';
   updateNav();
@@ -203,10 +209,7 @@ async function showLane(lane) {
   html('.content', '<div class="loading">Loading...</div>');
 
   try {
-    const [laneData, history] = await Promise.all([
-      api('/lanes'),
-      api(`/history?lane=${encodeURIComponent(lane)}&limit=50`),
-    ]);
+    const laneData = await api('/lanes');
 
     // /lanes returns array of objects — find the matching lane
     const laneObj = laneData.find(l => l.name === lane);
@@ -215,13 +218,34 @@ async function showLane(lane) {
     const forkBase = laneObj ? safeSubstring(laneObj.fork_base, 12) : '';
     const createdAt = laneObj ? laneObj.created_at : '';
 
-    // Compute lane-specific token total and wall time
-    let laneTokens = 0;
-    let laneWallMs = 0;
-    for (const t of history) {
-      if (t.cost) {
-        laneTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
-        laneWallMs += (t.cost.wall_time_ms || 0);
+    // For main lane: aggregate all lanes; for task lanes: just fetch own history
+    const isMainLane = !laneObj || !laneObj.fork_base;
+    let history, laneTokens = 0, laneWallMs = 0;
+
+    if (isMainLane) {
+      // Fetch all lane histories and aggregate
+      const allLaneHistories = await Promise.all(
+        laneData.map(l => api(`/history?lane=${encodeURIComponent(l.name)}&limit=200`).catch(() => []))
+      );
+      const allTransitions = [];
+      for (const lh of allLaneHistories) {
+        for (const t of lh) {
+          allTransitions.push(t);
+          if (t.cost) {
+            laneTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
+            laneWallMs += (t.cost.wall_time_ms || 0);
+          }
+        }
+      }
+      allTransitions.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+      history = allTransitions;
+    } else {
+      history = await api(`/history?lane=${encodeURIComponent(lane)}&limit=50`);
+      for (const t of history) {
+        if (t.cost) {
+          laneTokens += (t.cost.tokens_in || 0) + (t.cost.tokens_out || 0);
+          laneWallMs += (t.cost.wall_time_ms || 0);
+        }
       }
     }
 
