@@ -10,6 +10,7 @@
   --green: #3fb950;
   --red: #f85149;
   --yellow: #d29922;
+  --purple: #bc8cff;
   --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
@@ -62,6 +63,27 @@ a:hover { text-decoration: underline; }
 .header .status-pill.ok {
   background: rgba(63, 185, 80, 0.15);
   color: var(--green);
+}
+
+.header-stats {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.header-stats .stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-stats .stat-value {
+  color: var(--text);
+  font-weight: 500;
 }
 
 /* Sidebar */
@@ -127,7 +149,7 @@ a:hover { text-decoration: underline; }
 /* Status grid */
 .status-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
@@ -153,6 +175,10 @@ a:hover { text-decoration: underline; }
   font-family: var(--font-mono);
 }
 
+.stat-card .value.small {
+  font-size: 16px;
+}
+
 /* History table */
 .history-table {
   width: 100%;
@@ -169,6 +195,7 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .history-table td {
@@ -207,6 +234,41 @@ a:hover { text-decoration: underline; }
 .badge.rejected {
   background: rgba(248, 81, 73, 0.15);
   color: var(--red);
+}
+
+/* Agent badge */
+.agent-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(188, 140, 255, 0.12);
+  color: var(--purple);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Cost inline display */
+.cost-inline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Prompt cell */
+.prompt-cell {
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Relative time */
+.time-relative {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* File tree */
@@ -269,3 +331,34 @@ a:hover { text-decoration: underline; }
 
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* Lane detail info */
+.lane-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.lane-info-item {
+  font-size: 12px;
+}
+
+.lane-info-item .info-label {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+/* Diff file list with hashes */
+.diff-file-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.diff-file-entry .diff-hash {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
