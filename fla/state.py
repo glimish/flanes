@@ -563,6 +563,43 @@ class WorldStateManager:
         self.conn.commit()
         return transition_id
 
+    def update_transition_cost(
+        self,
+        transition_id: str,
+        cost: "CostRecord",
+        merge: bool = True,
+    ) -> None:
+        """
+        Update the cost record on an existing transition.
+
+        If *merge* is True (default), the provided costs are **added** to
+        any existing values. If False, the cost record is replaced entirely.
+        """
+        row = self.conn.execute(
+            "SELECT cost_json FROM transitions WHERE id = ?",
+            (transition_id,),
+        ).fetchone()
+        if row is None:
+            return
+
+        if merge:
+            existing = json.loads(row[0]) if row[0] else {}
+            merged = CostRecord(
+                tokens_in=existing.get("tokens_in", 0) + cost.tokens_in,
+                tokens_out=existing.get("tokens_out", 0) + cost.tokens_out,
+                wall_time_ms=existing.get("wall_time_ms", 0.0) + cost.wall_time_ms,
+                api_calls=existing.get("api_calls", 0) + cost.api_calls,
+            )
+            cost_json = json.dumps(merged.to_dict())
+        else:
+            cost_json = json.dumps(cost.to_dict())
+
+        self.conn.execute(
+            "UPDATE transitions SET cost_json = ?, updated_at = ? WHERE id = ?",
+            (cost_json, time.time(), transition_id),
+        )
+        self.conn.commit()
+
     def evaluate(
         self,
         transition_id: str,
