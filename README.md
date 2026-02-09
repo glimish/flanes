@@ -12,7 +12,7 @@ Version control designed from the ground up for AI agents. Replaces git's line-d
 
 Git assumes a single human making small, curated edits. AI agents break every part of that model.
 
-| | Git | Fla |
+| | Git | Flanes |
 |---|---|---|
 | **Unit of work** | Line diffs | Full world-state snapshots |
 | **Change metadata** | Free-text commit message | Structured intent + agent identity |
@@ -24,25 +24,25 @@ Git assumes a single human making small, curated edits. AI agents break every pa
 
 ```bash
 cd my-project
-fla init
+flanes init
 # Writes files, then commits in one step:
-fla commit --prompt "Add auth module" \
+flanes commit --prompt "Add auth module" \
   --agent-id coder-1 --agent-type feature_dev --auto-accept
 
 # Create isolated feature lane
-fla lane create feature-auth
+flanes lane create feature-auth
 
 # Work in isolation, promote back to main
-fla promote --workspace feature-auth --target main --auto-accept
+flanes promote --workspace feature-auth --target main --auto-accept
 
 # Query history
-fla history --lane main
+flanes history --lane main
 ```
 
 Or use the Python SDK:
 
 ```python
-from fla.agent_sdk import AgentSession
+from flanes.agent_sdk import AgentSession
 
 session = AgentSession(
     repo_path="./my-project",
@@ -78,7 +78,7 @@ pip install flanes[gcs]   # Google Cloud Storage
 
 **Lanes:** Isolated workstreams. Work is *promoted* into a target lane through evaluation, not merged.
 
-**Workspaces:** Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.fla/workspaces/`.
+**Workspaces:** Main workspace is the repo root (git-style). Feature lanes get physically isolated directories under `.flanes/workspaces/`.
 
 ## Architecture
 
@@ -93,11 +93,11 @@ pip install flanes[gcs]   # Google Cloud Storage
 - **Conflict detection:** promote finds path-level collisions without content merging.
 - **Evaluators:** run pytest, ruff, or custom checks as gates before accepting transitions.
 - **Cost tracking:** per-transition token usage, wall time, and API call counts.
-- **Git bridge:** `fla export-git` / `fla import-git` for CI integration.
+- **Git bridge:** `flanes export-git` / `flanes import-git` for CI integration.
 - **Remote storage:** S3/GCS-backed sync for team collaboration.
-- **MCP server:** expose Fla as tools for LLM integration via Model Context Protocol.
-- **REST API:** `fla serve` starts a multi-threaded HTTP API.
-- **Garbage collection:** `fla gc` removes rejected states and unreachable objects.
+- **MCP server:** expose Flanes as tools for LLM integration via Model Context Protocol.
+- **REST API:** `flanes serve` starts a multi-threaded HTTP API.
+- **Garbage collection:** `flanes gc` removes rejected states and unreachable objects.
 
 ## Documentation
 
@@ -109,7 +109,7 @@ pip install flanes[gcs]   # Google Cloud Storage
 
 ```
 my-project/
-+-- .fla/
++-- .flanes/
 |   +-- config.json
 |   +-- store.db                        # SQLite database
 |   +-- main.json                       # main workspace metadata

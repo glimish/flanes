@@ -1,10 +1,10 @@
 """
 Agent SDK
 
-A clean Python API for AI agents to interact with Fla.
+A clean Python API for AI agents to interact with Flanes.
 Workspace-aware: each agent gets an isolated working directory.
 
-    from fla.agent_sdk import AgentSession
+    from flanes.agent_sdk import AgentSession
 
     session = AgentSession(
         repo_path="/path/to/project",

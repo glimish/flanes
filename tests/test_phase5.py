@@ -15,10 +15,10 @@ from pathlib import Path
 
 import pytest
 
-from fla.cas import ContentStore
-from fla.gc import collect_garbage
-from fla.repo import Repository
-from fla.state import (
+from flanes.cas import ContentStore
+from flanes.gc import collect_garbage
+from flanes.repo import Repository
+from flanes.state import (
     AgentIdentity,
     EvaluationResult,
     Intent,
@@ -29,7 +29,7 @@ from fla.state import (
 
 
 def run_fla(*args, cwd=None, expect_fail=False):
-    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    cmd = [sys.executable, "-X", "utf8", "-m", "flanes.cli"] + list(args)
     # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
     # from the CI runner reaching the child process.
     kwargs = {}
@@ -467,7 +467,7 @@ class TestFilesystemBlobStorage:
 
 class TestGCCLI:
     def test_gc_command_dry_run(self, repo_dir):
-        """fla gc prints counts without deleting."""
+        """flanes gc prints counts without deleting."""
         rc, out, err = run_fla("--json", "gc", cwd=repo_dir)
         assert rc == 0
         data = json.loads(out)
@@ -475,7 +475,7 @@ class TestGCCLI:
         assert "reachable_objects" in data
 
     def test_gc_command_confirm(self, repo_dir):
-        """fla gc --confirm actually runs GC."""
+        """flanes gc --confirm actually runs GC."""
         rc, out, err = run_fla("--json", "gc", "--confirm", cwd=repo_dir)
         assert rc == 0
         data = json.loads(out)

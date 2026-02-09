@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Fla Agent Workflow Example
+Flanes Agent Workflow Example
 
-Demonstrates a full agent workflow using the Fla Python SDK:
+Demonstrates a full agent workflow using the Flanes Python SDK:
   1. Initialize a repository
   2. Agent makes changes on main lane
   3. Agent creates a feature lane and works in isolation
@@ -20,11 +20,11 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Ensure the fla package is importable when running from the repo root
+# Ensure the flanes package is importable when running from the repo root
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from fla.agent_sdk import AgentSession
-from fla.repo import Repository
+from flanes.agent_sdk import AgentSession
+from flanes.repo import Repository
 
 
 def step(n: int, msg: str):
@@ -35,13 +35,13 @@ def step(n: int, msg: str):
 
 def run_demo(repo_path: Path):
     # ── Step 1: Initialize ──────────────────────────────────────
-    step(1, "Initialize a Fla repository")
+    step(1, "Initialize a Flanes repository")
 
     # Create some starter files
     (repo_path / "app.py").write_text(
         'def main():\n    print("Hello from app")\n\nif __name__ == "__main__":\n    main()\n'
     )
-    (repo_path / "README.md").write_text("# My Project\n\nA demo project for Fla.\n")
+    (repo_path / "README.md").write_text("# My Project\n\nA demo project for Flanes.\n")
 
     with Repository.init(repo_path) as repo:
         head = repo.head()
@@ -116,14 +116,14 @@ def run_demo(repo_path: Path):
     # Show that main is unaffected
     print("\n  Main workspace still has original files:")
     for f in sorted(repo_path.iterdir()):
-        if f.name not in (".fla", ".flaignore"):
+        if f.name not in (".fla", ".flanesignore"):
             print(f"    {f.name}")
 
     # ── Step 4: Promote feature work to main ────────────────────
     step(4, "Promote feature-auth into main")
 
     with Repository.find(repo_path) as repo:
-        from fla.state import AgentIdentity
+        from flanes.state import AgentIdentity
 
         promote_result = repo.promote(
             workspace="feature-auth",
@@ -158,7 +158,7 @@ def run_demo(repo_path: Path):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fla Agent Workflow Example")
+    parser = argparse.ArgumentParser(description="Flanes Agent Workflow Example")
     parser.add_argument("--keep", action="store_true", help="Keep the repo after the demo")
     parser.add_argument("--path", type=str, default=None, help="Use a specific directory")
     args = parser.parse_args()
@@ -169,12 +169,12 @@ def main():
         run_demo(repo_path)
         print(f"\nRepository at: {repo_path}")
     elif args.keep:
-        repo_path = Path(tempfile.mkdtemp(prefix="fla-demo-"))
+        repo_path = Path(tempfile.mkdtemp(prefix="flanes-demo-"))
         run_demo(repo_path)
         print(f"\nRepository kept at: {repo_path}")
-        print("  Inspect with: fla -C {repo_path} status")
+        print("  Inspect with: flanes -C {repo_path} status")
     else:
-        repo_path = Path(tempfile.mkdtemp(prefix="fla-demo-"))
+        repo_path = Path(tempfile.mkdtemp(prefix="flanes-demo-"))
         try:
             run_demo(repo_path)
         finally:

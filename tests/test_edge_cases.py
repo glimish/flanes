@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from fla.cas import ContentStore
-from fla.repo import Repository
-from fla.state import AgentIdentity
+from flanes.cas import ContentStore
+from flanes.repo import Repository
+from flanes.state import AgentIdentity
 
 
 @pytest.fixture
@@ -91,9 +91,9 @@ class TestDeeplyNestedDirectory:
 
 class TestEmptyDirectory:
     def test_empty_dir_snapshot(self, repo):
-        # Remove auto-created .flaignore to test truly empty workspace
+        # Remove auto-created .flanesignore to test truly empty workspace
         ws = repo.workspace_path("main")
-        flaignore = ws / ".flaignore"
+        flaignore = ws / ".flanesignore"
         if flaignore.exists():
             flaignore.unlink()
 
@@ -109,7 +109,7 @@ class TestDuplicateContentDeduplication:
     def test_duplicate_files_single_blob(self, repo):
         ws = repo.workspace_path("main")
 
-        # Count blobs before adding files (may include .flaignore from init)
+        # Count blobs before adding files (may include .flanesignore from init)
         stats_before = repo.store.stats()
         blobs_before = stats_before.get("by_type", {}).get("blob", {}).get("count", 0)
 

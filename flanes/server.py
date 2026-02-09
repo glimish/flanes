@@ -1,5 +1,5 @@
 """
-REST API Server for Fla.
+REST API Server for Flanes.
 
 Uses stdlib http.server with ThreadingHTTPServer for concurrent request handling.
 Each request acquires a repo lock to serialize SQLite access safely.
@@ -25,10 +25,10 @@ from .state import AgentIdentity
 logger = logging.getLogger(__name__)
 
 
-class FlaHandler(BaseHTTPRequestHandler):
-    """HTTP request handler for the Fla REST API."""
+class FlanesHandler(BaseHTTPRequestHandler):
+    """HTTP request handler for the Flanes REST API."""
 
-    server: "FlaServer"  # type: ignore[assignment]
+    server: "FlanesServer"  # type: ignore[assignment]
 
     @property
     def repo(self) -> Repository:
@@ -98,7 +98,7 @@ class FlaHandler(BaseHTTPRequestHandler):
     }
 
     def _serve_static(self, url_path: str) -> bool:
-        """Serve a static file from fla/web/. Returns True if handled."""
+        """Serve a static file from flanes/web/. Returns True if handled."""
         if not self.server._web_enabled:
             return False
         if not url_path.startswith("/web/") and url_path != "/web":
@@ -404,8 +404,8 @@ class FlaHandler(BaseHTTPRequestHandler):
             self._send_error(500, "Internal server error")
 
 
-class FlaServer(ThreadingHTTPServer):
-    """Thread-pooled HTTP server for Fla Repository.
+class FlanesServer(ThreadingHTTPServer):
+    """Thread-pooled HTTP server for Flanes Repository.
 
     Uses ThreadingHTTPServer for concurrent request handling.
     A lock serializes access to the Repository to ensure SQLite thread safety.
@@ -438,7 +438,7 @@ class FlaServer(ThreadingHTTPServer):
         else:
             self._repo_path = repo_or_path
             self.repo = None
-        super().__init__((host, port), FlaHandler)
+        super().__init__((host, port), FlanesHandler)
 
     def _ensure_repo(self):
         """Open repo lazily in the serving thread to avoid SQLite threading issues."""
@@ -459,7 +459,7 @@ def serve(
     api_token: str | None = None,
     web: bool = False,
 ):
-    """Start the Fla REST API server.
+    """Start the Flanes REST API server.
 
     Args:
         api_token: Bearer token for authentication. If not provided, reads from
@@ -467,10 +467,10 @@ def serve(
         web: If True, serve the web viewer at /web/.
     """
     repo = Repository.find(Path(repo_path))
-    server = FlaServer(repo, host, port, api_token=api_token, web=web)
+    server = FlanesServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
     auth_status = "with auth" if server._api_token else "without auth (set FLA_API_TOKEN to enable)"
-    print(f"Fla server listening on {host}:{actual_port} ({auth_status})")
+    print(f"Flanes server listening on {host}:{actual_port} ({auth_status})")
     if web:
         print(f"  Web viewer: http://{host}:{actual_port}/web/")
     try:

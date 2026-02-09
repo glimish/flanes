@@ -1,5 +1,5 @@
 """
-Fla — Full Integration Test with Workspace Isolation
+Flanes — Full Integration Test with Workspace Isolation
 
 This simulates a realistic multi-agent workflow where agents
 actually work in isolated directories:
@@ -25,9 +25,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fla.agent_sdk import AgentSession
-from fla.repo import Repository
-from fla.state import (
+from flanes.agent_sdk import AgentSession
+from flanes.repo import Repository
+from flanes.state import (
     AgentIdentity,
     CostRecord,
 )

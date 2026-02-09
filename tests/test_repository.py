@@ -2,8 +2,8 @@
 
 import pytest
 
-from fla.repo import Repository
-from fla.state import AgentIdentity, TransitionStatus
+from flanes.repo import Repository
+from flanes.state import AgentIdentity, TransitionStatus
 
 
 def _agent():
@@ -84,7 +84,7 @@ class TestFind:
     def test_find_raises_when_no_repo(self, tmp_path):
         empty = tmp_path / "empty"
         empty.mkdir()
-        with pytest.raises(ValueError, match="Not inside a Fla repository"):
+        with pytest.raises(ValueError, match="Not inside a Flanes repository"):
             Repository.find(empty)
 
 
@@ -97,18 +97,18 @@ class TestInit:
         project = tmp_path / "empty_project"
         project.mkdir()
         repo = Repository.init(project)
-        # .flaignore is auto-created, so there's an initial snapshot
+        # .flanesignore is auto-created, so there's an initial snapshot
         assert repo.head() is not None
-        # Workspace should exist with .flaignore
+        # Workspace should exist with .flanesignore
         ws = repo.workspace_path("main")
         assert ws is not None
-        # .flaignore should exist (it starts with . so is a dotfile)
-        assert (ws / ".flaignore").exists()
-        # Only .fla dir and .flaignore should exist
+        # .flanesignore should exist (it starts with . so is a dotfile)
+        assert (ws / ".flanesignore").exists()
+        # Only .fla dir and .flanesignore should exist
         all_files = list(ws.iterdir())
         names = {f.name for f in all_files}
-        assert ".flaignore" in names
-        assert ".fla" in names
+        assert ".flanesignore" in names
+        assert ".flanes" in names
         repo.close()
 
 
@@ -222,7 +222,7 @@ class TestInstanceLock:
         project.mkdir()
         (project / "file.txt").write_text("hello")
         repo = Repository.init(project)
-        lock_path = repo.fla_dir / "instance.lock"
+        lock_path = repo.flanes_dir / "instance.lock"
         assert lock_path.exists()
         import json
 
@@ -242,7 +242,7 @@ class TestInstanceLock:
         project.mkdir()
         (project / "file.txt").write_text("hello")
         repo = Repository.init(project)
-        lock_path = repo.fla_dir / "instance.lock"
+        lock_path = repo.flanes_dir / "instance.lock"
         assert lock_path.exists()
         repo.close()
         assert not lock_path.exists()
@@ -257,7 +257,7 @@ class TestInstanceLock:
         project.mkdir()
         (project / "file.txt").write_text("hello")
         repo = Repository.init(project)
-        lock_path = repo.fla_dir / "instance.lock"
+        lock_path = repo.flanes_dir / "instance.lock"
         repo.close()
 
         # Write a fake lock from a dead PID on same host
@@ -281,13 +281,13 @@ class TestInstanceLock:
         import json
         import time
 
-        from fla.repo import ConcurrentAccessError
+        from flanes.repo import ConcurrentAccessError
 
         project = tmp_path / "project"
         project.mkdir()
         (project / "file.txt").write_text("hello")
         repo = Repository.init(project)
-        lock_path = repo.fla_dir / "instance.lock"
+        lock_path = repo.flanes_dir / "instance.lock"
         repo.close()
 
         # Write a fake lock from a different machine
@@ -310,7 +310,7 @@ class TestInstanceLock:
         repo = Repository.init(project)
         repo.close()
 
-        lock_path = project / ".fla" / "instance.lock"
+        lock_path = project / ".flanes" / "instance.lock"
         with Repository(project) as _:
             assert lock_path.exists()
         assert not lock_path.exists()

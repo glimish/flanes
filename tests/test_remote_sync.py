@@ -10,10 +10,10 @@ import pytest
 
 @pytest.fixture
 def repo_pair(tmp_path):
-    """Two Fla repos sharing a remote backend — simulates push from one, pull into another."""
-    from fla.remote import InMemoryBackend, RemoteSyncManager
-    from fla.repo import Repository
-    from fla.state import AgentIdentity
+    """Two Flanes repos sharing a remote backend — simulates push from one, pull into another."""
+    from flanes.remote import InMemoryBackend, RemoteSyncManager
+    from flanes.repo import Repository
+    from flanes.state import AgentIdentity
 
     # Repo A: has content
     dir_a = tmp_path / "repo_a"
@@ -59,7 +59,7 @@ class TestRemotePushPull:
         assert pull_result["errors"] == 0
 
         # All objects from A should now exist in B
-        from fla.cas import ObjectType
+        from flanes.cas import ObjectType
 
         rows_a = repo_a.store.conn.execute("SELECT hash, type FROM objects").fetchall()
         for h, t in rows_a:
@@ -131,8 +131,8 @@ class TestStaleAccept:
     @pytest.fixture
     def repo_with_two_proposals(self, tmp_path):
         """A repo with two proposed transitions from the same from_state."""
-        from fla.repo import Repository
-        from fla.state import AgentIdentity
+        from flanes.repo import Repository
+        from flanes.state import AgentIdentity
 
         project_dir = tmp_path / "project"
         project_dir.mkdir()
@@ -173,7 +173,7 @@ class TestStaleAccept:
     def test_second_accept_is_rejected_as_stale(self, repo_with_two_proposals):
         """When two transitions share from_state, accepting first makes second stale."""
         repo, tid1, tid2, original_head = repo_with_two_proposals
-        from fla.state import TransitionStatus
+        from flanes.state import TransitionStatus
 
         # Accept first
         status1 = repo.accept(tid1, evaluator="test", summary="Accept first")
@@ -233,7 +233,7 @@ class TestMetadataSync:
 
     def test_metadata_pull_detects_conflict(self, repo_pair):
         """Divergent same-lane work produces a conflict report."""
-        from fla.state import AgentIdentity
+        from flanes.state import AgentIdentity
 
         repo_a, repo_b, sync_a, sync_b, _ = repo_pair
 
@@ -266,7 +266,7 @@ class TestMetadataSync:
 
     def test_metadata_pull_no_conflict_different_lanes(self, repo_pair):
         """Metadata from a new lane merges cleanly (no conflict on that lane)."""
-        from fla.state import AgentIdentity
+        from flanes.state import AgentIdentity
 
         repo_a, repo_b, sync_a, sync_b, _ = repo_pair
 

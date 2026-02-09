@@ -1,8 +1,8 @@
 """
 Multi-Repo Project Management
 
-A project coordinates multiple fla repos under a single root.
-Configuration is stored in .fla-project.json at the project root.
+A project coordinates multiple flanes repos under a single root.
+Configuration is stored in .flanes-project.json at the project root.
 """
 
 import json
@@ -15,12 +15,12 @@ from .serializable import Serializable
 
 logger = logging.getLogger(__name__)
 
-PROJECT_FILE = ".fla-project.json"
+PROJECT_FILE = ".flanes-project.json"
 
 
 @dataclass
 class RepoMount(Serializable):
-    """A fla repo mounted in the project."""
+    """A flanes repo mounted in the project."""
 
     repo_path: str
     mount_point: str
@@ -43,7 +43,7 @@ class Project:
         self.root = root.resolve()
         self.config_path = self.root / PROJECT_FILE
         if not self.config_path.exists():
-            raise ValueError(f"Not a fla project: {self.root} (no {PROJECT_FILE})")
+            raise ValueError(f"Not a flanesnes project: {self.root} (no {PROJECT_FILE})")
         self.config = ProjectConfig.from_dict(json.loads(self.config_path.read_text()))
 
     @classmethod

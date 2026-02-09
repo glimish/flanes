@@ -2,7 +2,7 @@
 
 import pytest
 
-from fla.cas import ContentStore, ObjectType
+from flanes.cas import ContentStore, ObjectType
 
 
 @pytest.fixture

@@ -218,7 +218,7 @@ class WorldStateManager:
         builds tree objects, and creates a world state pointing to
         the root tree.
 
-        Respects .flaignore if present (one filename pattern per line).
+        Respects .flanesignore if present (one filename pattern per line).
         Supports directory patterns (trailing ``/``), negation (``!`` prefix).
 
         Returns the world state ID (which is a content hash).
@@ -227,8 +227,8 @@ class WorldStateManager:
         ignore_dirs: set[str] = set()
         negate_patterns: set[str] = set()
 
-        # Load .flaignore from snapshot root if present
-        flaignore = path / ".flaignore"
+        # Load .flanesignore from snapshot root if present
+        flaignore = path / ".flanesignore"
         if flaignore.is_file():
             for line in flaignore.read_text().splitlines():
                 line = line.strip()
@@ -260,7 +260,7 @@ class WorldStateManager:
     DEFAULT_IGNORE = frozenset(
         {
             # Version control
-            ".fla",
+            ".flanes",
             ".git",
             ".svn",
             ".hg",

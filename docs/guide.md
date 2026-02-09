@@ -1,6 +1,6 @@
-# Fla User Guide
+# Flanes User Guide
 
-Comprehensive guide for Fla, a version control system for agentic AI.
+Comprehensive guide for Flanes, a version control system for agentic AI.
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ pip install flanes[gcs]
 ### Verify Installation
 
 ```bash
-fla --help
+flanes --help
 ```
 
 ---
@@ -57,10 +57,10 @@ fla --help
 
 ```bash
 cd my-project
-fla init
+flanes init
 ```
 
-This creates a `.fla/` directory and takes an initial snapshot. Your files stay in place: the repo root IS the main workspace (like git). Only metadata is added.
+This creates a `.flanes/` directory and takes an initial snapshot. Your files stay in place: the repo root IS the main workspace (like git). Only metadata is added.
 
 ### Make Changes and Commit
 
@@ -69,7 +69,7 @@ This creates a `.fla/` directory and takes an initial snapshot. Your files stay 
 echo "print('hello')" > app.py
 
 # Quick commit: snapshot + propose + accept
-fla commit \
+flanes commit \
   --prompt "Add hello world app" \
   --agent-id dev-1 \
   --agent-type coder \
@@ -80,13 +80,13 @@ fla commit \
 
 ```bash
 # Create a new lane (automatically creates a workspace)
-fla lane create feature-auth
+flanes lane create feature-auth
 
 # Work in the feature workspace
-echo "def login(): pass" > .fla/workspaces/feature-auth/auth.py
+echo "def login(): pass" > .flanes/workspaces/feature-auth/auth.py
 
 # Commit on the feature lane
-fla commit \
+flanes commit \
   --prompt "Add auth module" \
   --agent-id dev-1 \
   --agent-type coder \
@@ -97,15 +97,15 @@ fla commit \
 ### Promote to Main
 
 ```bash
-fla promote --workspace feature-auth --target main --auto-accept
+flanes promote --workspace feature-auth --target main --auto-accept
 ```
 
 ### View History
 
 ```bash
-fla history --lane main
-fla trace          # causal lineage
-fla status         # full repo overview
+flanes history --lane main
+flanes trace          # causal lineage
+flanes status         # full repo overview
 ```
 
 ---
@@ -118,7 +118,7 @@ For a concise overview, see the [README](../README.md#core-concepts).
 
 A world state is a complete, immutable snapshot of the entire project at a point in time. Every file, every directory, captured as a Merkle tree in the content-addressed store. World states are identified by the SHA-256 hash of their root tree.
 
-There are no partial commits. When you snapshot a workspace, Fla hashes every file and builds a complete tree. If nothing changed, the hash is the same and no new state is created.
+There are no partial commits. When you snapshot a workspace, Flanes hashes every file and builds a complete tree. If nothing changed, the hash is the same and no new state is created.
 
 ### Intents
 
@@ -154,7 +154,7 @@ Lane names must use dashes, not slashes:
 
 ### Workspaces
 
-The main workspace IS the repo root (like git). Feature lanes get physically isolated directories at `.fla/workspaces/<name>/`. This gives you familiar git-style behavior for everyday work while still enabling parallel agents to work on feature lanes without interfering with each other.
+The main workspace IS the repo root (like git). Feature lanes get physically isolated directories at `.flanes/workspaces/<name>/`. This gives you familiar git-style behavior for everyday work while still enabling parallel agents to work on feature lanes without interfering with each other.
 
 Workspaces are materialized from the CAS when created and incrementally updated when the target state changes; only modified files are written.
 
@@ -184,24 +184,24 @@ All commands support `--json` for machine-readable output.
 
 | Command | Description |
 |---------|-------------|
-| `fla init [path]` | Initialize a new Fla repository |
-| `fla status` | Show repository status (lanes, workspaces, head states) |
-| `fla doctor [--fix]` | Check repository health, optionally fix issues |
+| `flanes init [path]` | Initialize a new Flanes repository |
+| `flanes status` | Show repository status (lanes, workspaces, head states) |
+| `flanes doctor [--fix]` | Check repository health, optionally fix issues |
 
 ### Snapshots & Commits
 
 | Command | Description |
 |---------|-------------|
-| `fla snapshot [--workspace NAME]` | Snapshot workspace to create a new world state |
-| `fla propose --prompt "..." --agent-id ID --agent-type TYPE` | Propose a transition |
-| `fla accept TRANSITION_ID` | Accept a proposed transition |
-| `fla reject TRANSITION_ID` | Reject a proposed transition |
-| `fla commit --prompt "..." --agent-id ID --agent-type TYPE [--auto-accept]` | Quick commit (snapshot + propose + accept) |
+| `flanes snapshot [--workspace NAME]` | Snapshot workspace to create a new world state |
+| `flanes propose --prompt "..." --agent-id ID --agent-type TYPE` | Propose a transition |
+| `flanes accept TRANSITION_ID` | Accept a proposed transition |
+| `flanes reject TRANSITION_ID` | Reject a proposed transition |
+| `flanes commit --prompt "..." --agent-id ID --agent-type TYPE [--auto-accept]` | Quick commit (snapshot + propose + accept) |
 
 #### Commit Options
 
 ```bash
-fla commit \
+flanes commit \
   --prompt "Description of changes" \
   --agent-id coder-1 \
   --agent-type feature_developer \
@@ -217,142 +217,142 @@ fla commit \
 
 | Command | Description |
 |---------|-------------|
-| `fla lanes` | List all lanes with head states |
-| `fla lane create NAME [--base STATE_ID]` | Create a new lane (and workspace) |
-| `fla lane delete NAME [--force]` | Delete a lane and its workspace |
+| `flanes lanes` | List all lanes with head states |
+| `flanes lane create NAME [--base STATE_ID]` | Create a new lane (and workspace) |
+| `flanes lane delete NAME [--force]` | Delete a lane and its workspace |
 
 ```bash
 # Create a lane branching from current main head
-fla lane create feature-auth
+flanes lane create feature-auth
 
 # Create a lane from a specific state
-fla lane create experiment-v2 --base abc123
+flanes lane create experiment-v2 --base abc123
 
 # Delete a lane and its workspace
-fla lane delete feature-auth
+flanes lane delete feature-auth
 
 # Force delete even if workspace is locked
-fla lane delete feature-auth --force
+flanes lane delete feature-auth --force
 ```
 
 ### Workspaces
 
 | Command | Description |
 |---------|-------------|
-| `fla workspace list` | List all workspaces |
-| `fla workspace create NAME [--lane LANE] [--base STATE_ID]` | Create a workspace |
-| `fla workspace remove NAME [--force]` | Remove a workspace |
-| `fla workspace update NAME [--state STATE_ID]` | Update workspace to a state |
-| `fla restore STATE_ID [--workspace NAME]` | Restore workspace to any historical state |
-| `fla promote --workspace NAME --target LANE [--auto-accept] [--force]` | Promote workspace into target lane |
+| `flanes workspace list` | List all workspaces |
+| `flanes workspace create NAME [--lane LANE] [--base STATE_ID]` | Create a workspace |
+| `flanes workspace remove NAME [--force]` | Remove a workspace |
+| `flanes workspace update NAME [--state STATE_ID]` | Update workspace to a state |
+| `flanes restore STATE_ID [--workspace NAME]` | Restore workspace to any historical state |
+| `flanes promote --workspace NAME --target LANE [--auto-accept] [--force]` | Promote workspace into target lane |
 
 ```bash
 # Update feature workspace to latest main
-fla workspace update feature-auth --state $(fla head --lane main --json | jq -r .head)
+flanes workspace update feature-auth --state $(flanes head --lane main --json | jq -r .head)
 
 # Restore to a previous state
-fla restore abc123def --workspace main
+flanes restore abc123def --workspace main
 ```
 
 ### Query & History
 
 | Command | Description |
 |---------|-------------|
-| `fla history [--lane LANE] [--limit N] [--status STATUS]` | Show transition history |
-| `fla log` | Alias for `history` |
-| `fla trace [STATE_ID]` | Show causal lineage of a state |
-| `fla diff STATE_A STATE_B [--content]` | File-level diff between two states |
-| `fla search QUERY` | Search intents by text and tags |
-| `fla semantic-search QUERY [--limit N]` | Embedding-based semantic search |
-| `fla info STATE_ID` | Show details about a world state |
-| `fla show STATE_ID PATH` | Show file content from a state |
+| `flanes history [--lane LANE] [--limit N] [--status STATUS]` | Show transition history |
+| `flanes log` | Alias for `history` |
+| `flanes trace [STATE_ID]` | Show causal lineage of a state |
+| `flanes diff STATE_A STATE_B [--content]` | File-level diff between two states |
+| `flanes search QUERY` | Search intents by text and tags |
+| `flanes semantic-search QUERY [--limit N]` | Embedding-based semantic search |
+| `flanes info STATE_ID` | Show details about a world state |
+| `flanes show STATE_ID PATH` | Show file content from a state |
 
 ```bash
 # Show last 5 accepted transitions on main
-fla history --lane main --limit 5 --status accepted
+flanes history --lane main --limit 5 --status accepted
 
 # Diff two states with file content
-fla diff abc123 def456 --content
+flanes diff abc123 def456 --content
 
 # Search for authentication-related changes
-fla search "authentication"
+flanes search "authentication"
 ```
 
 ### Evaluators
 
 | Command | Description |
 |---------|-------------|
-| `fla evaluate [TRANSITION_ID] [--workspace NAME]` | Run evaluators against a transition |
+| `flanes evaluate [TRANSITION_ID] [--workspace NAME]` | Run evaluators against a transition |
 
 ### Budgets
 
 | Command | Description |
 |---------|-------------|
-| `fla budget show LANE` | Show budget status for a lane |
-| `fla budget set LANE [options]` | Set budget limits for a lane |
+| `flanes budget show LANE` | Show budget status for a lane |
+| `flanes budget set LANE [options]` | Set budget limits for a lane |
 
 ### Garbage Collection
 
 | Command | Description |
 |---------|-------------|
-| `fla gc [--confirm] [--older-than N]` | Run garbage collection |
+| `flanes gc [--confirm] [--older-than N]` | Run garbage collection |
 
 ### Git Bridge
 
 | Command | Description |
 |---------|-------------|
-| `fla export-git TARGET_DIR [--lane LANE]` | Export Fla history to a git repository |
-| `fla import-git SOURCE_DIR [--lane LANE]` | Import git commits into Fla |
+| `flanes export-git TARGET_DIR [--lane LANE]` | Export Flanes history to a git repository |
+| `flanes import-git SOURCE_DIR [--lane LANE]` | Import git commits into Flanes |
 
 ### Remote Storage
 
 | Command | Description |
 |---------|-------------|
-| `fla remote push [--metadata]` | Push local objects to remote storage (with `--metadata`: also sync lane metadata) |
-| `fla remote pull [--metadata]` | Pull remote objects to local store (with `--metadata`: also sync lane metadata, detect conflicts) |
-| `fla remote status` | Show sync status |
+| `flanes remote push [--metadata]` | Push local objects to remote storage (with `--metadata`: also sync lane metadata) |
+| `flanes remote pull [--metadata]` | Pull remote objects to local store (with `--metadata`: also sync lane metadata, detect conflicts) |
+| `flanes remote status` | Show sync status |
 
 ### Templates
 
 | Command | Description |
 |---------|-------------|
-| `fla template list` | List available templates |
-| `fla template create NAME [--description DESC]` | Create a template from current workspace |
-| `fla template show NAME` | Show template details |
+| `flanes template list` | List available templates |
+| `flanes template create NAME [--description DESC]` | Create a template from current workspace |
+| `flanes template show NAME` | Show template details |
 
 ### Projects
 
 | Command | Description |
 |---------|-------------|
-| `fla project init [--name NAME]` | Initialize a multi-repo project |
-| `fla project add REPO_PATH MOUNT_POINT [--lane LANE]` | Add a repo to the project |
-| `fla project status` | Show status of all repos |
-| `fla project snapshot` | Coordinated snapshot across all repos |
+| `flanes project init [--name NAME]` | Initialize a multi-repo project |
+| `flanes project add REPO_PATH MOUNT_POINT [--lane LANE]` | Add a repo to the project |
+| `flanes project status` | Show status of all repos |
+| `flanes project snapshot` | Coordinated snapshot across all repos |
 
 ### Server & Integration
 
 | Command | Description |
 |---------|-------------|
-| `fla serve [--port PORT] [--host HOST]` | Start REST API server (default: 127.0.0.1:7654) |
-| `fla mcp` | Start MCP tool server (stdio) |
-| `fla completion SHELL` | Generate shell completion script (bash, zsh, fish) |
+| `flanes serve [--port PORT] [--host HOST]` | Start REST API server (default: 127.0.0.1:7654) |
+| `flanes mcp` | Start MCP tool server (stdio) |
+| `flanes completion SHELL` | Generate shell completion script (bash, zsh, fish) |
 
 ### Low-level
 
 | Command | Description |
 |---------|-------------|
-| `fla cat-file HASH [--type TYPE]` | Inspect raw CAS object |
+| `flanes cat-file HASH [--type TYPE]` | Inspect raw CAS object |
 
 ---
 
 ## Agent SDK
 
-The Python SDK provides `AgentSession` for programmatic access to Fla from agent code.
+The Python SDK provides `AgentSession` for programmatic access to Flanes from agent code.
 
 ### AgentSession
 
 ```python
-from fla.agent_sdk import AgentSession
+from flanes.agent_sdk import AgentSession
 
 session = AgentSession(
     repo_path="./my-project",
@@ -457,7 +457,7 @@ This ensures that even failed work is recorded for debugging and cost tracking.
 
 ## Configuration
 
-Repository configuration is stored in `.fla/config.json`. It is created automatically by `fla init`.
+Repository configuration is stored in `.flanes/config.json`. It is created automatically by `flanes init`.
 
 ### All Fields
 
@@ -476,7 +476,7 @@ Repository configuration is stored in `.fla/config.json`. It is created automati
   "embedding_dimensions": 1536,
   "remote_storage": {
     "backend": "s3",
-    "bucket": "my-fla-bucket",
+    "bucket": "my-flanes-bucket",
     "prefix": "project-name/",
     "region": "us-east-1"
   }
@@ -487,7 +487,7 @@ Repository configuration is stored in `.fla/config.json`. It is created automati
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `version` | string | `"0.3.0"` | Fla version that created this repo |
+| `version` | string | `"0.3.0"` | Flanes version that created this repo |
 | `default_lane` | string | `"main"` | Default lane for operations |
 | `created_at` | float | (auto) | Unix timestamp of repo creation |
 | `max_blob_size` | int | `104857600` | Maximum file size in bytes (100 MB). Set to 0 for default. |
@@ -508,7 +508,7 @@ Evaluators run shell commands (tests, linters, type checkers) against a workspac
 
 ### Setup
 
-Add evaluators to `.fla/config.json`:
+Add evaluators to `.flanes/config.json`:
 
 ```json
 {
@@ -580,10 +580,10 @@ For consistent cross-platform behavior, use the `args` array instead:
 
 ```bash
 # Run evaluators against a specific transition
-fla evaluate <transition-id> --workspace main
+flanes evaluate <transition-id> --workspace main
 
 # Evaluators run automatically during commit if configured
-fla commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-accept
+flanes commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-accept
 ```
 
 ### Required vs Optional
@@ -596,7 +596,7 @@ fla commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-acc
 When using `--auto-accept`, evaluators still run but failures produce warnings instead of blocking:
 
 ```bash
-fla commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-accept
+flanes commit --prompt "Add feature" --agent-id dev-1 --agent-type coder --auto-accept
 # Note: --auto-accept will run evaluators but won't block on failures
 # ✓ Committed: abc123def456
 #   Eval: ✗ pytest failed: 2 tests failed
@@ -614,27 +614,27 @@ Budgets enforce per-lane cost limits on token usage, API calls, and wall time.
 
 ```bash
 # Set token limits
-fla budget set feature-auth \
+flanes budget set feature-auth \
   --max-tokens-in 100000 \
   --max-tokens-out 50000
 
 # Set API call limit
-fla budget set feature-auth \
+flanes budget set feature-auth \
   --max-api-calls 500
 
 # Set wall time limit (milliseconds)
-fla budget set feature-auth \
+flanes budget set feature-auth \
   --max-wall-time 3600000
 
 # Set alert threshold (percentage of budget consumed before warning)
-fla budget set feature-auth \
+flanes budget set feature-auth \
   --alert-threshold 80
 ```
 
 ### Checking Budget Status
 
 ```bash
-fla budget show feature-auth
+flanes budget show feature-auth
 ```
 
 Output shows current usage against limits:
@@ -671,13 +671,13 @@ Remote storage enables team collaboration by syncing the local content-addressed
 
 ### S3 Setup
 
-Add to `.fla/config.json`:
+Add to `.flanes/config.json`:
 
 ```json
 {
   "remote_storage": {
     "backend": "s3",
-    "bucket": "my-fla-bucket",
+    "bucket": "my-flanes-bucket",
     "prefix": "project-name/",
     "region": "us-east-1"
   }
@@ -694,7 +694,7 @@ AWS credentials are resolved through the standard boto3 chain (environment varia
 {
   "remote_storage": {
     "backend": "gcs",
-    "bucket": "my-fla-bucket",
+    "bucket": "my-flanes-bucket",
     "prefix": "project-name/"
   }
 }
@@ -708,17 +708,17 @@ GCP credentials are resolved through Application Default Credentials.
 
 ```bash
 # Push local objects to remote
-fla remote push
+flanes remote push
 
 # Pull remote objects to local store
-fla remote pull
+flanes remote pull
 
 # Push/pull with lane metadata (transitions, intents, lane heads)
-fla remote push --metadata
-fla remote pull --metadata
+flanes remote push --metadata
+flanes remote pull --metadata
 
 # Check sync status (what's local-only, remote-only, synced)
-fla remote status
+flanes remote status
 ```
 
 ### How It Works
@@ -727,7 +727,7 @@ Remote sync operates at the CAS object level. Each blob and tree is an independe
 
 ### Integrity Verification
 
-When pulling objects from remote storage, Fla verifies the SHA-256 hash of each downloaded payload matches the expected object key. This protects against:
+When pulling objects from remote storage, Flanes verifies the SHA-256 hash of each downloaded payload matches the expected object key. This protects against:
 
 - **Corrupted storage:** bit rot or transfer errors
 - **Malicious backends:** tampered data on shared or untrusted storage
@@ -748,16 +748,16 @@ Objects that fail integrity verification are logged and skipped. The pull result
 
 ## Multi-Machine Collaboration
 
-Fla supports collaboration across multiple machines using remote storage as the synchronization layer.
+Flanes supports collaboration across multiple machines using remote storage as the synchronization layer.
 
 ### Architecture
 
-Each machine has its own local Fla repository with a full CAS and SQLite database. Remote storage (S3/GCS) acts as a shared object pool. Machines push and pull CAS objects (blobs, trees, and state snapshots) to stay in sync.
+Each machine has its own local Flanes repository with a full CAS and SQLite database. Remote storage (S3/GCS) acts as a shared object pool. Machines push and pull CAS objects (blobs, trees, and state snapshots) to stay in sync.
 
 ```
 Machine A                  Remote (S3/GCS)                Machine B
 ┌──────────┐              ┌──────────────┐              ┌──────────┐
-│ .fla/    │──push──→     │ blobs/       │     ←──pull──│ .fla/    │
+│ .flanes/    │──push──→     │ blobs/       │     ←──pull──│ .flanes/    │
 │  cas/    │              │ trees/       │              │  cas/    │
 │  db      │←──pull──     │ states/      │     ──push──→│  db      │
 └──────────┘              └──────────────┘              └──────────┘
@@ -765,17 +765,17 @@ Machine A                  Remote (S3/GCS)                Machine B
 
 ### Setup
 
-1. Initialize Fla on each machine:
+1. Initialize Flanes on each machine:
    ```bash
-   fla init --lane main
+   flanes init --lane main
    ```
 
-2. Configure the same remote backend on each machine (`.fla/config.json`):
+2. Configure the same remote backend on each machine (`.flanes/config.json`):
    ```json
    {
      "remote_storage": {
        "backend": "s3",
-       "bucket": "team-fla-bucket",
+       "bucket": "team-flanes-bucket",
        "prefix": "my-project/"
      }
    }
@@ -784,10 +784,10 @@ Machine A                  Remote (S3/GCS)                Machine B
 3. Push from the first machine, pull on the second:
    ```bash
    # Machine A: push local work (use --metadata to include lane history)
-   fla remote push --metadata
+   flanes remote push --metadata
 
    # Machine B: pull remote objects and lane metadata
-   fla remote pull --metadata
+   flanes remote pull --metadata
    ```
 
 ### Workflow: Parallel Agents on Separate Machines
@@ -796,48 +796,48 @@ A common pattern is running independent agents on different machines, each worki
 
 ```bash
 # Machine A: agent works on feature-auth
-fla lane create feature-auth
+flanes lane create feature-auth
 # ... agent does work, snapshots, proposes ...
-fla remote push --metadata
+flanes remote push --metadata
 
 # Machine B: agent works on feature-api
-fla lane create feature-api
+flanes lane create feature-api
 # ... agent does work, snapshots, proposes ...
-fla remote push --metadata
+flanes remote push --metadata
 
 # Either machine: pull all work, review, promote
-fla remote pull --metadata
-fla history --lane feature-auth
-fla history --lane feature-api
-fla promote feature-auth --to main
-fla promote feature-api --to main
+flanes remote pull --metadata
+flanes history --lane feature-auth
+flanes history --lane feature-api
+flanes promote feature-auth --to main
+flanes promote feature-api --to main
 ```
 
 ### Alternative: Git Bridge as Middleware
 
 For teams already using Git, the git bridge can serve as a synchronization layer:
 
-1. Each machine exports its Fla history to a git repo
+1. Each machine exports its Flanes history to a git repo
 2. Git handles the multi-machine sync (push/pull/merge)
 3. Other machines import from the shared git repo
 
 ```bash
 # Machine A: export and push via git
-fla export-git ./sync-repo --lane main
+flanes export-git ./sync-repo --lane main
 cd ./sync-repo && git push origin main
 
 # Machine B: pull via git and import
 cd ./sync-repo && git pull origin main
-fla import-git ./sync-repo --lane imported
+flanes import-git ./sync-repo --lane imported
 ```
 
-This approach trades some fidelity (Fla metadata like cost records and evaluations are not preserved in git) for compatibility with existing git workflows.
+This approach trades some fidelity (Flanes metadata like cost records and evaluations are not preserved in git) for compatibility with existing git workflows.
 
 ### Limitations
 
 - **SQLite is local-only.** Lane metadata, workspace state, and transition history live in the local SQLite database. By default, only CAS objects (blobs, trees, state snapshots) are synced via remote push/pull. Use `--metadata` to also sync lane metadata, transitions, and intents.
-- **Conflict detection, not auto-merge.** When two machines create transitions on the same lane, `fla remote pull --metadata` detects divergent heads and reports conflicts. Clean merges (different lanes or non-overlapping changes) are handled automatically. Conflicting same-lane work requires manual resolution.
-- **NFS safety fencing.** Running two Fla instances against the same `.fla/` directory on a network filesystem (NFS, SMB) is detected and blocked. Fla uses an instance lock to prevent cross-machine concurrent access to the same repository. Use remote push/pull for multi-machine collaboration instead.
+- **Conflict detection, not auto-merge.** When two machines create transitions on the same lane, `flanes remote pull --metadata` detects divergent heads and reports conflicts. Clean merges (different lanes or non-overlapping changes) are handled automatically. Conflicting same-lane work requires manual resolution.
+- **NFS safety fencing.** Running two Flanes instances against the same `.flanes/` directory on a network filesystem (NFS, SMB) is detected and blocked. Flanes uses an instance lock to prevent cross-machine concurrent access to the same repository. Use remote push/pull for multi-machine collaboration instead.
 
 ---
 
@@ -849,10 +849,10 @@ The git bridge allows importing from and exporting to standard git repositories.
 
 ```bash
 # Export main lane history to a new git repo
-fla export-git ./my-project-git --lane main
+flanes export-git ./my-project-git --lane main
 
 # Export a different lane
-fla export-git ./feature-export --lane feature-auth
+flanes export-git ./feature-export --lane feature-auth
 ```
 
 This creates a git repository at the target path with one commit per accepted transition. Commit messages are derived from transition prompts. The full file tree is materialized for each commit.
@@ -860,14 +860,14 @@ This creates a git repository at the target path with one commit per accepted tr
 ### Import from Git
 
 ```bash
-# Import git history into a Fla lane
-fla import-git ./existing-git-repo --lane imported
+# Import git history into a Flanes lane
+flanes import-git ./existing-git-repo --lane imported
 
 # Import into main lane
-fla import-git ./existing-git-repo --lane main
+flanes import-git ./existing-git-repo --lane main
 ```
 
-This walks the git log and creates a Fla transition for each commit. File trees are ingested into the CAS.
+This walks the git log and creates a Flanes transition for each commit. File trees are ingested into the CAS.
 
 ### Notes
 
@@ -877,13 +877,13 @@ This walks the git log and creates a Fla transition for each commit. File trees 
 
 ---
 
-## Git + Fla Coexistence
+## Git + Flanes Coexistence
 
-Fla is designed to work alongside Git, not replace it. A common pattern is using Git as the source of truth for human collaboration and CI, while Fla manages agent experiments and quality-gated work.
+Flanes is designed to work alongside Git, not replace it. A common pattern is using Git as the source of truth for human collaboration and CI, while Flanes manages agent experiments and quality-gated work.
 
 ### Why Use Both?
 
-| Concern | Git | Fla |
+| Concern | Git | Flanes |
 |---------|-----|-----|
 | Human collaboration | Branches, PRs, code review | - |
 | CI/CD integration | Native support everywhere | Export via git bridge |
@@ -894,36 +894,36 @@ Fla is designed to work alongside Git, not replace it. A common pattern is using
 
 ### Setup
 
-When you run `fla init` inside an existing Git repository, Fla detects this and reminds you to add `.fla/` to your `.gitignore`:
+When you run `flanes init` inside an existing Git repository, Flanes detects this and reminds you to add `.flanes/` to your `.gitignore`:
 
 ```bash
 cd my-git-project
-fla init
+flanes init
 # Note: Detected existing Git repository.
-#   Add '.fla/' to your .gitignore:  echo '.fla/' >> .gitignore
+#   Add '.flanes/' to your .gitignore:  echo '.flanes/' >> .gitignore
 ```
 
-Add `.fla/` to `.gitignore` to prevent Git from tracking Fla's internal state:
+Add `.flanes/` to `.gitignore` to prevent Git from tracking Flanes's internal state:
 
 ```bash
-echo '.fla/' >> .gitignore
+echo '.flanes/' >> .gitignore
 git add .gitignore
-git commit -m "Ignore fla directory"
+git commit -m "Ignore flanes directory"
 ```
 
 ### Recommended Workflow
 
 1. **Git is the source of truth.** The `main` branch in Git represents the canonical project state.
-2. **Fla manages agent work.** Agents use Fla lanes for experimental work with quality gates.
-3. **Export approved work back to Git.** Use `fla export-git` to create git commits from accepted Fla transitions.
+2. **Flanes manages agent work.** Agents use Flanes lanes for experimental work with quality gates.
+3. **Export approved work back to Git.** Use `flanes export-git` to create git commits from accepted Flanes transitions.
 
 ```bash
-# Agent does work in Fla
-fla lane create agent-feature
+# Agent does work in Flanes
+flanes lane create agent-feature
 # ... agent proposes, evaluator accepts ...
 
 # Export the approved lane to a git branch
-fla export-git ./export-dir --lane agent-feature
+flanes export-git ./export-dir --lane agent-feature
 cd ./export-dir
 git remote add origin <your-repo-url>
 git push origin main:agent-feature
@@ -935,8 +935,8 @@ git push origin main:agent-feature
 ### What Gets Tracked Where
 
 - **Git tracks:** Source code, configuration, documentation, `.gitignore`
-- **Fla tracks (in `.fla/`):** Agent snapshots, transition history, evaluations, cost records, CAS objects
-- **Neither tracks:** Build artifacts, node_modules, virtual environments (add to both `.gitignore` and `.flaignore`)
+- **Flanes tracks (in `.flanes/`):** Agent snapshots, transition history, evaluations, cost records, CAS objects
+- **Neither tracks:** Build artifacts, node_modules, virtual environments (add to both `.gitignore` and `.flanesignore`)
 
 ---
 
@@ -946,7 +946,7 @@ Garbage collection removes unreachable objects and expired transitions to reclai
 
 ### How It Works
 
-Fla uses a mark-and-sweep algorithm:
+Flanes uses a mark-and-sweep algorithm:
 
 1. **Mark phase:** starting from lane heads, fork bases, and non-rejected transitions, walk all reachable objects (states, trees, blobs) and mark them as live.
 2. **Sweep phase:** delete all unmarked objects and transitions older than the specified age.
@@ -957,13 +957,13 @@ A deferred transaction is used during the mark phase to prevent concurrent `acce
 
 ```bash
 # Dry run: shows what would be deleted without deleting anything
-fla gc
+flanes gc
 
 # Actually delete (requires --confirm)
-fla gc --confirm
+flanes gc --confirm
 
 # Only delete objects older than 60 days (default: 30)
-fla gc --confirm --older-than 60
+flanes gc --confirm --older-than 60
 ```
 
 ### Output
@@ -997,24 +997,24 @@ Garbage collection results:
 
 ## Multi-repo Projects
 
-Projects coordinate multiple Fla repositories under a single umbrella for microservices or monorepo-style workflows.
+Projects coordinate multiple Flanes repositories under a single umbrella for microservices or monorepo-style workflows.
 
 ### Initialize a Project
 
 ```bash
 # In the parent directory
-fla project init --name my-microservices
+flanes project init --name my-microservices
 ```
 
-This creates a `.fla-project.json` file in the current directory.
+This creates a `.flanes-project.json` file in the current directory.
 
 ### Add Repositories
 
 ```bash
-# Add Fla repos to the project
-fla project add services/auth auth-service --lane main
-fla project add services/api api-service --lane main
-fla project add services/frontend frontend --lane main
+# Add Flanes repos to the project
+flanes project add services/auth auth-service --lane main
+flanes project add services/api api-service --lane main
+flanes project add services/frontend frontend --lane main
 ```
 
 Each repo is identified by its filesystem path and given a logical mount point name.
@@ -1022,7 +1022,7 @@ Each repo is identified by its filesystem path and given a logical mount point n
 ### Check Status
 
 ```bash
-fla project status
+flanes project status
 ```
 
 Output:
@@ -1040,14 +1040,14 @@ Repos:
 ### Coordinated Snapshot
 
 ```bash
-fla project snapshot
+flanes project snapshot
 ```
 
 Snapshots all repos in the project. This captures a consistent point-in-time across all repositories.
 
 ### Project File Format
 
-The `.fla-project.json` file:
+The `.flanes-project.json` file:
 
 ```json
 {
@@ -1077,24 +1077,24 @@ Templates provide reusable workspace scaffolding: predefined files, directories,
 ### Creating a Template
 
 ```bash
-fla template create python-service --description "Python microservice with tests"
+flanes template create python-service --description "Python microservice with tests"
 ```
 
 ### Listing Templates
 
 ```bash
-fla template list
+flanes template list
 ```
 
 ### Viewing Template Details
 
 ```bash
-fla template show python-service
+flanes template show python-service
 ```
 
 ### Template Storage
 
-Templates are stored as JSON files in `.fla/templates/<name>.json`:
+Templates are stored as JSON files in `.flanes/templates/<name>.json`:
 
 ```json
 {
@@ -1132,12 +1132,12 @@ Each file in a template can specify content in two ways:
 
 ## MCP Server
 
-The MCP (Model Context Protocol) server exposes Fla operations as tools that LLMs can call directly.
+The MCP (Model Context Protocol) server exposes Flanes operations as tools that LLMs can call directly.
 
 ### Starting the Server
 
 ```bash
-fla mcp
+flanes mcp
 ```
 
 The server runs over stdio using JSON-RPC 2.0 with Content-Length framing (LSP-style), per the MCP specification.
@@ -1163,16 +1163,16 @@ The MCP server is designed to be launched as a subprocess by an LLM orchestrator
 
 ## REST API
 
-The REST API provides HTTP access to Fla operations for web-based tools and remote agents.
+The REST API provides HTTP access to Flanes operations for web-based tools and remote agents.
 
 ### Starting the Server
 
 ```bash
 # Default: 127.0.0.1:7654
-fla serve
+flanes serve
 
 # Custom host and port
-fla serve --host 0.0.0.0 --port 8080
+flanes serve --host 0.0.0.0 --port 8080
 ```
 
 The server uses `ThreadingHTTPServer` for concurrent request handling. A lock serializes SQLite access to ensure thread safety.
@@ -1222,32 +1222,32 @@ All endpoints return JSON. Errors return `{"error": "message"}` with appropriate
 
 ## Repository Health
 
-The `fla doctor` command checks for and optionally fixes common repository issues.
+The `flanes doctor` command checks for and optionally fixes common repository issues.
 
 ### Running Doctor
 
 ```bash
 # Check for issues (dry run)
-fla doctor
+flanes doctor
 
 # Fix all fixable issues
-fla doctor --fix
+flanes doctor --fix
 
 # JSON output
-fla doctor --json
+flanes doctor --json
 ```
 
 ### Checks Performed
 
 | Issue | Fixable | Description |
 |-------|---------|-------------|
-| Dirty workspaces | Yes | Workspace has a `.fla_materializing` marker from an interrupted operation |
+| Dirty workspaces | Yes | Workspace has a `.flanes_materializing` marker from an interrupted operation |
 | Stale locks | Yes | Workspace lock held by a process that no longer exists (checked by PID) |
 | Orphaned directories | Yes | Workspace directory exists but has no metadata file (`.json`) |
 | Missing directories | Yes | Metadata file exists but workspace directory is missing |
 | Lane without workspace | Yes | Lane exists in database but workspace was never created or was deleted |
 | Workspace without lane | Yes | Workspace exists on disk but the lane record was deleted from the database |
-| Version mismatch | No | Repository version doesn't match installed Fla version (informational) |
+| Version mismatch | No | Repository version doesn't match installed Flanes version (informational) |
 
 ### Example Output
 
@@ -1256,7 +1256,7 @@ fla doctor --json
 [!] Workspace 'main' has a stale lock (pid: 12345)
 [X] Directory 'bugfix-parser' has no metadata file
 
-3 issue(s) can be fixed with 'fla doctor --fix'.
+3 issue(s) can be fixed with 'flanes doctor --fix'.
 ```
 
 After `--fix`:
@@ -1316,24 +1316,24 @@ Template file paths are validated against path traversal:
 
 Workspaces use advisory locking via atomic `mkdir`:
 
-- Main lock: `.fla/main.lockdir/`
-- Feature lock: `.fla/workspaces/<name>.lockdir/`
+- Main lock: `.flanes/main.lockdir/`
+- Feature lock: `.flanes/workspaces/<name>.lockdir/`
 - Owner file: `owner.json` inside the lock directory (contains PID, hostname, timestamp)
-- Stale lock detection: `fla doctor` checks if the owning PID is still alive
+- Stale lock detection: `flanes doctor` checks if the owning PID is still alive
 - Cross-platform: Works on Linux, macOS, and Windows
 
 ### Dirty Markers
 
 During workspace materialization and update operations:
 
-- A `.fla_materializing` marker file is written inside the workspace
+- A `.flanes_materializing` marker file is written inside the workspace
 - If the process dies mid-operation, the marker persists
-- `fla doctor` detects and cleans up dirty workspaces
+- `flanes doctor` detects and cleans up dirty workspaces
 - Prevents using a workspace that may be in an inconsistent state
 
-### .flaignore Patterns
+### .flanesignore Patterns
 
-Create a `.flaignore` file in your workspace root to exclude files from snapshots:
+Create a `.flanesignore` file in your workspace root to exclude files from snapshots:
 
 ```
 # Exact filename matches
@@ -1369,14 +1369,14 @@ __pycache__/
 | `cache/` | Directories named `cache` (directory pattern) |
 
 **Default ignores** (always excluded):
-- Version control: `.fla`, `.git`, `.svn`, `.hg`
+- Version control: `.flanes`, `.git`, `.svn`, `.hg`
 - Build artifacts: `__pycache__`, `node_modules`
 - OS noise: `.DS_Store`, `Thumbs.db`
 - Environment files: `.env`, `.env.local`, `.env.development`, `.env.production`, `.env.test`, `.env.staging`
 - Credentials: `*.pem`, `*.key`, `*.p12`, `*.pfx`, `credentials.json`, `service-account.json`
 - IDE: `.idea`, `.vscode`
 
-A `.flaignore` template file is auto-created on `fla init` with common patterns commented out for easy customization.
+A `.flanesignore` template file is auto-created on `flanes init` with common patterns commented out for easy customization.
 
 ### Symlink Handling
 
@@ -1399,11 +1399,11 @@ File permissions (mode bits) are preserved during snapshot and restored on mater
 
 ### Thread Safety
 
-Fla is safe to use from multiple threads, enabling multi-threaded agent orchestrators:
+Flanes is safe to use from multiple threads, enabling multi-threaded agent orchestrators:
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
-from fla.repo import Repository
+from flanes.repo import Repository
 
 # Option 1: Share one Repository across threads
 repo = Repository.open("./my-project")
@@ -1431,15 +1431,15 @@ For highest throughput, create one `Repository` instance per thread. They safely
 
 ## Writing Plugins
 
-Fla supports plugins via Python entry points. Third-party packages can register evaluators, storage backends, and lifecycle hooks.
+Flanes supports plugins via Python entry points. Third-party packages can register evaluators, storage backends, and lifecycle hooks.
 
 ### Plugin Groups
 
 | Entry Point Group | Purpose | Signature |
 |-------------------|---------|-----------|
-| `fla.evaluators` | Custom evaluators (Python callables) | `(workspace_path: Path) -> EvaluatorResult` |
-| `fla.storage` | Remote storage backends | `(config: dict) -> RemoteBackend` |
-| `fla.hooks` | Lifecycle hooks | `(event: str, context: dict) -> None` |
+| `flanes.evaluators` | Custom evaluators (Python callables) | `(workspace_path: Path) -> EvaluatorResult` |
+| `flanes.storage` | Remote storage backends | `(config: dict) -> RemoteBackend` |
+| `flanes.hooks` | Lifecycle hooks | `(event: str, context: dict) -> None` |
 
 ### Evaluator Plugins
 
@@ -1448,7 +1448,7 @@ An evaluator plugin is a Python callable that receives the workspace path and re
 ```python
 # my_plugin/evaluator.py
 from pathlib import Path
-from fla.evaluators import EvaluatorResult
+from flanes.evaluators import EvaluatorResult
 
 def check_readme(workspace_path: Path) -> EvaluatorResult:
     """Evaluator that checks if README.md exists."""
@@ -1466,7 +1466,7 @@ def check_readme(workspace_path: Path) -> EvaluatorResult:
 Register in `pyproject.toml`:
 
 ```toml
-[project.entry-points."fla.evaluators"]
+[project.entry-points."flanes.evaluators"]
 readme-check = "my_plugin.evaluator:check_readme"
 ```
 
@@ -1476,7 +1476,7 @@ A storage backend plugin is a factory callable that receives the `remote_storage
 
 ```python
 # my_plugin/storage.py
-from fla.remote import RemoteBackend
+from flanes.remote import RemoteBackend
 
 class AzureBackend(RemoteBackend):
     def __init__(self, container, prefix=""):
@@ -1500,17 +1500,17 @@ Register and configure:
 
 ```toml
 # pyproject.toml
-[project.entry-points."fla.storage"]
+[project.entry-points."flanes.storage"]
 azure = "my_plugin.storage:create_azure_backend"
 ```
 
 ```json
-// .fla/config.json
+// .flanes/config.json
 {
   "remote_storage": {
     "type": "azure",
     "container": "my-container",
-    "prefix": "fla/"
+    "prefix": "flanes/"
   }
 }
 ```
@@ -1529,16 +1529,16 @@ logger = logging.getLogger(__name__)
 
 def audit_hook(event, context):
     """Log all lifecycle events for auditing."""
-    logger.info("Fla event: %s context=%s", event, context)
+    logger.info("Flanes event: %s context=%s", event, context)
 ```
 
 Register:
 
 ```toml
-[project.entry-points."fla.hooks"]
+[project.entry-points."flanes.hooks"]
 audit = "my_plugin.hooks:audit_hook"
 ```
 
 ### Plugin Discovery
 
-Plugins are discovered automatically at runtime via `importlib.metadata.entry_points()`. Install a plugin package (e.g., `pip install my-fla-plugin`) and Fla will find it on the next operation. No configuration changes needed beyond installing the package.
+Plugins are discovered automatically at runtime via `importlib.metadata.entry_points()`. Install a plugin package (e.g., `pip install my-flanes-plugin`) and Flanes will find it on the next operation. No configuration changes needed beyond installing the package.

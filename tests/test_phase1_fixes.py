@@ -9,9 +9,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from fla.repo import Repository
-from fla.state import AgentIdentity, WorldStateManager
-from fla.workspace import _replace_with_retry
+from flanes.repo import Repository
+from flanes.state import AgentIdentity, WorldStateManager
+from flanes.workspace import _replace_with_retry
 
 
 @pytest.fixture
@@ -107,12 +107,12 @@ class TestFix2PromoteUpdatesForkBase:
         assert result2["status"] == "accepted"
 
 
-# ── Fix 3: .flaignore fnmatch patterns ──────────────────────────────
+# ── Fix 3: .flanesignore fnmatch patterns ──────────────────────────────
 
 
 class TestFix3FlaignoreFnmatch:
     def test_glob_patterns_in_flaignore(self, tmp_dir):
-        (tmp_dir / ".flaignore").write_text("*.pyc\ntest_*\n")
+        (tmp_dir / ".flanesignore").write_text("*.pyc\ntest_*\n")
         (tmp_dir / "app.py").write_text("pass\n")
         (tmp_dir / "app.pyc").write_bytes(b"\x00compiled")
         (tmp_dir / "test_app.py").write_text("pass\n")
@@ -189,9 +189,9 @@ class TestFix4AtomicWriteRetry:
             return original_replace(self_path, target)
 
         with (
-            patch("fla.workspace.os.name", "nt"),
+            patch("flanes.workspace.os.name", "nt"),
             patch.object(Path, "replace", mock_replace),
-            patch("fla.workspace.time.sleep"),
+            patch("flanes.workspace.time.sleep"),
         ):
             _replace_with_retry(src, dst)
 
@@ -204,9 +204,9 @@ class TestFix4AtomicWriteRetry:
         src.write_text("content")
 
         with (
-            patch("fla.workspace.os.name", "nt"),
+            patch("flanes.workspace.os.name", "nt"),
             patch.object(Path, "replace", side_effect=PermissionError("locked")),
-            patch("fla.workspace.time.sleep"),
+            patch("flanes.workspace.time.sleep"),
             pytest.raises(PermissionError),
         ):
             _replace_with_retry(src, dst)
@@ -217,7 +217,7 @@ class TestFix4AtomicWriteRetry:
         src.write_text("content")
 
         with (
-            patch("fla.workspace.os.name", "posix"),
+            patch("flanes.workspace.os.name", "posix"),
             patch.object(Path, "replace", side_effect=PermissionError("nope")),
             pytest.raises(PermissionError),
         ):
@@ -272,7 +272,7 @@ class TestFix7WorkExceptionShadowing:
         session.end = MagicMock()
         session.propose = MagicMock(side_effect=RuntimeError("cleanup kaboom"))
 
-        from fla.agent_sdk import AgentSession
+        from flanes.agent_sdk import AgentSession
 
         real_session = AgentSession(
             repo_path=tmp_dir,
@@ -294,9 +294,9 @@ class TestFix7WorkExceptionShadowing:
 
 class TestFix8VersionMatch:
     def test_versions_consistent(self):
-        import fla
+        import flanes
 
-        project_root = Path(fla.__file__).parent.parent
+        project_root = Path(flanes.__file__).parent.parent
 
         # Read setup.py version
         setup_py = project_root / "setup.py"
@@ -315,9 +315,9 @@ class TestFix8VersionMatch:
         assert m2, "Could not find version in pyproject.toml"
         pyproject_version = m2.group(1)
 
-        assert fla.__version__ == setup_version, (
-            f"__init__.py ({fla.__version__}) != setup.py ({setup_version})"
+        assert flanes.__version__ == setup_version, (
+            f"__init__.py ({flanes.__version__}) != setup.py ({setup_version})"
         )
-        assert fla.__version__ == pyproject_version, (
-            f"__init__.py ({fla.__version__}) != pyproject.toml ({pyproject_version})"
+        assert flanes.__version__ == pyproject_version, (
+            f"__init__.py ({flanes.__version__}) != pyproject.toml ({pyproject_version})"
         )

@@ -1,7 +1,7 @@
 """
 Workspace Templates
 
-Templates stored as JSON in .fla/templates/<name>.json.
+Templates stored as JSON in .flanes/templates/<name>.json.
 A template captures a set of files, directories, and flaignore
 patterns that can be applied when creating a new workspace.
 """
@@ -53,10 +53,10 @@ def _validate_path_within(base: Path, target: Path):
 
 
 class TemplateManager:
-    """Manages workspace templates stored in .fla/templates/."""
+    """Manages workspace templates stored in .flanes/templates/."""
 
-    def __init__(self, fla_dir: Path):
-        self.templates_dir = fla_dir / "templates"
+    def __init__(self, flanes_dir: Path):
+        self.templates_dir = flanes_dir / "templates"
 
     def save(self, template: WorkspaceTemplate) -> Path:
         """Save a template to disk."""
@@ -105,7 +105,7 @@ class TemplateManager:
     def apply(self, template: WorkspaceTemplate, workspace_path: Path, store=None):
         """Apply a template to a workspace directory.
 
-        Creates files, directories, and .flaignore as specified.
+        Creates files, directories, and .flanesignore as specified.
         If store is provided, resolves source_hash references from the CAS.
         """
         # Create directories
@@ -144,7 +144,7 @@ class TemplateManager:
                     tf.path,
                 )
 
-        # Write .flaignore
-        if template.flaignore_patterns:
-            flaignore_path = workspace_path / ".flaignore"
-            flaignore_path.write_text("\n".join(template.flaignore_patterns) + "\n")
+        # Write .flanesignore
+        if template.flanesignore_patterns:
+            flaignore_path = workspace_path / ".flanesignore"
+            flaignore_path.write_text("\n".join(template.flanesignore_patterns) + "\n")

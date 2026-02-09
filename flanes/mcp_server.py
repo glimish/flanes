@@ -1,5 +1,5 @@
 """
-MCP Tool Server for Fla.
+MCP Tool Server for Flanes.
 
 JSON-RPC 2.0 over stdio with Content-Length framing (LSP-style, per MCP spec).
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class MCPServer:
-    """MCP tool server that exposes Fla operations as tools."""
+    """MCP tool server that exposes Flanes operations as tools."""
 
     def __init__(self, repo_path: Path):
         self.repo = Repository.find(Path(repo_path))
@@ -31,12 +31,12 @@ class MCPServer:
         """Return all tool definitions with JSON Schema input schemas."""
         return [
             {
-                "name": "fla_status",
+                "name": "flanes_status",
                 "description": "Get repository status",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "fla_snapshot",
+                "name": "flanes_snapshot",
                 "description": "Snapshot a workspace",
                 "inputSchema": {
                     "type": "object",
@@ -46,7 +46,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_commit",
+                "name": "flanes_commit",
                 "description": "Quick commit: snapshot + propose + accept",
                 "inputSchema": {
                     "type": "object",
@@ -59,7 +59,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_history",
+                "name": "flanes_history",
                 "description": "Get transition history",
                 "inputSchema": {
                     "type": "object",
@@ -70,7 +70,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_diff",
+                "name": "flanes_diff",
                 "description": "Diff two states",
                 "inputSchema": {
                     "type": "object",
@@ -82,7 +82,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_show",
+                "name": "flanes_show",
                 "description": "Show file content at a state",
                 "inputSchema": {
                     "type": "object",
@@ -94,7 +94,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_search",
+                "name": "flanes_search",
                 "description": "Search intents",
                 "inputSchema": {
                     "type": "object",
@@ -105,17 +105,17 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_lanes",
+                "name": "flanes_lanes",
                 "description": "List lanes",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "fla_workspaces",
+                "name": "flanes_workspaces",
                 "description": "List workspaces",
                 "inputSchema": {"type": "object", "properties": {}},
             },
             {
-                "name": "fla_accept",
+                "name": "flanes_accept",
                 "description": "Accept a transition",
                 "inputSchema": {
                     "type": "object",
@@ -126,7 +126,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_reject",
+                "name": "flanes_reject",
                 "description": "Reject a transition",
                 "inputSchema": {
                     "type": "object",
@@ -137,7 +137,7 @@ class MCPServer:
                 },
             },
             {
-                "name": "fla_restore",
+                "name": "flanes_restore",
                 "description": "Restore a workspace to a state",
                 "inputSchema": {
                     "type": "object",
@@ -170,7 +170,7 @@ class MCPServer:
                         "tools": {},
                     },
                     "serverInfo": {
-                        "name": "fla-mcp",
+                        "name": "flanes-mcp",
                         "version": "0.3.1",
                     },
                 },
@@ -220,15 +220,15 @@ class MCPServer:
 
     def _call_tool(self, name: str, args: dict) -> dict | list:
         """Dispatch tool call to the appropriate repo method."""
-        if name == "fla_status":
+        if name == "flanes_status":
             return self.repo.status()
 
-        elif name == "fla_snapshot":
+        elif name == "flanes_snapshot":
             workspace = args.get("workspace", "main")
             state_id = self.repo.snapshot(workspace)
             return {"state_id": state_id}
 
-        elif name == "fla_commit":
+        elif name == "flanes_commit":
             agent = AgentIdentity(
                 agent_id=args["agent_id"],
                 agent_type=args["agent_type"],
@@ -240,16 +240,16 @@ class MCPServer:
                 auto_accept=True,
             )
 
-        elif name == "fla_history":
+        elif name == "flanes_history":
             return self.repo.history(
                 lane=args.get("lane"),
                 limit=args.get("limit", 50),
             )
 
-        elif name == "fla_diff":
+        elif name == "flanes_diff":
             return self.repo.diff(args["state_a"], args["state_b"])
 
-        elif name == "fla_show":
+        elif name == "flanes_show":
             state = self.repo.wsm.get_state(args["state_id"])
             if not state:
                 raise ValueError(f"State not found: {args['state_id']}")
@@ -269,25 +269,25 @@ class MCPServer:
                 "content_base64": base64.b64encode(obj.data).decode("ascii"),
             }
 
-        elif name == "fla_search":
+        elif name == "flanes_search":
             return self.repo.search(args["query"])
 
-        elif name == "fla_lanes":
+        elif name == "flanes_lanes":
             return self.repo.lanes()
 
-        elif name == "fla_workspaces":
+        elif name == "flanes_workspaces":
             ws_list = self.repo.workspaces()
             return [w.to_dict() for w in ws_list]
 
-        elif name == "fla_accept":
+        elif name == "flanes_accept":
             status = self.repo.accept(args["transition_id"])
             return {"status": status.value}
 
-        elif name == "fla_reject":
+        elif name == "flanes_reject":
             status = self.repo.reject(args["transition_id"])
             return {"status": status.value}
 
-        elif name == "fla_restore":
+        elif name == "flanes_restore":
             result = self.repo.restore(args["workspace"], args["state_id"])
             return result
 

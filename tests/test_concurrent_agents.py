@@ -23,10 +23,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
-from fla.agent_sdk import AgentSession
-from fla.cas import ContentStoreLimitError
-from fla.repo import Repository
-from fla.state import (
+from flanes.agent_sdk import AgentSession
+from flanes.cas import ContentStoreLimitError
+from flanes.repo import Repository
+from flanes.state import (
     AgentIdentity,
     CostRecord,
     TransitionStatus,

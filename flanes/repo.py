@@ -57,7 +57,7 @@ from .workspace import WorkspaceInfo, WorkspaceManager
 
 logger = logging.getLogger(__name__)
 
-REPO_DIR_NAME = ".fla"
+REPO_DIR_NAME = ".flanes"
 
 # Current config version — bump when the config schema changes
 CONFIG_VERSION = "0.3.0"
@@ -84,12 +84,12 @@ KNOWN_CONFIG_KEYS = frozenset(
 
 
 class NotARepository(ValueError):  # noqa: N818
-    """Raised when a command is run outside a Fla repository."""
+    """Raised when a command is run outside a Flanes repository."""
 
     def __init__(self, start_path):
         super().__init__(
-            f"Not inside a Fla repository (searched from {start_path})\n"
-            f"  Run 'fla init' to create one, or use '-C <path>' to specify a directory."
+            f"Not inside a Flanes repository (searched from {start_path})\n"
+            f"  Run 'flanes init' to create one, or use '-C <path>' to specify a directory."
         )
 
 
@@ -103,7 +103,7 @@ class ConcurrentAccessError(ValueError):  # noqa: N818
             f"Another machine is accessing this repository "
             f"(host={hostname}, pid={pid}).\n"
             f"  SQLite does not support concurrent access over NFS/shared filesystems.\n"
-            f"  Use 'fla remote push/pull' for multi-machine collaboration."
+            f"  Use 'flanes remote push/pull' for multi-machine collaboration."
         )
         self.lock_info = lock_info
 
@@ -114,19 +114,19 @@ _LOCK_STALE_AGE = 4 * 3600  # 4 hours
 
 class Repository:
     """
-    A Fla repository.
+    A Flanes repository.
 
-    Stores all data in a .fla directory at the repository root.
-    Working directories live in .fla/workspaces/<name>/.
+    Stores all data in a .flanes directory at the repository root.
+    Working directories live in .flanes/workspaces/<name>/.
     """
 
     def __init__(self, root: Path):
         self.root = root.resolve()
-        self.fla_dir = self.root / REPO_DIR_NAME
-        self.db_path = self.fla_dir / "store.db"
+        self.flanes_dir = self.root / REPO_DIR_NAME
+        self.db_path = self.flanes_dir / "store.db"
 
-        if not self.fla_dir.exists():
-            raise ValueError(f"Not a Fla repository: {self.root}\nRun `fla init` to create one.")
+        if not self.flanes_dir.exists():
+            raise ValueError(f"Not a Flanes repository: {self.root}\nRun `flanes init` to create one.")
 
         config = self._read_config()
         self._validate_config(config)
@@ -153,17 +153,17 @@ class Repository:
             self.db_path, blob_threshold=blob_threshold, max_blob_size=max_blob_size
         )
         self.wsm = WorldStateManager(self.store, self.db_path, max_tree_depth=max_tree_depth)
-        self.wm = WorkspaceManager(self.fla_dir, self.wsm)
+        self.wm = WorkspaceManager(self.flanes_dir, self.wsm)
         self._hooks = None  # Lazy-loaded plugin hooks
 
         # NFS safety: acquire instance lock
-        self._lock_path = self.fla_dir / "instance.lock"
+        self._lock_path = self.flanes_dir / "instance.lock"
         self._machine_id = self._get_machine_id()
         self._acquire_instance_lock()
 
-    # Template for .flaignore file created on init
-    FLAIGNORE_TEMPLATE = """\
-# Fla ignore patterns (like .gitignore)
+    # Template for .flanesignore file created on init
+    FLANESIGNORE_TEMPLATE = """\
+# Flanes ignore patterns (like .gitignore)
 # Lines starting with # are comments
 # Patterns ending with / match directories only
 # Patterns starting with ! negate a previous match
@@ -192,19 +192,19 @@ class Repository:
         """
         Initialize a new repository.
 
-        Creates the .fla directory, database, initial 'main' lane,
+        Creates the .flanes directory, database, initial 'main' lane,
         and a workspace for it. Unlike git, the main workspace IS the
         repo root — files stay in place, no movement needed.
 
-        Feature lanes will get isolated workspaces under .fla/workspaces/.
+        Feature lanes will get isolated workspaces under .flanes/workspaces/.
         """
         root = Path(path).resolve()
-        fla_dir = root / REPO_DIR_NAME
+        flanes_dir = root / REPO_DIR_NAME
 
-        if fla_dir.exists():
+        if flanes_dir.exists():
             raise ValueError(f"Repository already exists at {root}")
 
-        fla_dir.mkdir(parents=True)
+        flanes_dir.mkdir(parents=True)
         git_detected = (root / ".git").exists()
         config_data = {
             "version": CONFIG_VERSION,
@@ -215,18 +215,18 @@ class Repository:
         }
         if git_detected:
             config_data["git_coexistence"] = True
-        (fla_dir / "config.json").write_text(json.dumps(config_data, indent=2))
+        (flanes_dir / "config.json").write_text(json.dumps(config_data, indent=2))
 
-        # Auto-create .flaignore if it doesn't exist
-        flaignore_path = root / ".flaignore"
-        if not flaignore_path.exists():
-            flaignore_path.write_text(cls.FLAIGNORE_TEMPLATE)
+        # Auto-create .flanesignore if it doesn't exist
+        flanesignore_path = root / ".flanesignore"
+        if not flanesignore_path.exists():
+            flanesignore_path.write_text(cls.FLANESIGNORE_TEMPLATE)
 
         repo = cls(root)
         repo.wsm.create_lane(initial_lane)
 
         # If there are existing files, create initial snapshot from repo root.
-        # Include dotfiles like .env, .editorconfig — exclude only .fla itself.
+        # Include dotfiles like .env, .editorconfig — exclude only .flanes itself.
         user_files = [f for f in root.iterdir() if f.name != REPO_DIR_NAME]
 
         if user_files:
@@ -352,7 +352,7 @@ class Repository:
     def _fire_hooks(self, event: str, context: dict) -> None:
         """Fire lifecycle hooks for a given event.
 
-        Hooks are discovered via the ``fla.hooks`` entry point group.
+        Hooks are discovered via the ``flanes.hooks`` entry point group.
         Each hook is called with the event name and a context dict.
         Hook failures are logged but never block the operation.
         """
@@ -1037,7 +1037,7 @@ class Repository:
     def get_template_manager(self):
         from .templates import TemplateManager
 
-        return TemplateManager(self.fla_dir)
+        return TemplateManager(self.flanes_dir)
 
     # ── Evaluator Operations ──────────────────────────────────────
 
@@ -1045,7 +1045,7 @@ class Repository:
         """Load evaluator config and run all evaluators on a workspace."""
         from .evaluators import load_evaluators, run_all_evaluators
 
-        config_path = self.fla_dir / "config.json"
+        config_path = self.flanes_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         evaluators = load_evaluators(config)
         if not evaluators:
@@ -1076,7 +1076,7 @@ class Repository:
             get_embedding_client,
         )
 
-        config_path = self.fla_dir / "config.json"
+        config_path = self.flanes_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         client = get_embedding_client(config)
 
@@ -1118,20 +1118,20 @@ class Repository:
         """Create a RemoteSyncManager from config."""
         from .remote import RemoteSyncManager, create_backend
 
-        config_path = self.fla_dir / "config.json"
+        config_path = self.flanes_dir / "config.json"
         config = json.loads(config_path.read_text()) if config_path.exists() else {}
         if "remote_storage" not in config:
             raise ValueError("No remote storage configured in config.json")
 
         backend = create_backend(config)
-        cache_dir = self.fla_dir / "remote_cache"
+        cache_dir = self.flanes_dir / "remote_cache"
         return RemoteSyncManager(self.store, backend, cache_dir)
 
     # ── Helpers ───────────────────────────────────────────────────
 
     def _read_config(self) -> dict:
         """Read repository configuration."""
-        config_path = self.fla_dir / "config.json"
+        config_path = self.flanes_dir / "config.json"
         if config_path.exists():
             return json.loads(config_path.read_text())
         return {}
@@ -1145,8 +1145,8 @@ class Repository:
             if repo_version > CONFIG_VERSION:
                 raise ValueError(
                     f"Repository config version {repo_version} is newer than "
-                    f"this version of Fla ({CONFIG_VERSION}). "
-                    f"Please upgrade Fla to open this repository."
+                    f"this version of Flanes ({CONFIG_VERSION}). "
+                    f"Please upgrade Flanes to open this repository."
                 )
             # Run migrations for older versions
             if repo_version < CONFIG_VERSION:
@@ -1162,7 +1162,7 @@ class Repository:
             logger.warning("Unknown config keys (ignored): %s", ", ".join(sorted(unknown_keys)))
 
     def _default_lane(self) -> str:
-        config_path = self.fla_dir / "config.json"
+        config_path = self.flanes_dir / "config.json"
         if config_path.exists():
             config = json.loads(config_path.read_text())
             return config.get("default_lane", "main")
@@ -1275,7 +1275,7 @@ class Repository:
     def _write_lock_atomic(self, data: dict) -> None:
         """Write lock file atomically via tempfile + rename."""
         content = json.dumps(data, indent=2).encode("utf-8")
-        fd, tmp_path = tempfile.mkstemp(dir=str(self.fla_dir), prefix=".instance.lock.")
+        fd, tmp_path = tempfile.mkstemp(dir=str(self.flanes_dir), prefix=".instance.lock.")
         try:
             with os.fdopen(fd, "wb") as f:
                 f.write(content)

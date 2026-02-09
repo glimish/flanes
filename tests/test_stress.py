@@ -1,5 +1,5 @@
 """
-Stress Tests for Fla
+Stress Tests for Flanes
 
 Tests production workload scenarios:
 - Concurrent snapshot operations
@@ -18,8 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from fla.repo import Repository
-from fla.state import AgentIdentity
+from flanes.repo import Repository
+from flanes.state import AgentIdentity
 
 # Mark all tests in this module as stress tests
 pytestmark = pytest.mark.stress
@@ -308,7 +308,7 @@ class TestRESTAPIConcurrency:
         """Start a test server and return its port."""
         import socket
 
-        from fla.server import FlaServer
+        from flanes.server import FlaServer
 
         # Find free port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

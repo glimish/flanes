@@ -26,8 +26,8 @@ except (FileNotFoundError, subprocess.CalledProcessError):
 
 
 def run_fla(*args, cwd=None, expect_fail=False):
-    """Run a fla CLI command and return (returncode, stdout, stderr)."""
-    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    """Run a flanes CLI command and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, "-X", "utf8", "-m", "flanes.cli"] + list(args)
     # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
     # from the CI runner reaching the child process.
     kwargs = {}
@@ -50,7 +50,7 @@ def run_fla(*args, cwd=None, expect_fail=False):
 
 @pytest.fixture
 def repo_dir(tmp_path):
-    """A temporary directory with an initialized fla repo containing test files."""
+    """A temporary directory with an initialized flanes repo containing test files."""
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02binary content")
     rc, out, err = run_fla("init", cwd=tmp_path)
@@ -79,7 +79,7 @@ def repo_with_commit(repo_dir):
 @pytest.fixture
 def repo(tmp_path):
     """A Repository object for direct API testing."""
-    from fla.repo import Repository
+    from flanes.repo import Repository
 
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     repo = Repository.init(tmp_path)
@@ -359,8 +359,8 @@ class TestGitRoundtrip:
         rc, _, err = run_fla("export-git", str(git_dir), cwd=repo_with_commit)
         assert rc == 0, f"Export failed: {err}"
 
-        # Create a fresh fla repo for import
-        import_dir = tmp_path / "fla-import"
+        # Create a fresh flanes repo for import
+        import_dir = tmp_path / "flanes-import"
         import_dir.mkdir()
         rc, _, err = run_fla("init", cwd=import_dir)
         assert rc == 0
@@ -397,14 +397,14 @@ class TestRESTServer:
     @pytest.fixture(autouse=True)
     def setup_server(self, tmp_path):
         """Start server in daemon thread with port=0 for OS-assigned port."""
-        from fla.repo import Repository
-        from fla.server import FlaServer
+        from flanes.repo import Repository
+        from flanes.server import FlaServer
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         repo = Repository.init(tmp_path)
 
         # Make a commit
-        from fla.state import AgentIdentity
+        from flanes.state import AgentIdentity
 
         repo.quick_commit(
             workspace="main",
@@ -491,14 +491,14 @@ class TestRESTServer:
 class TestMCPServer:
     @pytest.fixture(autouse=True)
     def setup_mcp(self, tmp_path):
-        from fla.mcp_server import MCPServer
-        from fla.repo import Repository
+        from flanes.mcp_server import MCPServer
+        from flanes.repo import Repository
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         self.repo = Repository.init(tmp_path)
 
         # Make a commit
-        from fla.state import AgentIdentity
+        from flanes.state import AgentIdentity
 
         self.repo.quick_commit(
             workspace="main",

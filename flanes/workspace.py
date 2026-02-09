@@ -11,7 +11,7 @@ physically isolated directory backed by the CAS.
 Design (git-style main):
 
     my-project/
-    ├── .fla/
+    ├── .flanes/
     │   ├── store.db
     │   ├── main.json          ← main workspace metadata
     │   ├── main.lockdir/      ← main workspace lock
@@ -22,7 +22,7 @@ Design (git-style main):
     └── models.py
 
 The "main" workspace is special: it IS the repo root (like git).
-Feature lanes get isolated subdirectories under .fla/workspaces/.
+Feature lanes get isolated subdirectories under .flanes/workspaces/.
 
 Key properties:
 - Main workspace = repo root (feels like git)
@@ -36,12 +36,12 @@ Smart materialization:
 - When updating a workspace to a new state (e.g., after acceptance),
   we diff the old and new trees and only write/delete what changed
 - This makes "rebase onto latest main" cheap for large repos
-- Main workspace materialization protects .fla/ directory
+- Main workspace materialization protects .flanes/ directory
 
 Locking:
 - Uses atomic mkdir for cross-platform advisory locking (no fcntl/msvcrt)
-- Main lock: .fla/main.lockdir/
-- Feature lock: .fla/workspaces/<name>.lockdir/
+- Main lock: .flanes/main.lockdir/
+- Feature lock: .flanes/workspaces/<name>.lockdir/
 - Owner metadata stored in lockdir/owner.json
 """
 
@@ -151,30 +151,30 @@ class WorkspaceManager:
     - Cross-platform locking via atomic mkdir
 
     The "main" workspace is special — it IS the repo root (like git).
-    Feature workspaces live under .fla/workspaces/<name>/.
+    Feature workspaces live under .flanes/workspaces/<name>/.
 
     Layout:
         repo_root/                    ← main workspace (the actual working files)
-        .fla/main.json                ← main workspace metadata
-        .fla/main.lockdir/            ← main workspace lock
-        .fla/workspaces/<n>/          ← feature workspace files
-        .fla/workspaces/<n>.json      ← feature workspace metadata
-        .fla/workspaces/<n>.lockdir/  ← feature workspace lock
+        .flanes/main.json                ← main workspace metadata
+        .flanes/main.lockdir/            ← main workspace lock
+        .flanes/workspaces/<n>/          ← feature workspace files
+        .flanes/workspaces/<n>.json      ← feature workspace metadata
+        .flanes/workspaces/<n>.lockdir/  ← feature workspace lock
     """
 
     # The default/main workspace name — treated specially
     MAIN_WORKSPACE = "main"
 
-    def __init__(self, fla_dir: Path, wsm):
+    def __init__(self, flanes_dir: Path, wsm):
         """
         Args:
-            fla_dir: Path to the .fla directory
+            flanes_dir: Path to the .flanes directory
             wsm: WorldStateManager instance for CAS access
         """
-        self.fla_dir = fla_dir
-        self.repo_root = fla_dir.parent  # The actual project root
+        self.flanes_dir = flanes_dir
+        self.repo_root = flanes_dir.parent  # The actual project root
         self.wsm = wsm
-        self.workspaces_dir = fla_dir / "workspaces"
+        self.workspaces_dir = flanes_dir / "workspaces"
         self.workspaces_dir.mkdir(exist_ok=True)
 
     def _validate_workspace_name(self, name: str):
@@ -206,7 +206,7 @@ class WorkspaceManager:
 
         The "main" workspace is special: it uses the repo root as its
         working directory (like git). Feature workspaces get isolated
-        directories under .fla/workspaces/.
+        directories under .flanes/workspaces/.
 
         Args:
             name:     Workspace name (typically matches lane name)
@@ -224,20 +224,20 @@ class WorkspaceManager:
             if meta_path.exists():
                 raise ValueError(
                     f"Workspace '{name}' already exists.\n"
-                    f"Use `fla workspace remove {name}` first, or choose a different name."
+                    f"Use `flanes workspace remove {name}` first, or choose a different name."
                 )
             # Main workspace directory (repo root) always exists, that's fine
         else:
             if ws_path.exists():
                 raise ValueError(
                     f"Workspace '{name}' already exists at {ws_path}\n"
-                    f"Use `fla workspace remove {name}` first, or choose a different name."
+                    f"Use `flanes workspace remove {name}` first, or choose a different name."
                 )
 
         if state_id is not None and not self._is_main(name):
             # Feature workspace: materialize into new directory
             ws_path.mkdir(parents=True, exist_ok=True)
-            dirty_path = ws_path / ".fla_materializing"
+            dirty_path = ws_path / ".flanes_materializing"
             dirty_path.write_text(
                 json.dumps(
                     {
@@ -258,7 +258,7 @@ class WorkspaceManager:
         elif state_id is not None and self._is_main(name):
             # Main workspace with state: materialize into repo root
             # This happens during update, not typically during init
-            dirty_path = ws_path / ".fla_materializing"
+            dirty_path = ws_path / ".flanes_materializing"
             dirty_path.write_text(
                 json.dumps(
                     {
@@ -301,7 +301,7 @@ class WorkspaceManager:
         """
         Materialize a state into the main workspace (repo root).
 
-        This is like regular materialize but MUST protect the .fla directory.
+        This is like regular materialize but MUST protect the .flanes directory.
         Fix #2: Now restores file modes.
         """
         state = self.wsm.get_state(state_id)
@@ -313,8 +313,8 @@ class WorkspaceManager:
 
         # Write all files from the state
         for path, (blob_hash, mode) in files.items():
-            # CRITICAL: Never touch .fla directory
-            if path.startswith(".fla") or path.startswith(".fla/"):
+            # CRITICAL: Never touch .flanes directory
+            if path.startswith(".flanes") or path.startswith(".flanes/"):
                 continue
 
             obj = self.wsm.store.retrieve(blob_hash)
@@ -353,7 +353,7 @@ class WorkspaceManager:
         old_state = info.base_state
 
         # Dirty marker — signals that the workspace is mid-update
-        dirty_path = ws_path / ".fla_materializing"
+        dirty_path = ws_path / ".flanes_materializing"
         dirty_path.write_text(
             json.dumps(
                 {
@@ -383,7 +383,7 @@ class WorkspaceManager:
         """Apply the actual file changes for an update."""
         if old_state is None:
             if is_main:
-                self._clean_workspace_contents(ws_path, protect_fla=True)
+                self._clean_workspace_contents(ws_path, protect_flanes=True)
                 self._materialize_to_main(new_state_id, ws_path)
             else:
                 self._clean_workspace_contents(ws_path)
@@ -403,8 +403,8 @@ class WorkspaceManager:
 
         # Apply removals
         for path in diff["removed"]:
-            # CRITICAL: Never touch .fla directory in main workspace
-            if is_main and (path.startswith(".fla") or path.startswith(".fla/")):
+            # CRITICAL: Never touch .flanes directory in main workspace
+            if is_main and (path.startswith(".flanes") or path.startswith(".flanes/")):
                 continue
 
             file_path = ws_path / path
@@ -418,8 +418,8 @@ class WorkspaceManager:
 
         # Apply additions and modifications
         for path in list(diff["added"].keys()) + list(diff["modified"].keys()):
-            # CRITICAL: Never touch .fla directory in main workspace
-            if is_main and (path.startswith(".fla") or path.startswith(".fla/")):
+            # CRITICAL: Never touch .flanes directory in main workspace
+            if is_main and (path.startswith(".flanes") or path.startswith(".flanes/")):
                 continue
 
             file_info = new_files.get(path)
@@ -481,8 +481,8 @@ class WorkspaceManager:
     # if the directory already exists. No fcntl, no msvcrt, no deps.
     #
     # Layout:
-    #   .fla/workspaces/<name>.lockdir/         ← existence = locked
-    #   .fla/workspaces/<name>.lockdir/owner.json  ← who holds it
+    #   .flanes/workspaces/<name>.lockdir/         ← existence = locked
+    #   .flanes/workspaces/<name>.lockdir/owner.json  ← who holds it
 
     def acquire(self, name: str, agent_id: str) -> bool:
         """
@@ -654,7 +654,7 @@ class WorkspaceManager:
         if info is None:
             return None
 
-        dirty_path = info.path / ".fla_materializing"
+        dirty_path = info.path / ".flanes_materializing"
         if not dirty_path.exists():
             return None
 
@@ -712,7 +712,7 @@ class WorkspaceManager:
         Remove a workspace.
 
         For feature workspaces: deletes the working directory and metadata.
-        For main workspace: clears files (protecting .fla) and removes metadata.
+        For main workspace: clears files (protecting .flanes) and removes metadata.
         If the workspace is locked (active agent), requires force=True.
         """
         info = self.get(name)
@@ -729,8 +729,8 @@ class WorkspaceManager:
         self.release(name)
 
         if self._is_main(name):
-            # Main workspace: clear files but protect .fla, remove metadata
-            self._clean_workspace_contents(self.repo_root, protect_fla=True)
+            # Main workspace: clear files but protect .flanes, remove metadata
+            self._clean_workspace_contents(self.repo_root, protect_flanes=True)
         else:
             # Feature workspace: remove the entire directory
             ws_path = self._workspace_path(name)
@@ -774,13 +774,13 @@ class WorkspaceManager:
     def _meta_path(self, name: str) -> Path:
         """Get the path to workspace metadata JSON."""
         if self._is_main(name):
-            return self.fla_dir / "main.json"  # Special location for main
+            return self.flanes_dir / "main.json"  # Special location for main
         return self.workspaces_dir / f"{name}.json"
 
     def _lock_path(self, name: str) -> Path:
         """Get the path to workspace lock directory."""
         if self._is_main(name):
-            return self.fla_dir / "main.lockdir"  # Special location for main
+            return self.flanes_dir / "main.lockdir"  # Special location for main
         return self.workspaces_dir / f"{name}.lockdir"
 
     def _update_meta(self, name: str, **updates):
@@ -799,17 +799,17 @@ class WorkspaceManager:
 
         _atomic_write(meta_path, json.dumps(data, indent=2))
 
-    def _clean_workspace_contents(self, ws_path: Path, protect_fla: bool = False):
+    def _clean_workspace_contents(self, ws_path: Path, protect_flanes: bool = False):
         """Remove all contents of a workspace directory.
 
         Args:
             ws_path: Path to the workspace directory
-            protect_fla: If True, don't touch .fla directory (for main workspace)
+            protect_flanes: If True, don't touch .flanes directory (for main workspace)
         """
         if ws_path.exists():
             for item in ws_path.iterdir():
-                # CRITICAL: Never delete .fla when cleaning main workspace
-                if protect_fla and item.name == ".fla":
+                # CRITICAL: Never delete .flanes when cleaning main workspace
+                if protect_flanes and item.name == ".flanes":
                     continue
                 if item.is_dir():
                     shutil.rmtree(item)
