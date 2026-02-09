@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="flanes",
-    version="0.3.2",
+    version="0.4.0",
     packages=find_packages(),
     entry_points={
         "console_scripts": [
