@@ -4,8 +4,8 @@ import uuid
 
 import pytest
 
-from fla.cas import ContentStore
-from fla.state import (
+from flanes.cas import ContentStore
+from flanes.state import (
     AgentIdentity,
     EvaluationResult,
     Intent,

@@ -21,7 +21,7 @@ from pathlib import Path
 # Ensure the project root is on the path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from fla.repo import Repository
+from flanes.repo import Repository
 
 
 def generate_files(root: Path, num_files: int, num_dirs: int):
@@ -45,14 +45,14 @@ def generate_files(root: Path, num_files: int, num_dirs: int):
 
 def run_benchmark(num_files: int, num_dirs: int, rounds: int):
     import tempfile
-    tmpdir = Path(tempfile.mkdtemp(prefix="fla_bench_"))
+    tmpdir = Path(tempfile.mkdtemp(prefix="flanes_bench_"))
     project = tmpdir / "project"
     project.mkdir()
 
     print(f"Generating {num_files} files across {num_dirs} directories...")
     generate_files(project, num_files, num_dirs)
 
-    print("Initializing fla repo...")
+    print("Initializing flanesnes repo...")
     repo = Repository.init(project)
     ws_path = repo.workspace_path("main")
 
@@ -133,7 +133,7 @@ def run_benchmark(num_files: int, num_dirs: int, rounds: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Fla snapshot benchmark")
+    parser = argparse.ArgumentParser(description="Flanes snapshot benchmark")
     parser.add_argument("--files", type=int, default=1000, help="Number of files")
     parser.add_argument("--dirs", type=int, default=50, help="Number of directories")
     parser.add_argument("--rounds", type=int, default=3, help="Rounds per benchmark")

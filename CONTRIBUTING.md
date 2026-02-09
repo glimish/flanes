@@ -1,4 +1,4 @@
-# Contributing to Fla
+# Contributing to Flanes
 
 ## Development Setup
 
@@ -28,16 +28,16 @@ python -X utf8 -m pytest tests/test_cli.py -v
 
 ```bash
 # Lint
-ruff check fla/ tests/
+ruff check flanes/ tests/
 
 # Check formatting
-ruff format --check fla/ tests/
+ruff format --check flanes/ tests/
 
 # Auto-format
-ruff format fla/ tests/
+ruff format flanes/ tests/
 
 # Type check
-mypy fla/
+mypy flanes/
 ```
 
 ## Code Style
@@ -72,4 +72,4 @@ Please file issues on GitHub with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Python version and OS
-- Fla version (`fla --version`)
+- Flanes version (`flanes --version`)

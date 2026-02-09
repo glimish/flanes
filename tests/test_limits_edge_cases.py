@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from fla.cas import ContentStoreLimitError
-from fla.repo import Repository
+from flanes.cas import ContentStoreLimitError
+from flanes.repo import Repository
 
 
 def test_deduplication_with_overlimit_blob():
@@ -23,7 +23,7 @@ def test_deduplication_with_overlimit_blob():
             pass  # init snapshots the file
 
         # Lower the limit
-        config_path = tmp_path / ".fla" / "config.json"
+        config_path = tmp_path / ".flanes" / "config.json"
         config = json.loads(config_path.read_text())
         config["max_blob_size"] = 500  # Lower than existing file
         config_path.write_text(json.dumps(config, indent=2))
@@ -48,7 +48,7 @@ def test_new_large_blob_rejected_after_lowering():
             pass
 
         # Lower the limit
-        config_path = tmp_path / ".fla" / "config.json"
+        config_path = tmp_path / ".flanes" / "config.json"
         config = json.loads(config_path.read_text())
         config["max_blob_size"] = 500
         config_path.write_text(json.dumps(config, indent=2))
@@ -71,7 +71,7 @@ def test_explicit_zero_limits_use_defaults():
             pass
 
         # Set limits to 0
-        config_path = tmp_path / ".fla" / "config.json"
+        config_path = tmp_path / ".flanes" / "config.json"
         config = json.loads(config_path.read_text())
         config["max_blob_size"] = 0
         config["max_tree_depth"] = 0
@@ -93,7 +93,7 @@ def test_negative_limits_rejected():
             pass
 
         # Set negative limits
-        config_path = tmp_path / ".fla" / "config.json"
+        config_path = tmp_path / ".flanes" / "config.json"
         config = json.loads(config_path.read_text())
         config["max_blob_size"] = -1
         config["max_tree_depth"] = -1
@@ -131,7 +131,7 @@ def test_exact_limit_boundary():
             pass
 
         # Set limit to exactly 1000 bytes
-        config_path = tmp_path / ".fla" / "config.json"
+        config_path = tmp_path / ".flanes" / "config.json"
         config = json.loads(config_path.read_text())
         config["max_blob_size"] = 1000
         config_path.write_text(json.dumps(config, indent=2))

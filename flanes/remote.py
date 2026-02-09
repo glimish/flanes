@@ -397,7 +397,7 @@ def create_backend(config: dict) -> RemoteBackend:
     """Create a remote backend from config.
 
     Built-in backends: s3, gcs, memory.
-    Additional backends can be registered via the ``fla.storage`` entry point
+    Additional backends can be registered via the ``flanes.storage`` entry point
     group. Each entry point should be a factory callable that accepts the
     remote_storage config dict and returns a RemoteBackend instance.
     """

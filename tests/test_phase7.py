@@ -15,8 +15,8 @@ import pytest
 
 
 def run_fla(*args, cwd=None, expect_fail=False):
-    """Run a fla CLI command and return (returncode, stdout, stderr)."""
-    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    """Run a flanes CLI command and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, "-X", "utf8", "-m", "flanes.cli"] + list(args)
     # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
     # from the CI runner reaching the child process.
     kwargs = {}
@@ -40,7 +40,7 @@ def run_fla(*args, cwd=None, expect_fail=False):
 @pytest.fixture
 def repo(tmp_path):
     """A Repository object for direct API testing."""
-    from fla.repo import Repository
+    from flanes.repo import Repository
 
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     repo = Repository.init(tmp_path)
@@ -49,7 +49,7 @@ def repo(tmp_path):
 
 @pytest.fixture
 def repo_dir(tmp_path):
-    """A temporary directory with an initialized fla repo."""
+    """A temporary directory with an initialized flanes repo."""
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     rc, out, err = run_fla("init", cwd=tmp_path)
     assert rc == 0, f"Init failed: {err}"
@@ -63,7 +63,7 @@ def repo_dir(tmp_path):
 
 class TestBudgets:
     def test_budget_config_serialization(self):
-        from fla.budgets import BudgetConfig
+        from flanes.budgets import BudgetConfig
 
         config = BudgetConfig(
             max_tokens_in=1000,
@@ -81,7 +81,7 @@ class TestBudgets:
         assert restored.alert_threshold_pct == 75.0
 
     def test_set_and_get_budget(self, repo):
-        from fla.budgets import BudgetConfig, get_lane_budget, set_lane_budget
+        from flanes.budgets import BudgetConfig, get_lane_budget, set_lane_budget
 
         config = BudgetConfig(max_tokens_in=5000, max_api_calls=20)
         set_lane_budget(repo.wsm, "main", config)
@@ -93,8 +93,8 @@ class TestBudgets:
     def test_compute_budget_status(self, repo):
         import uuid
 
-        from fla.budgets import BudgetConfig, compute_budget_status, set_lane_budget
-        from fla.state import AgentIdentity, CostRecord, Intent
+        from flanes.budgets import BudgetConfig, compute_budget_status, set_lane_budget
+        from flanes.state import AgentIdentity, CostRecord, Intent
 
         config = BudgetConfig(max_tokens_in=1000, max_tokens_out=500)
         set_lane_budget(repo.wsm, "main", config)
@@ -114,8 +114,8 @@ class TestBudgets:
     def test_budget_warning_at_threshold(self, repo):
         import uuid
 
-        from fla.budgets import BudgetConfig, compute_budget_status, set_lane_budget
-        from fla.state import AgentIdentity, CostRecord, Intent
+        from flanes.budgets import BudgetConfig, compute_budget_status, set_lane_budget
+        from flanes.state import AgentIdentity, CostRecord, Intent
 
         config = BudgetConfig(max_tokens_in=1000, alert_threshold_pct=80.0)
         set_lane_budget(repo.wsm, "main", config)
@@ -131,8 +131,8 @@ class TestBudgets:
 
     def test_budget_exceeded_on_propose(self, repo):
 
-        from fla.budgets import BudgetConfig, BudgetError, set_lane_budget
-        from fla.state import AgentIdentity, CostRecord
+        from flanes.budgets import BudgetConfig, BudgetError, set_lane_budget
+        from flanes.state import AgentIdentity, CostRecord
 
         config = BudgetConfig(max_tokens_in=100)
         set_lane_budget(repo.wsm, "main", config)
@@ -159,7 +159,7 @@ class TestBudgets:
             )
 
     def test_budget_no_config_passthrough(self, repo):
-        from fla.state import AgentIdentity, CostRecord
+        from flanes.state import AgentIdentity, CostRecord
 
         agent = AgentIdentity(agent_id="test", agent_type="test")
         # No budget set — propose should work normally
@@ -209,9 +209,9 @@ class TestBudgets:
 
 class TestTemplates:
     def test_template_save_and_load(self, repo):
-        from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateFile, TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="python-basic",
             description="Basic Python project",
@@ -228,9 +228,9 @@ class TestTemplates:
         assert loaded.files[0].content == "print('hello')"
 
     def test_template_list(self, repo):
-        from fla.templates import TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         tm.save(WorkspaceTemplate(name="tmpl-a", description="A"))
         tm.save(WorkspaceTemplate(name="tmpl-b", description="B"))
         templates = tm.list()
@@ -239,9 +239,9 @@ class TestTemplates:
         assert "tmpl-b" in names
 
     def test_template_apply_creates_files(self, repo, tmp_path):
-        from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateFile, TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="test-files",
             files=[
@@ -256,9 +256,9 @@ class TestTemplates:
         assert (target / "src" / "app.py").read_text() == "app = True"
 
     def test_template_apply_creates_directories(self, repo, tmp_path):
-        from fla.templates import TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="test-dirs",
             directories=["src", "tests", "docs/api"],
@@ -271,9 +271,9 @@ class TestTemplates:
         assert (target / "docs" / "api").is_dir()
 
     def test_template_apply_flaignore(self, repo, tmp_path):
-        from fla.templates import TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="test-ignore",
             flaignore_patterns=["__pycache__", "*.pyc", "node_modules"],
@@ -281,14 +281,14 @@ class TestTemplates:
         target = tmp_path / "workspace"
         target.mkdir()
         tm.apply(template, target)
-        flaignore = (target / ".flaignore").read_text()
+        flaignore = (target / ".flanesignore").read_text()
         assert "__pycache__" in flaignore
         assert "*.pyc" in flaignore
 
     def test_workspace_create_with_template(self, repo):
-        from fla.templates import TemplateFile, TemplateManager, WorkspaceTemplate
+        from flanes.templates import TemplateFile, TemplateManager, WorkspaceTemplate
 
-        tm = TemplateManager(repo.fla_dir)
+        tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="py-project",
             files=[TemplateFile(path="setup.py", content="# setup")],
@@ -332,7 +332,7 @@ class TestTemplates:
 
 class TestEvaluators:
     def test_evaluator_config_loading(self):
-        from fla.evaluators import load_evaluators
+        from flanes.evaluators import load_evaluators
 
         config = {
             "evaluators": [
@@ -346,7 +346,7 @@ class TestEvaluators:
         assert evaluators[1].required is False
 
     def test_run_evaluator_pass(self, tmp_path):
-        from fla.evaluators import EvaluatorConfig, run_evaluator
+        from flanes.evaluators import EvaluatorConfig, run_evaluator
 
         ev = EvaluatorConfig(name="pass-test", command=f'{sys.executable} -c "exit(0)"')
         result = run_evaluator(ev, tmp_path)
@@ -354,7 +354,7 @@ class TestEvaluators:
         assert result.returncode == 0
 
     def test_run_evaluator_fail(self, tmp_path):
-        from fla.evaluators import EvaluatorConfig, run_evaluator
+        from flanes.evaluators import EvaluatorConfig, run_evaluator
 
         ev = EvaluatorConfig(name="fail-test", command=f'{sys.executable} -c "exit(1)"')
         result = run_evaluator(ev, tmp_path)
@@ -362,7 +362,7 @@ class TestEvaluators:
         assert result.returncode == 1
 
     def test_run_evaluator_timeout(self, tmp_path):
-        from fla.evaluators import EvaluatorConfig, run_evaluator
+        from flanes.evaluators import EvaluatorConfig, run_evaluator
 
         ev = EvaluatorConfig(
             name="timeout-test",
@@ -374,7 +374,7 @@ class TestEvaluators:
         assert "timed out" in result.stderr
 
     def test_required_vs_optional(self, tmp_path):
-        from fla.evaluators import EvaluatorConfig, run_all_evaluators
+        from flanes.evaluators import EvaluatorConfig, run_all_evaluators
 
         evaluators = [
             EvaluatorConfig(
@@ -395,7 +395,7 @@ class TestEvaluators:
         assert result.checks["optional-fail"] is False
 
     def test_required_fail_overall_fail(self, tmp_path):
-        from fla.evaluators import EvaluatorConfig, run_all_evaluators
+        from flanes.evaluators import EvaluatorConfig, run_all_evaluators
 
         evaluators = [
             EvaluatorConfig(
@@ -427,7 +427,7 @@ class TestEvaluators:
 
 class TestEmbeddings:
     def test_cosine_similarity(self):
-        from fla.embeddings import cosine_similarity
+        from flanes.embeddings import cosine_similarity
 
         # Identical vectors
         assert cosine_similarity([1, 0, 0], [1, 0, 0]) == pytest.approx(1.0)
@@ -442,7 +442,7 @@ class TestEmbeddings:
             cosine_similarity([1, 0], [1, 0, 0])
 
     def test_embedding_storage_retrieval(self, repo):
-        from fla.embeddings import bytes_to_embedding, embedding_to_bytes
+        from flanes.embeddings import bytes_to_embedding, embedding_to_bytes
 
         embedding = [0.1, 0.2, 0.3, 0.4]
         emb_bytes = embedding_to_bytes(embedding)
@@ -458,7 +458,7 @@ class TestEmbeddings:
         assert restored[0] == pytest.approx(0.1, abs=1e-5)
 
     def test_embedding_all_embeddings(self, repo):
-        from fla.embeddings import embedding_to_bytes
+        from flanes.embeddings import embedding_to_bytes
 
         repo.wsm.store_embedding("a", embedding_to_bytes([1.0, 0.0]), "m", 2)
         repo.wsm.store_embedding("b", embedding_to_bytes([0.0, 1.0]), "m", 2)
@@ -470,7 +470,7 @@ class TestEmbeddings:
         """When no embedding API is configured, falls back to text search."""
         import uuid
 
-        from fla.state import AgentIdentity, Intent
+        from flanes.state import AgentIdentity, Intent
 
         agent = AgentIdentity(agent_id="test", agent_type="test")
         intent = Intent(id=str(uuid.uuid4()), prompt="add authentication module", agent=agent)
@@ -509,20 +509,20 @@ class TestEmbeddings:
 
 class TestProject:
     def test_project_init(self, tmp_path):
-        from fla.project import Project
+        from flanes.project import Project
 
         project = Project.init(tmp_path, name="my-project")
-        assert (tmp_path / ".fla-project.json").exists()
+        assert (tmp_path / ".flanes-project.json").exists()
         assert project.config.name == "my-project"
 
     def test_project_add_repo(self, tmp_path):
-        from fla.project import Project
-        from fla.repo import Repository
+        from flanes.project import Project
+        from flanes.repo import Repository
 
         # Create project
         project = Project.init(tmp_path, name="multi")
 
-        # Create a fla repo inside
+        # Create a flanesnes repo inside
         repo_path = tmp_path / "repo-a"
         repo_path.mkdir()
         (repo_path / "file.txt").write_text("content")
@@ -537,8 +537,8 @@ class TestProject:
         assert len(project2.config.repos) == 1
 
     def test_project_status(self, tmp_path):
-        from fla.project import Project
-        from fla.repo import Repository
+        from flanes.project import Project
+        from flanes.repo import Repository
 
         project = Project.init(tmp_path, name="status-test")
 
@@ -554,8 +554,8 @@ class TestProject:
         assert status["repos"]["service"]["status"] == "ok"
 
     def test_project_coordinated_snapshot(self, tmp_path):
-        from fla.project import Project
-        from fla.repo import Repository
+        from flanes.project import Project
+        from flanes.repo import Repository
 
         project = Project.init(tmp_path, name="snap-test")
 
@@ -569,7 +569,7 @@ class TestProject:
         assert "backend" in result["snapshots"]
 
     def test_project_find(self, tmp_path):
-        from fla.project import Project
+        from flanes.project import Project
 
         Project.init(tmp_path, name="findable")
 
@@ -600,7 +600,7 @@ class TestProject:
 
 class TestRemote:
     def test_remote_backend_mock(self):
-        from fla.remote import InMemoryBackend
+        from flanes.remote import InMemoryBackend
 
         backend = InMemoryBackend()
 
@@ -620,7 +620,7 @@ class TestRemote:
         assert not backend.exists("key1")
 
     def test_local_cache_layer(self, tmp_path):
-        from fla.remote import InMemoryBackend, LocalCacheLayer
+        from flanes.remote import InMemoryBackend, LocalCacheLayer
 
         backend = InMemoryBackend()
         cache = LocalCacheLayer(backend, tmp_path / "cache")
@@ -643,10 +643,10 @@ class TestRemote:
         assert data is None
 
     def test_remote_sync_push(self, repo):
-        from fla.remote import InMemoryBackend, RemoteSyncManager
+        from flanes.remote import InMemoryBackend, RemoteSyncManager
 
         backend = InMemoryBackend()
-        sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
+        sync = RemoteSyncManager(repo.store, backend, repo.flanes_dir / "cache")
 
         result = sync.push()
         assert result["pushed"] > 0
@@ -658,10 +658,10 @@ class TestRemote:
         assert result2["skipped"] == result["pushed"]
 
     def test_remote_sync_pull(self, repo):
-        from fla.remote import InMemoryBackend, RemoteSyncManager
+        from flanes.remote import InMemoryBackend, RemoteSyncManager
 
         backend = InMemoryBackend()
-        sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
+        sync = RemoteSyncManager(repo.store, backend, repo.flanes_dir / "cache")
 
         # Push first
         sync.push()
@@ -672,10 +672,10 @@ class TestRemote:
         assert result["pulled"] == 0
 
     def test_remote_status(self, repo):
-        from fla.remote import InMemoryBackend, RemoteSyncManager
+        from flanes.remote import InMemoryBackend, RemoteSyncManager
 
         backend = InMemoryBackend()
-        sync = RemoteSyncManager(repo.store, backend, repo.fla_dir / "cache")
+        sync = RemoteSyncManager(repo.store, backend, repo.flanes_dir / "cache")
 
         status = sync.status()
         assert len(status["local_only"]) > 0
@@ -704,14 +704,14 @@ class TestRemote:
         assert "error" in data
 
     def test_create_backend_memory(self):
-        from fla.remote import create_backend
+        from flanes.remote import create_backend
 
         backend = create_backend({"remote_storage": {"type": "memory"}})
         backend.upload("test", b"data")
         assert backend.download("test") == b"data"
 
     def test_create_backend_unknown(self):
-        from fla.remote import create_backend
+        from flanes.remote import create_backend
 
         with pytest.raises(ValueError, match="Unknown remote storage type"):
             create_backend({"remote_storage": {"type": "ftp"}})

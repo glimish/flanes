@@ -15,8 +15,8 @@ import pytest
 
 
 def run_fla(*args, cwd=None, expect_fail=False):
-    """Run a fla CLI command and return (returncode, stdout, stderr)."""
-    cmd = [sys.executable, "-X", "utf8", "-m", "fla.cli"] + list(args)
+    """Run a flanes CLI command and return (returncode, stdout, stderr)."""
+    cmd = [sys.executable, "-X", "utf8", "-m", "flanes.cli"] + list(args)
     # On Windows, CREATE_NEW_PROCESS_GROUP prevents spurious CTRL_C_EVENT
     # from the CI runner reaching the child process.
     kwargs = {}
@@ -45,7 +45,7 @@ def empty_dir(tmp_path):
 
 @pytest.fixture
 def repo_dir(tmp_path):
-    """A temporary directory with an initialized fla repo containing a test file."""
+    """A temporary directory with an initialized flanes repo containing a test file."""
     # Create a test file first
     (tmp_path / "hello.txt").write_text("Hello, World!\n")
     (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02binary content")
@@ -58,7 +58,7 @@ class TestErrorOutsideRepo:
     def test_status_outside_repo(self, empty_dir):
         rc, out, err = run_fla("status", cwd=empty_dir, expect_fail=True)
         assert rc == 1
-        assert "fla init" in err.lower() or "fla init" in err
+        assert "flanes init" in err.lower() or "flanes init" in err
 
     def test_init_works_outside_repo(self, empty_dir):
         rc, out, err = run_fla("init", cwd=empty_dir)
@@ -196,7 +196,7 @@ class TestDoctor:
     def test_doctor_dirty_workspace(self, repo_dir):
         # Plant dirty marker in main workspace (which is repo root in git-style)
         # Main workspace IS the repo root now
-        marker = repo_dir / ".fla_materializing"
+        marker = repo_dir / ".flanes_materializing"
         marker.write_text('{"state_id": "test", "started_at": 0}')
 
         rc, out, _ = run_fla("doctor", cwd=repo_dir)
@@ -205,7 +205,7 @@ class TestDoctor:
 
     def test_doctor_fix_dirty(self, repo_dir):
         # Plant dirty marker in main workspace (repo root)
-        marker = repo_dir / ".fla_materializing"
+        marker = repo_dir / ".flanes_materializing"
         marker.write_text('{"state_id": "test", "started_at": 0}')
 
         rc, out, _ = run_fla("doctor", "--fix", cwd=repo_dir)
@@ -234,7 +234,7 @@ class TestCompletions:
     def test_fish_completion(self, empty_dir):
         rc, out, _ = run_fla("completion", "fish", cwd=empty_dir)
         assert rc == 0
-        assert "complete -c fla" in out
+        assert "complete -c flanes" in out
 
     def test_completion_no_repo_needed(self, empty_dir):
         """Completion should work without a repo."""
@@ -351,10 +351,10 @@ class TestCLIErrorPaths:
 
 
 class TestGitCoexistence:
-    """Test that fla init detects existing Git repos and provides guidance."""
+    """Test that flanes init detects existing Git repos and provides guidance."""
 
     def test_init_in_git_repo(self, tmp_path):
-        """fla init in a git repo should print a note about .gitignore."""
+        """flanes init in a git repo should print a note about .gitignore."""
         (tmp_path / ".git").mkdir()
         rc, out, err = run_fla("init", cwd=tmp_path)
         assert rc == 0
@@ -362,7 +362,7 @@ class TestGitCoexistence:
         assert ".gitignore" in out
 
     def test_init_json_git_detected(self, tmp_path):
-        """fla init --json in a git repo should include git_detected field."""
+        """flanes init --json in a git repo should include git_detected field."""
         (tmp_path / ".git").mkdir()
         rc, out, err = run_fla("--json", "init", cwd=tmp_path)
         assert rc == 0
@@ -370,13 +370,13 @@ class TestGitCoexistence:
         assert data.get("git_detected") is True
 
     def test_init_no_git(self, tmp_path):
-        """fla init without .git/ should not mention git."""
+        """flanes init without .git/ should not mention git."""
         rc, out, err = run_fla("init", cwd=tmp_path)
         assert rc == 0
         assert "Git repository" not in out
 
     def test_init_json_no_git(self, tmp_path):
-        """fla init --json without .git/ should not include git_detected."""
+        """flanes init --json without .git/ should not include git_detected."""
         rc, out, err = run_fla("--json", "init", cwd=tmp_path)
         assert rc == 0
         data = json.loads(out)
@@ -387,20 +387,20 @@ class TestCLIPolish:
     """Test CLI polish features: version, aliases, did-you-mean, error hints."""
 
     def test_version_flag(self, empty_dir):
-        """fla --version should print the version string."""
+        """flanes --version should print the version string."""
         rc, out, err = run_fla("--version", cwd=empty_dir)
         assert rc == 0
-        assert "fla" in out
+        assert "flanes" in out
         assert "0." in out  # version starts with 0.x
 
     def test_version_short_flag(self, empty_dir):
-        """fla -V should also print the version."""
+        """flanes -V should also print the version."""
         rc, out, err = run_fla("-V", cwd=empty_dir)
         assert rc == 0
-        assert "fla" in out
+        assert "flanes" in out
 
     def test_alias_ci(self, repo_dir):
-        """fla ci should resolve to commit."""
+        """flanes ci should resolve to commit."""
         rc, out, err = run_fla(
             "ci",
             "-m",
@@ -415,17 +415,17 @@ class TestCLIPolish:
         assert rc == 0
 
     def test_alias_st(self, repo_dir):
-        """fla st should resolve to status."""
+        """flanes st should resolve to status."""
         rc, out, err = run_fla("st", cwd=repo_dir)
         assert rc == 0
 
     def test_alias_sn(self, repo_dir):
-        """fla sn should resolve to snapshot."""
+        """flanes sn should resolve to snapshot."""
         rc, out, err = run_fla("sn", cwd=repo_dir)
         assert rc == 0
 
     def test_alias_hist(self, repo_dir):
-        """fla hist should resolve to history."""
+        """flanes hist should resolve to history."""
         rc, out, err = run_fla("hist", cwd=repo_dir)
         assert rc == 0
 
@@ -436,13 +436,13 @@ class TestCLIPolish:
         assert "did you mean" in err.lower() or "Did you mean" in err
 
     def test_did_you_mean_commit(self, empty_dir):
-        """fla comit should suggest commit."""
+        """flanes comit should suggest commit."""
         rc, out, err = run_fla("comit", cwd=empty_dir, expect_fail=True)
         assert rc == 1
         assert "commit" in err
 
     def test_grouped_help(self, empty_dir):
-        """fla with no args should show grouped command help."""
+        """flanes with no args should show grouped command help."""
         rc, out, err = run_fla(cwd=empty_dir, expect_fail=True)
         assert rc == 1
         assert "Core:" in out or "Core:" in err

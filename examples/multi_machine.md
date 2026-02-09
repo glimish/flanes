@@ -1,11 +1,11 @@
-# Multi-Machine Collaboration with Fla
+# Multi-Machine Collaboration with Flanes
 
-This tutorial walks through setting up two machines to collaborate on a Fla
+This tutorial walks through setting up two machines to collaborate on a Flanes
 project using S3 remote storage.
 
 ## Prerequisites
 
-- Fla installed on both machines (`pip install flanes[s3]`)
+- Flanes installed on both machines (`pip install flanes[s3]`)
 - An S3 bucket accessible from both machines
 - AWS credentials configured (`~/.aws/credentials` or environment variables)
 
@@ -13,16 +13,16 @@ project using S3 remote storage.
 
 ```bash
 mkdir my-project && cd my-project
-fla init --lane main
+flanes init --lane main
 
 # Configure remote storage
-cat > .fla/config.json << 'EOF'
+cat > .flanes/config.json << 'EOF'
 {
   "version": "0.3.0",
   "default_lane": "main",
   "remote_storage": {
     "backend": "s3",
-    "bucket": "my-team-fla",
+    "bucket": "my-team-flanes",
     "prefix": "my-project/",
     "region": "us-east-1"
   }
@@ -36,11 +36,11 @@ EOF
 # Create a workspace and do some work
 echo "# My Project" > README.md
 echo "print('hello')" > main.py
-fla snapshot -m "Initial project files"
-fla commit -m "Project setup"
+flanes snapshot -m "Initial project files"
+flanes commit -m "Project setup"
 
 # Push to remote (--metadata syncs lane history too)
-fla remote push --metadata
+flanes remote push --metadata
 # → Pushed 5 objects (3 blobs, 1 tree, 1 state)
 ```
 
@@ -48,16 +48,16 @@ fla remote push --metadata
 
 ```bash
 mkdir my-project && cd my-project
-fla init --lane main
+flanes init --lane main
 
 # Use the same remote config
-cat > .fla/config.json << 'EOF'
+cat > .flanes/config.json << 'EOF'
 {
   "version": "0.3.0",
   "default_lane": "main",
   "remote_storage": {
     "backend": "s3",
-    "bucket": "my-team-fla",
+    "bucket": "my-team-flanes",
     "prefix": "my-project/",
     "region": "us-east-1"
   }
@@ -65,7 +65,7 @@ cat > .fla/config.json << 'EOF'
 EOF
 
 # Pull objects and lane metadata from remote
-fla remote pull --metadata
+flanes remote pull --metadata
 # → Pulled 5 objects
 ```
 
@@ -73,38 +73,38 @@ fla remote pull --metadata
 
 ```bash
 # Machine A: work on authentication
-fla lane create feature-auth
+flanes lane create feature-auth
 echo "def login(): pass" > auth.py
-fla snapshot -m "Auth module scaffold"
-fla commit -m "Add auth module"
-fla remote push --metadata
+flanes snapshot -m "Auth module scaffold"
+flanes commit -m "Add auth module"
+flanes remote push --metadata
 
 # Machine B: work on API endpoints
-fla lane create feature-api
+flanes lane create feature-api
 echo "def get_users(): pass" > api.py
-fla snapshot -m "API module scaffold"
-fla commit -m "Add API module"
-fla remote push --metadata
+flanes snapshot -m "API module scaffold"
+flanes commit -m "Add API module"
+flanes remote push --metadata
 ```
 
 ## Step 5: Sync and Review
 
 ```bash
 # Either machine: pull everything (including lane metadata)
-fla remote pull --metadata
+flanes remote pull --metadata
 
 # Check remote status
-fla remote status
+flanes remote status
 # → local_only: 0, remote_only: 0, synced: 15
 
 # Review work from both lanes
-fla history --lane feature-auth
-fla history --lane feature-api
+flanes history --lane feature-auth
+flanes history --lane feature-api
 
 # Promote approved work to main
-fla promote feature-auth --to main
-fla promote feature-api --to main
-fla remote push --metadata
+flanes promote feature-auth --to main
+flanes promote feature-api --to main
+flanes remote push --metadata
 ```
 
 ## Tips
@@ -112,10 +112,10 @@ fla remote push --metadata
 - **Use `--metadata`** to sync lane history, transitions, and intents alongside CAS objects.
 - **Use separate lanes per machine/agent** for the cleanest workflow. Same-lane work across machines is supported with conflict detection on pull.
 - **Push frequently** so other machines can pull the latest objects.
-- **Use `fla remote status`** to check what needs syncing before starting work.
+- **Use `flanes remote status`** to check what needs syncing before starting work.
 - **CAS deduplication** means identical file content is only stored and
   transferred once, even across lanes and machines.
-- **NFS/shared filesystems:** Fla detects and blocks cross-machine concurrent access to the same `.fla/` directory. Always use remote push/pull instead.
+- **NFS/shared filesystems:** Flanes detects and blocks cross-machine concurrent access to the same `.flanes/` directory. Always use remote push/pull instead.
 
 ## Alternative: GCS Backend
 
@@ -125,7 +125,7 @@ Replace the S3 config with GCS:
 {
   "remote_storage": {
     "backend": "gcs",
-    "bucket": "my-team-fla",
+    "bucket": "my-team-flanes",
     "prefix": "my-project/"
   }
 }

@@ -4,9 +4,9 @@ Tests for Phase 2: ignore patterns, context managers, deferred fork_base fix.
 
 import pytest
 
-from fla.agent_sdk import AgentSession
-from fla.repo import Repository
-from fla.state import AgentIdentity, WorldStateManager
+from flanes.agent_sdk import AgentSession
+from flanes.repo import Repository
+from flanes.state import AgentIdentity, WorldStateManager
 
 
 @pytest.fixture
@@ -24,13 +24,13 @@ def repo_with_files(tmp_dir):
     repo.close()
 
 
-# ── 1. Directory patterns in .flaignore ──────────────────────────────
+# ── 1. Directory patterns in .flanesignore ──────────────────────────────
 
 
 class TestDirectoryPatterns:
     def test_trailing_slash_ignores_directory_not_file(self, tmp_dir):
-        """``build/`` in .flaignore ignores dirs named build, not files."""
-        (tmp_dir / ".flaignore").write_text("build/\n")
+        """``build/`` in .flanesignore ignores dirs named build, not files."""
+        (tmp_dir / ".flanesignore").write_text("build/\n")
         # Create a *file* named build and a *directory* named build_output
         (tmp_dir / "build").write_text("I am a file named build\n")
         (tmp_dir / "builddir").mkdir()
@@ -55,7 +55,7 @@ class TestDirectoryPatterns:
 
     def test_dir_pattern_excludes_matching_directory(self, tmp_dir):
         """A directory whose name matches a dir-only pattern is excluded."""
-        (tmp_dir / ".flaignore").write_text("dist/\n")
+        (tmp_dir / ".flanesignore").write_text("dist/\n")
         (tmp_dir / "app.py").write_text("pass\n")
         (tmp_dir / "dist").mkdir()
         (tmp_dir / "dist" / "bundle.js").write_text("var x;")
@@ -70,13 +70,13 @@ class TestDirectoryPatterns:
         repo.close()
 
 
-# ── 2. Negation patterns in .flaignore ───────────────────────────────
+# ── 2. Negation patterns in .flanesignore ───────────────────────────────
 
 
 class TestNegationPatterns:
     def test_negation_reinclude(self, tmp_dir):
         """`*.log` + `!important.log` keeps important.log."""
-        (tmp_dir / ".flaignore").write_text("*.log\n!important.log\n")
+        (tmp_dir / ".flanesignore").write_text("*.log\n!important.log\n")
         (tmp_dir / "debug.log").write_text("debug stuff\n")
         (tmp_dir / "important.log").write_text("keep me\n")
         (tmp_dir / "app.py").write_text("pass\n")

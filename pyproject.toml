@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "flanes"
 version = "0.3.2"
-description = "Fla: Feature Lanes for Agents - version control for agentic AI systems"
+description = "Flanes: Feature Lanes for Agents - version control for agentic AI systems"
 authors = [{name = "Kim Ranzani (Glimish)"}]
 readme = "README.md"
 license = "MIT"
@@ -28,7 +28,7 @@ Issues = "https://github.com/glimish/flanes/issues"
 Documentation = "https://github.com/glimish/flanes/tree/main/docs"
 
 [project.scripts]
-fla = "fla.cli:main"
+flanes = "flanes.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "mypy>=1.10"]
@@ -38,18 +38,18 @@ remote = ["boto3>=1.26", "google-cloud-storage>=2.0"]
 
 # Entry point groups for plugins - third-party packages register here
 # See docs/guide.md "Writing Plugins" for details
-[project.entry-points."fla.evaluators"]
+[project.entry-points."flanes.evaluators"]
 # example: my_evaluator = "my_package:evaluate_func"
-[project.entry-points."fla.storage"]
+[project.entry-points."flanes.storage"]
 # example: my_backend = "my_package:create_backend"
-[project.entry-points."fla.hooks"]
+[project.entry-points."flanes.hooks"]
 # example: my_hook = "my_package:hook_handler"
 
 [tool.setuptools.packages.find]
-include = ["fla*"]
+include = ["flanes*"]
 
 [tool.setuptools.package-data]
-"fla" = ["web/*.html", "web/*.css", "web/*.js"]
+"flanes" = ["web/*.html", "web/*.css", "web/*.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -68,7 +68,7 @@ line-length = 100
 select = ["E", "F", "W", "I", "N", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-"fla/completions.py" = ["E501"]  # Shell script strings have long lines
+"flanes/completions.py" = ["E501"]  # Shell script strings have long lines
 
 [tool.mypy]
 python_version = "3.10"

@@ -1,7 +1,7 @@
 """
 Garbage Collector
 
-Mark-and-sweep garbage collection for the Fla content store.
+Mark-and-sweep garbage collection for the Flanes content store.
 Removes unreachable objects (blobs, trees) and expired transitions
 to reclaim storage space.
 

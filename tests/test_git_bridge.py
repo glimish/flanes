@@ -1,5 +1,5 @@
 """
-Tests for Git Bridge — export/import between Fla and Git repositories.
+Tests for Git Bridge — export/import between Flanes and Git repositories.
 """
 
 import os
@@ -23,9 +23,9 @@ requires_git = pytest.mark.skipif(not _has_git(), reason="git not available")
 
 @pytest.fixture
 def fla_repo(tmp_path):
-    """Create a Fla repository with some history."""
-    from fla.repo import Repository
-    from fla.state import AgentIdentity
+    """Create a Flanes repository with some history."""
+    from flanes.repo import Repository
+    from flanes.state import AgentIdentity
 
     project_dir = tmp_path / "project"
     project_dir.mkdir()
@@ -54,7 +54,7 @@ def fla_repo(tmp_path):
 @requires_git
 class TestExportToGit:
     def test_export_creates_git_repo(self, fla_repo, tmp_path):
-        from fla.git_bridge import export_to_git
+        from flanes.git_bridge import export_to_git
 
         target = tmp_path / "export"
         result = export_to_git(fla_repo, target, lane="main")
@@ -63,7 +63,7 @@ class TestExportToGit:
         assert (target / ".git").is_dir()
 
     def test_export_contains_files(self, fla_repo, tmp_path):
-        from fla.git_bridge import export_to_git
+        from flanes.git_bridge import export_to_git
 
         target = tmp_path / "export"
         export_to_git(fla_repo, target, lane="main")
@@ -77,7 +77,7 @@ class TestExportToGit:
         assert "hello world" in (target / "main.py").read_text()
 
     def test_export_git_log_has_commits(self, fla_repo, tmp_path):
-        from fla.git_bridge import export_to_git
+        from flanes.git_bridge import export_to_git
 
         target = tmp_path / "export"
         result = export_to_git(fla_repo, target, lane="main")
@@ -94,7 +94,7 @@ class TestExportToGit:
         assert len(lines) == result["commits"]
 
     def test_export_preserves_agent_info(self, fla_repo, tmp_path):
-        from fla.git_bridge import export_to_git
+        from flanes.git_bridge import export_to_git
 
         target = tmp_path / "export"
         export_to_git(fla_repo, target, lane="main")
@@ -111,9 +111,9 @@ class TestExportToGit:
         assert log.stdout.strip() != ""
 
     def test_export_empty_lane(self, tmp_path):
-        """Exporting a lane with only the initial .flaignore commit."""
-        from fla.git_bridge import export_to_git
-        from fla.repo import Repository
+        """Exporting a lane with only the initial .flanesignore commit."""
+        from flanes.git_bridge import export_to_git
+        from flanes.repo import Repository
 
         project_dir = tmp_path / "empty_project"
         project_dir.mkdir()
@@ -122,7 +122,7 @@ class TestExportToGit:
         target = tmp_path / "export"
         result = export_to_git(repo, target, lane="main")
 
-        # .flaignore auto-creation causes one initial commit
+        # .flanesignore auto-creation causes one initial commit
         assert result["commits"] == 1
         repo.close()
 
@@ -167,17 +167,17 @@ class TestImportFromGit:
         )
 
     def test_import_creates_transitions(self, tmp_path):
-        from fla.git_bridge import import_from_git
-        from fla.repo import Repository
+        from flanes.git_bridge import import_from_git
+        from flanes.repo import Repository
 
         # Create git repo
         git_dir = tmp_path / "git_source"
         self._make_git_repo(git_dir)
 
-        # Create fla repo
-        fla_dir = tmp_path / "fla_target"
-        fla_dir.mkdir()
-        repo = Repository.init(fla_dir)
+        # Create flanes repo
+        flanes_dir = tmp_path / "fla_target"
+        flanes_dir.mkdir()
+        repo = Repository.init(flanes_dir)
 
         result = import_from_git(git_dir, repo, lane="main")
         assert result["commits_imported"] == 2
@@ -189,15 +189,15 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_preserves_content(self, tmp_path):
-        from fla.git_bridge import import_from_git
-        from fla.repo import Repository
+        from flanes.git_bridge import import_from_git
+        from flanes.repo import Repository
 
         git_dir = tmp_path / "git_source"
         self._make_git_repo(git_dir)
 
-        fla_dir = tmp_path / "fla_target"
-        fla_dir.mkdir()
-        repo = Repository.init(fla_dir)
+        flanes_dir = tmp_path / "fla_target"
+        flanes_dir.mkdir()
+        repo = Repository.init(flanes_dir)
 
         import_from_git(git_dir, repo, lane="main")
 
@@ -216,12 +216,12 @@ class TestImportFromGit:
         repo.close()
 
     def test_import_not_a_git_repo(self, tmp_path):
-        from fla.git_bridge import import_from_git
-        from fla.repo import Repository
+        from flanes.git_bridge import import_from_git
+        from flanes.repo import Repository
 
-        fla_dir = tmp_path / "fla_target"
-        fla_dir.mkdir()
-        repo = Repository.init(fla_dir)
+        flanes_dir = tmp_path / "fla_target"
+        flanes_dir.mkdir()
+        repo = Repository.init(flanes_dir)
 
         with pytest.raises(ValueError, match="Not a git repository"):
             import_from_git(tmp_path / "nonexistent", repo)
@@ -232,15 +232,15 @@ class TestImportFromGit:
 @requires_git
 class TestRoundTrip:
     def test_export_then_import(self, fla_repo, tmp_path):
-        """Export fla→git, then import git→fla, verify content matches."""
-        from fla.git_bridge import export_to_git, import_from_git
-        from fla.repo import Repository
+        """Export flanes→git, then import git→flanes, verify content matches."""
+        from flanes.git_bridge import export_to_git, import_from_git
+        from flanes.repo import Repository
 
         # Export
         git_dir = tmp_path / "git_export"
         export_to_git(fla_repo, git_dir, lane="main")
 
-        # Import into a fresh fla repo
+        # Import into a fresh flanes repo
         fla2_dir = tmp_path / "fla2"
         fla2_dir.mkdir()
         repo2 = Repository.init(fla2_dir)

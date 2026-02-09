@@ -6,11 +6,11 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "fla=fla.cli:main",
+            "flanes=flanes.cli:main",
         ],
     },
     python_requires=">=3.10",
-    description="Fla: Feature Lanes for Agents - version control for agentic AI systems",
+    description="Flanes: Feature Lanes for Agents - version control for agentic AI systems",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

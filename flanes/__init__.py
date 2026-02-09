@@ -1,5 +1,5 @@
 """
-Fla — Version Control for Agentic AI Systems
+Flanes — Version Control for Agentic AI Systems
 
 A version controller designed from the ground up for AI agents,
 replacing git's line-diff model with intent-based snapshots,
@@ -82,4 +82,4 @@ def __getattr__(name):
         from .gc import GCResult, collect_garbage
 
         return GCResult if name == "GCResult" else collect_garbage
-    raise AttributeError(f"module 'fla' has no attribute {name!r}")
+    raise AttributeError(f"module 'flanes' has no attribute {name!r}")

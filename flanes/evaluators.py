@@ -2,7 +2,7 @@
 Evaluation Plugins
 
 Runs shell commands (pytest, ruff, etc.) as evaluators via subprocess.
-Evaluator configs are stored in .fla/config.json under "evaluators".
+Evaluator configs are stored in .flanes/config.json under "evaluators".
 """
 
 import logging
@@ -145,7 +145,7 @@ def run_evaluator(evaluator: EvaluatorConfig, workspace_path: Path) -> Evaluator
 def run_plugin_evaluators(workspace_path: Path) -> list[EvaluatorResult]:
     """Discover and run evaluator plugins (Python callables).
 
-    Plugin evaluators are discovered via the ``fla.evaluators`` entry point
+    Plugin evaluators are discovered via the ``flanes.evaluators`` entry point
     group. Each must be a callable that accepts a workspace Path and returns
     an EvaluatorResult.
     """
@@ -183,7 +183,7 @@ def run_all_evaluators(evaluators: list, workspace_path: Path) -> EvaluationResu
     """Run all evaluators and return an aggregate EvaluationResult.
 
     Runs both configured shell-command evaluators and discovered plugin
-    evaluators (via ``fla.evaluators`` entry points).
+    evaluators (via ``flanes.evaluators`` entry points).
     """
     results = []
     checks = {}
