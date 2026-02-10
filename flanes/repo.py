@@ -142,8 +142,7 @@ class Repository:
 
         if not self.flanes_dir.exists():
             raise ValueError(
-                f"Not a Flanes repository: {self.root}\n"
-                "Run `flanes init` to create one."
+                f"Not a Flanes repository: {self.root}\nRun `flanes init` to create one."
             )
 
         config = self._read_config()
@@ -1282,13 +1281,14 @@ class Repository:
     @staticmethod
     def _safe_unlink_marker(path: Path) -> None:
         """Unlink a marker file, retrying on Windows PermissionError."""
-        for attempt in range(3):
+        max_attempts = 6
+        for attempt in range(max_attempts):
             try:
                 path.unlink(missing_ok=True)
                 return
             except PermissionError:
-                if os.name == "nt" and attempt < 2:
-                    time.sleep(0.05 * (attempt + 1))
+                if os.name == "nt" and attempt < max_attempts - 1:
+                    time.sleep(0.05 * (2**attempt))
                 else:
                     logger.debug("Could not remove marker %s: still locked", path)
                     return  # Best-effort — don't crash

@@ -825,8 +825,7 @@ def cmd_promote(args):
             print(f"      flanes workspace update {ws_name} --state {state_hash}")
             print("      # Edit conflicting files in workspace")
             print(
-                "      flanes commit -m 'Resolve conflicts'"
-                " --agent-id <agent> --agent-type <type>"
+                "      flanes commit -m 'Resolve conflicts' --agent-id <agent> --agent-type <type>"
             )
             print(f"      flanes promote -w {ws_name} --target {target_lane}")
             print()

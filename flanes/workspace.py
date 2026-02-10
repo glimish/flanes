@@ -67,16 +67,17 @@ def _safe_unlink(path: Path) -> None:
     """Unlink a file, retrying on Windows PermissionError.
 
     On Windows, antivirus scanners and other processes may briefly hold
-    a file handle, causing PermissionError on unlink. Retrying after a
-    short sleep handles this race condition.
+    a file handle, causing PermissionError on unlink.  We retry with
+    exponential back-off up to ~1.5 s total.
     """
-    for attempt in range(3):
+    max_attempts = 6
+    for attempt in range(max_attempts):
         try:
             path.unlink(missing_ok=True)
             return
         except PermissionError:
-            if os.name == "nt" and attempt < 2:
-                time.sleep(0.05 * (attempt + 1))
+            if os.name == "nt" and attempt < max_attempts - 1:
+                time.sleep(0.05 * (2**attempt))  # 50ms, 100ms, 200ms, 400ms, 800ms
             else:
                 raise
 
@@ -84,16 +85,19 @@ def _safe_unlink(path: Path) -> None:
 def _safe_write_text(path: Path, text: str) -> None:
     """Write text to a file, retrying on Windows PermissionError.
 
-    On Windows, concurrent threads or antivirus may hold a handle on
-    the file, causing PermissionError on write. Retrying handles this.
+    On Windows, antivirus (Defender), search indexers, or backup agents may
+    briefly hold a handle on the file, causing WinError 32.  We retry with
+    exponential back-off up to ~1.5 s total, which is usually enough for
+    the scanner to release its handle.
     """
-    for attempt in range(3):
+    max_attempts = 6
+    for attempt in range(max_attempts):
         try:
             path.write_text(text)
             return
         except PermissionError:
-            if os.name == "nt" and attempt < 2:
-                time.sleep(0.05 * (attempt + 1))
+            if os.name == "nt" and attempt < max_attempts - 1:
+                time.sleep(0.05 * (2**attempt))  # 50ms, 100ms, 200ms, 400ms, 800ms
             else:
                 raise
 
