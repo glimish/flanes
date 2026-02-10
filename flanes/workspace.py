@@ -81,6 +81,23 @@ def _safe_unlink(path: Path) -> None:
                 raise
 
 
+def _safe_write_text(path: Path, text: str) -> None:
+    """Write text to a file, retrying on Windows PermissionError.
+
+    On Windows, concurrent threads or antivirus may hold a handle on
+    the file, causing PermissionError on write. Retrying handles this.
+    """
+    for attempt in range(3):
+        try:
+            path.write_text(text)
+            return
+        except PermissionError:
+            if os.name == "nt" and attempt < 2:
+                time.sleep(0.05 * (attempt + 1))
+            else:
+                raise
+
+
 def _hostname() -> str:
     """Get hostname, cached after first call."""
     if not hasattr(_hostname, "_cached"):
@@ -256,7 +273,8 @@ class WorkspaceManager:
             # Feature workspace: materialize into new directory
             ws_path.mkdir(parents=True, exist_ok=True)
             dirty_path = ws_path / ".flanes_materializing"
-            dirty_path.write_text(
+            _safe_write_text(
+                dirty_path,
                 json.dumps(
                     {
                         "state_id": state_id,
@@ -264,7 +282,7 @@ class WorkspaceManager:
                         "pid": os.getpid(),
                         "hostname": socket.gethostname(),
                     }
-                )
+                ),
             )
 
             try:
@@ -279,7 +297,8 @@ class WorkspaceManager:
             # Main workspace with state: materialize into repo root
             # This happens during update, not typically during init
             dirty_path = ws_path / ".flanes_materializing"
-            dirty_path.write_text(
+            _safe_write_text(
+                dirty_path,
                 json.dumps(
                     {
                         "state_id": state_id,
@@ -287,7 +306,7 @@ class WorkspaceManager:
                         "pid": os.getpid(),
                         "hostname": socket.gethostname(),
                     }
-                )
+                ),
             )
 
             try:
@@ -376,7 +395,8 @@ class WorkspaceManager:
 
         # Dirty marker — signals that the workspace is mid-update
         dirty_path = ws_path / ".flanes_materializing"
-        dirty_path.write_text(
+        _safe_write_text(
+            dirty_path,
             json.dumps(
                 {
                     "from_state": old_state,
@@ -385,7 +405,7 @@ class WorkspaceManager:
                     "pid": os.getpid(),
                     "hostname": socket.gethostname(),
                 }
-            )
+            ),
         )
 
         try:
