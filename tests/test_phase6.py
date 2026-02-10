@@ -398,7 +398,7 @@ class TestRESTServer:
     def setup_server(self, tmp_path):
         """Start server in daemon thread with port=0 for OS-assigned port."""
         from flanes.repo import Repository
-        from flanes.server import FlaServer
+        from flanes.server import FlanesServer
 
         (tmp_path / "hello.txt").write_text("Hello, World!\n")
         repo = Repository.init(tmp_path)
@@ -415,7 +415,7 @@ class TestRESTServer:
         repo.close()
 
         # Pass path so repo is opened in the server thread
-        self.server = FlaServer(str(tmp_path), host="127.0.0.1", port=0)
+        self.server = FlanesServer(str(tmp_path), host="127.0.0.1", port=0)
         self.port = self.server.server_address[1]
         self.base_url = f"http://127.0.0.1:{self.port}"
 
@@ -541,8 +541,8 @@ class TestMCPServer:
         tools = resp["result"]["tools"]
         assert len(tools) == 12
         names = {t["name"] for t in tools}
-        assert "fla_status" in names
-        assert "fla_commit" in names
+        assert "flanes_status" in names
+        assert "flanes_commit" in names
 
     def test_tool_status(self):
         resp = self.mcp.handle_request(
@@ -550,7 +550,7 @@ class TestMCPServer:
                 "jsonrpc": "2.0",
                 "id": 3,
                 "method": "tools/call",
-                "params": {"name": "fla_status", "arguments": {}},
+                "params": {"name": "flanes_status", "arguments": {}},
             }
         )
         content = resp["result"]["content"]
@@ -565,7 +565,7 @@ class TestMCPServer:
                 "id": 4,
                 "method": "tools/call",
                 "params": {
-                    "name": "fla_commit",
+                    "name": "flanes_commit",
                     "arguments": {
                         "prompt": "mcp commit",
                         "agent_id": "mcp-test",
@@ -584,7 +584,7 @@ class TestMCPServer:
                 "jsonrpc": "2.0",
                 "id": 5,
                 "method": "tools/call",
-                "params": {"name": "fla_lanes", "arguments": {}},
+                "params": {"name": "flanes_lanes", "arguments": {}},
             }
         )
         content = resp["result"]["content"]

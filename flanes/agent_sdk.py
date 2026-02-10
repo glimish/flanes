@@ -58,6 +58,7 @@ class AgentSession:
         session_id: str | None = None,
     ):
         self.repo = Repository.find(Path(repo_path))
+        self._closed = False
         self.agent = AgentIdentity(
             agent_id=agent_id,
             agent_type=agent_type,
@@ -80,8 +81,21 @@ class AgentSession:
         return False
 
     def close(self):
-        """Close the underlying repository connection."""
-        self.repo.close()
+        """Close the underlying repository connection.
+
+        Safe to call multiple times (idempotent).
+        """
+        if not self._closed:
+            self._closed = True
+            self.repo.close()
+
+    def __del__(self):
+        """Safety net: close if the user forgot to call close()."""
+        try:
+            if not self._closed:
+                self.close()
+        except Exception:
+            pass
 
     @property
     def workspace_path(self) -> Path | None:

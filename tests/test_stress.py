@@ -308,14 +308,14 @@ class TestRESTAPIConcurrency:
         """Start a test server and return its port."""
         import socket
 
-        from flanes.server import FlaServer
+        from flanes.server import FlanesServer
 
         # Find free port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.bind(("127.0.0.1", 0))
             port = s.getsockname()[1]
 
-        server = FlaServer(repo, "127.0.0.1", port)
+        server = FlanesServer(repo, "127.0.0.1", port)
 
         def serve():
             server.serve_forever()

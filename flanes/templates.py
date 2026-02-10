@@ -35,7 +35,7 @@ class WorkspaceTemplate(Serializable):
     description: str = ""
     files: list[TemplateFile] = field(default_factory=list)
     directories: list = field(default_factory=list)
-    flaignore_patterns: list = field(default_factory=list)
+    flanesignore_patterns: list = field(default_factory=list)
 
 
 def _validate_name(name: str):

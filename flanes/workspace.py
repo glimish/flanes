@@ -63,6 +63,24 @@ from .serializable import Serializable
 logger = logging.getLogger(__name__)
 
 
+def _safe_unlink(path: Path) -> None:
+    """Unlink a file, retrying on Windows PermissionError.
+
+    On Windows, antivirus scanners and other processes may briefly hold
+    a file handle, causing PermissionError on unlink. Retrying after a
+    short sleep handles this race condition.
+    """
+    for attempt in range(3):
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            if os.name == "nt" and attempt < 2:
+                time.sleep(0.05 * (attempt + 1))
+            else:
+                raise
+
+
 def _hostname() -> str:
     """Get hostname, cached after first call."""
     if not hasattr(_hostname, "_cached"):
@@ -243,6 +261,8 @@ class WorkspaceManager:
                     {
                         "state_id": state_id,
                         "started_at": time.time(),
+                        "pid": os.getpid(),
+                        "hostname": socket.gethostname(),
                     }
                 )
             )
@@ -254,7 +274,7 @@ class WorkspaceManager:
                 raise
             else:
                 # Only remove marker on success
-                dirty_path.unlink(missing_ok=True)
+                _safe_unlink(dirty_path)
         elif state_id is not None and self._is_main(name):
             # Main workspace with state: materialize into repo root
             # This happens during update, not typically during init
@@ -264,6 +284,8 @@ class WorkspaceManager:
                     {
                         "state_id": state_id,
                         "started_at": time.time(),
+                        "pid": os.getpid(),
+                        "hostname": socket.gethostname(),
                     }
                 )
             )
@@ -273,7 +295,7 @@ class WorkspaceManager:
             except Exception:
                 raise
             else:
-                dirty_path.unlink(missing_ok=True)
+                _safe_unlink(dirty_path)
         elif not self._is_main(name):
             # Empty feature workspace — create the directory
             ws_path.mkdir(parents=True, exist_ok=True)
@@ -360,6 +382,8 @@ class WorkspaceManager:
                     "from_state": old_state,
                     "to_state": new_state_id,
                     "started_at": time.time(),
+                    "pid": os.getpid(),
+                    "hostname": socket.gethostname(),
                 }
             )
         )

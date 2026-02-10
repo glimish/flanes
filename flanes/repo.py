@@ -28,6 +28,7 @@ Agents get isolated directories. There's no way to accidentally
 modify another agent's work.
 """
 
+import atexit
 import json
 import logging
 import os
@@ -35,6 +36,7 @@ import platform
 import tempfile
 import time
 import uuid
+import weakref
 from pathlib import Path
 
 from .budgets import (
@@ -111,6 +113,19 @@ class ConcurrentAccessError(ValueError):  # noqa: N818
 # Maximum age (seconds) before a lock is considered stale
 _LOCK_STALE_AGE = 4 * 3600  # 4 hours
 
+# Global set of open Repository instances for atexit cleanup.
+# Uses a set of strong refs; close() removes from the set.
+_REPO_INSTANCES: set["Repository"] = set()
+
+
+def _atexit_close_repos():
+    """atexit handler: close any Repository instances that were not closed explicitly."""
+    for repo in list(_REPO_INSTANCES):
+        try:
+            repo.close()
+        except Exception:
+            pass
+
 
 class Repository:
     """
@@ -160,6 +175,18 @@ class Repository:
         self._lock_path = self.flanes_dir / "instance.lock"
         self._machine_id = self._get_machine_id()
         self._acquire_instance_lock()
+        self._closed = False
+
+        # Safety net: register atexit handler using weakref so it doesn't
+        # prevent garbage collection.  If close() is never called explicitly,
+        # the atexit handler ensures the SQLite connection and instance lock
+        # are released when the process exits.
+        self._weak_cleanup = weakref.ref(self)
+        _REPO_INSTANCES.add(self)
+        atexit.register(_atexit_close_repos)
+
+        # Auto-clean stale dirty markers left by crashed processes
+        self._clean_stale_dirty_markers()
 
     # Template for .flanesignore file created on init
     FLANESIGNORE_TEMPLATE = """\
@@ -1190,8 +1217,78 @@ class Repository:
         return False
 
     def close(self):
-        self._release_instance_lock()
-        self.store.close()
+        """Close the repository, releasing locks and SQLite connections.
+
+        Safe to call multiple times (idempotent).
+        """
+        if self._closed:
+            return
+        self._closed = True
+        _REPO_INSTANCES.discard(self)
+        try:
+            self._release_instance_lock()
+        except Exception:
+            pass
+        try:
+            self.store.close()
+        except Exception:
+            pass
+
+    def __del__(self):
+        """Safety net: close if the user forgot to call close()."""
+        try:
+            if not self._closed:
+                self.close()
+        except Exception:
+            pass
+
+    def _clean_stale_dirty_markers(self) -> None:
+        """Remove .flanes_materializing markers left by crashed processes.
+
+        If a process dies mid-materialize, it leaves a dirty marker that
+        prevents the workspace from being used. This method cleans markers
+        where the owning PID is dead (same host) or the marker is old.
+        """
+        ws_dir = self.flanes_dir / "workspaces"
+        if not ws_dir.exists():
+            return
+        for child in ws_dir.iterdir():
+            if not child.is_dir():
+                continue
+            dirty = child / ".flanes_materializing"
+            if not dirty.exists():
+                continue
+            try:
+                info = json.loads(dirty.read_text())
+            except (json.JSONDecodeError, OSError):
+                # Corrupt marker — remove it
+                self._safe_unlink_marker(dirty)
+                logger.info("Removed corrupt dirty marker: %s", dirty)
+                continue
+            # Check if the process that left the marker is still alive
+            pid = info.get("pid")
+            host = info.get("hostname")
+            age = time.time() - info.get("started_at", 0)
+            if age > _LOCK_STALE_AGE:
+                self._safe_unlink_marker(dirty)
+                logger.info("Removed stale dirty marker (age=%.0fs): %s", age, child.name)
+            elif host == platform.node() and pid and not self._pid_alive(pid):
+                self._safe_unlink_marker(dirty)
+                logger.info("Removed dirty marker from dead process (pid=%s): %s", pid, child.name)
+
+    @staticmethod
+    def _safe_unlink_marker(path: Path) -> None:
+        """Unlink a marker file, retrying on Windows PermissionError."""
+        for attempt in range(3):
+            try:
+                path.unlink(missing_ok=True)
+                return
+            except PermissionError:
+                if os.name == "nt" and attempt < 2:
+                    time.sleep(0.05 * (attempt + 1))
+                else:
+                    logger.debug("Could not remove marker %s: still locked", path)
+                    return  # Best-effort — don't crash
 
     # ── NFS Safety: Instance Lock ─────────────────────────────────
 

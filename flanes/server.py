@@ -466,6 +466,8 @@ def serve(
                    FLA_API_TOKEN env var. If neither is set, runs without auth.
         web: If True, serve the web viewer at /web/.
     """
+    import signal
+
     repo = Repository.find(Path(repo_path))
     server = FlanesServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
@@ -473,6 +475,17 @@ def serve(
     print(f"Flanes server listening on {host}:{actual_port} ({auth_status})")
     if web:
         print(f"  Web viewer: http://{host}:{actual_port}/web/")
+
+    def _shutdown(signum=None, frame=None):
+        """Graceful shutdown on SIGTERM/SIGINT."""
+        logger.info("Shutting down server (signal=%s)...", signum)
+        server.shutdown()
+        repo.close()
+
+    # Register SIGTERM handler so `kill <pid>` triggers clean shutdown.
+    # SIGINT is already handled by the KeyboardInterrupt catch below.
+    signal.signal(signal.SIGTERM, _shutdown)
+
     try:
         server.serve_forever()
     except KeyboardInterrupt:

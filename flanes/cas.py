@@ -82,6 +82,7 @@ class ContentStore:
         self.conn.execute("PRAGMA busy_timeout = 30000")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self._in_batch = False
+        self._closed = False
         self._init_tables()
         self._migrate_schema()
 
@@ -362,4 +363,19 @@ class ContentStore:
         }
 
     def close(self):
-        self.conn.close()
+        """Close the SQLite connection. Safe to call multiple times."""
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            self.conn.close()
+        except Exception:
+            pass
+
+    def __del__(self):
+        """Safety net: close if the user forgot to call close()."""
+        try:
+            if not self._closed:
+                self.close()
+        except Exception:
+            pass

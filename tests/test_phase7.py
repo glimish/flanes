@@ -217,7 +217,7 @@ class TestTemplates:
             description="Basic Python project",
             files=[TemplateFile(path="main.py", content="print('hello')")],
             directories=["src", "tests"],
-            flaignore_patterns=["__pycache__", "*.pyc"],
+            flanesignore_patterns=["__pycache__", "*.pyc"],
         )
         tm.save(template)
         loaded = tm.load("python-basic")
@@ -276,7 +276,7 @@ class TestTemplates:
         tm = TemplateManager(repo.flanes_dir)
         template = WorkspaceTemplate(
             name="test-ignore",
-            flaignore_patterns=["__pycache__", "*.pyc", "node_modules"],
+            flanesignore_patterns=["__pycache__", "*.pyc", "node_modules"],
         )
         target = tmp_path / "workspace"
         target.mkdir()
