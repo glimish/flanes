@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flanes"
-version = "0.4.0"
+version = "0.4.1"
 description = "Flanes: Feature Lanes for Agents - version control for agentic AI systems"
 authors = [{name = "Kim Ranzani (Glimish)"}]
 readme = "README.md"
