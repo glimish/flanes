@@ -6,7 +6,7 @@ replacing git's line-diff model with intent-based snapshots,
 lane isolation, and first-class evaluation gating.
 """
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"
 
 __all__ = [
     # Core

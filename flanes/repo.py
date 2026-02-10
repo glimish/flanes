@@ -1411,6 +1411,22 @@ Thumbs.db
     @staticmethod
     def _pid_alive(pid: int) -> bool:
         """Check if a PID is still running."""
+        if os.name == "nt":
+            # os.kill(pid, 0) is unreliable on Windows — it can raise
+            # SystemError wrapping WinError 87 for certain process types.
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+            handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFO
+            if not handle:
+                return False
+            try:
+                exit_code = ctypes.c_ulong()
+                if kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+                    return exit_code.value == 259  # STILL_ACTIVE
+                return False
+            finally:
+                kernel32.CloseHandle(handle)
         try:
             os.kill(pid, 0)
             return True
