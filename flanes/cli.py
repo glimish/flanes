@@ -821,9 +821,13 @@ def cmd_promote(args):
             print("\n  How to resolve:")
             print()
             print("    Option 1: Update workspace to target and manually fix")
-            print(f"      flanes workspace update {ws_name} --state {_display_hash(target_head, v)}")
+            state_hash = _display_hash(target_head, v)
+            print(f"      flanes workspace update {ws_name} --state {state_hash}")
             print("      # Edit conflicting files in workspace")
-            print("      flanes commit -m 'Resolve conflicts' --agent-id <agent> --agent-type <type>")
+            print(
+                "      flanes commit -m 'Resolve conflicts'"
+                " --agent-id <agent> --agent-type <type>"
+            )
             print(f"      flanes promote -w {ws_name} --target {target_lane}")
             print()
             print("    Option 2: Re-run agent from updated base")
@@ -1659,7 +1663,8 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=GROUPED_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--version", "-V", action="version", version=f"flanes {_flanes_pkg.__version__}")
+    ver = _flanes_pkg.__version__
+    parser.add_argument("--version", "-V", action="version", version=f"flanes {ver}")
     parser.add_argument("--path", "-C", default=".", help="Repository path")
     parser.add_argument("--json", "-j", action="store_true", help="JSON output")
 

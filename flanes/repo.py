@@ -141,7 +141,10 @@ class Repository:
         self.db_path = self.flanes_dir / "store.db"
 
         if not self.flanes_dir.exists():
-            raise ValueError(f"Not a Flanes repository: {self.root}\nRun `flanes init` to create one.")
+            raise ValueError(
+                f"Not a Flanes repository: {self.root}\n"
+                "Run `flanes init` to create one."
+            )
 
         config = self._read_config()
         self._validate_config(config)
