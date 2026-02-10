@@ -30,4 +30,4 @@ bash examples/cli_workflow.sh
 Requires `flanes` to be installed: `pip install -e .`
 
 # Real-World Usage
-[Laneswarm](https://github.com/glimish/laneswarm)is a multi-agent autonomous coding orchestrator that uses Flanes as its version control backend. It decomposes a project brief into a dependency-aware task graph, then dispatches parallel coder/reviewer/integrator agents that each work in isolated Flanes lanes. Every agent iteration is tracked as a Flanes transition with full cost accounting, and code is promoted to main only after passing verification gates.
+[Laneswarm](https://github.com/glimish/laneswarm) is a multi-agent autonomous coding orchestrator that uses Flanes as its version control backend. It decomposes a project brief into a dependency-aware task graph, then dispatches parallel coder/reviewer/integrator agents that each work in isolated Flanes lanes. Every agent iteration is tracked as a Flanes transition with full cost accounting, and code is promoted to main only after passing verification gates.
