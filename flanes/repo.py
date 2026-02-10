@@ -197,23 +197,43 @@ class Repository:
 # Patterns ending with / match directories only
 # Patterns starting with ! negate a previous match
 
-# Environment files (uncomment as needed)
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE / editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / credentials (uncomment as needed)
 # .env
 # .env.*
-
-# Credentials (uncomment as needed)
 # *.pem
 # *.key
 # credentials.json
 
-# Build artifacts
-# dist/
-# build/
-# *.pyc
-
-# Logs
+# Logs (uncomment as needed)
 # *.log
 # logs/
+
+# Node (uncomment if applicable)
+# node_modules/
 """
 
     @classmethod
