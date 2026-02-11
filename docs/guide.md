@@ -1144,16 +1144,20 @@ The server runs over stdio using JSON-RPC 2.0 with Content-Length framing (LSP-s
 
 ### Available Tools
 
-| Tool | Description |
-|------|-------------|
-| `fla_status` | Get repository status |
-| `fla_snapshot` | Snapshot a workspace |
-| `fla_commit` | Quick commit (snapshot + propose + accept) |
-| `fla_history` | Show transition history |
-| `fla_diff` | Diff two states |
-| `fla_show` | Show file content from a state |
-| `fla_search` | Search intents |
-| `fla_lanes` | List lanes |
+| Tool | Description | Required Parameters |
+|------|-------------|---------------------|
+| `flanes_status` | Get repository status | — |
+| `flanes_snapshot` | Snapshot a workspace | `workspace` (optional, default: main) |
+| `flanes_commit` | Quick commit (snapshot + propose + accept) | `prompt`, `agent_id`, `agent_type` |
+| `flanes_history` | Get transition history | `lane` (optional), `limit` (optional) |
+| `flanes_diff` | Diff two states | `state_a`, `state_b` |
+| `flanes_show` | Show file content at a state | `state_id`, `file_path` |
+| `flanes_search` | Search intents | `query` |
+| `flanes_lanes` | List lanes | — |
+| `flanes_workspaces` | List workspaces | — |
+| `flanes_accept` | Accept a transition | `transition_id` |
+| `flanes_reject` | Reject a transition | `transition_id` |
+| `flanes_restore` | Restore a workspace to a state | `workspace`, `state_id` |
 
 ### Integration
 
