@@ -10,7 +10,6 @@ Tests that verify Flanes handles interruptions gracefully:
 
 import json
 import time
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -145,8 +144,6 @@ class TestCrashDuringSnapshot:
         # at the final stage of snapshot.
         (ws / "new.txt").write_text("new content")
 
-        original_create = repo.wsm._create_world_state
-
         def crashing_create(root_tree_hash, parent_id):
             raise OSError("Simulated crash before state creation")
 
@@ -181,7 +178,7 @@ class TestConcurrentGCAndAccept:
         head = repo.head()
         assert head is not None
 
-        result = repo.gc(dry_run=False, max_age_days=0)
+        repo.gc(dry_run=False, max_age_days=0)
 
         state = repo.wsm.get_state(head)
         assert state is not None, "Head state should survive GC"
@@ -203,7 +200,7 @@ class TestAtomicMetadataWrites:
         state_id = _make_state(store, wsm, {"a.txt": "hello"})
         wsm.create_lane("test")
 
-        info = wm.create("meta-ws", lane="test", state_id=state_id)
+        wm.create("meta-ws", lane="test", state_id=state_id)
 
         meta_path = wm._meta_path("meta-ws")
         original_data = json.loads(meta_path.read_text())

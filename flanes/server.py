@@ -509,7 +509,8 @@ def serve(
     repo = Repository.find(Path(repo_path))
     server = FlanesServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
-    auth_status = "with auth" if server._api_token else "without auth (set FLANES_API_TOKEN to enable)"
+    no_auth_msg = "without auth (set FLANES_API_TOKEN to enable)"
+    auth_status = "with auth" if server._api_token else no_auth_msg
     print(f"Flanes server listening on {host}:{actual_port} ({auth_status})")
     if web:
         print(f"  Web viewer: http://{host}:{actual_port}/web/")
