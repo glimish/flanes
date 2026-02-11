@@ -50,6 +50,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import shutil
 import socket
 import tempfile
@@ -216,11 +217,27 @@ class WorkspaceManager:
         self.workspaces_dir = flanes_dir / "workspaces"
         self.workspaces_dir.mkdir(exist_ok=True)
 
+    # Strict workspace name pattern: alphanumeric, dots, hyphens, underscores only.
+    # No slashes, backslashes, or other filesystem-tricky characters.
+    _VALID_NAME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+
     def _validate_workspace_name(self, name: str):
-        """Validate workspace name does not contain path traversal."""
-        if not name or ".." in name or "\0" in name:
-            raise ValueError(f"Invalid workspace name: {name!r}")
-        # Ensure the derived paths stay within workspaces_dir
+        """Validate workspace name is safe for filesystem use.
+
+        Names must match ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ -- no slashes,
+        backslashes, spaces, or other characters that create nested
+        directories or ambiguous paths.
+        """
+        if not name:
+            raise ValueError("Workspace name cannot be empty")
+        if not self._VALID_NAME_RE.match(name):
+            raise ValueError(
+                f"Invalid workspace name: {name!r}\n"
+                f"  Names must start with alphanumeric and contain only "
+                f"letters, digits, dots, hyphens, and underscores.\n"
+                f"  Pattern: {self._VALID_NAME_RE.pattern}"
+            )
+        # Belt-and-suspenders: ensure derived paths stay within workspaces_dir
         ws_path = self.workspaces_dir / name
         try:
             ws_path.resolve().relative_to(self.workspaces_dir.resolve())
@@ -723,8 +740,10 @@ class WorkspaceManager:
                 # Main workspace path is repo root, always exists
                 workspaces.append(info)
 
-        # Check for feature workspaces
-        for meta_file in sorted(self.workspaces_dir.rglob("*.json")):
+        # Check for feature workspaces -- only direct children .json files.
+        # Using glob("*.json") instead of rglob to avoid picking up stray .json
+        # files in nested directories or workspace content.
+        for meta_file in sorted(self.workspaces_dir.glob("*.json")):
             # Skip files inside .lockdir directories (lock owner metadata)
             if any(part.endswith(".lockdir") for part in meta_file.parts):
                 continue
