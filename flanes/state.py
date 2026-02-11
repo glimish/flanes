@@ -123,6 +123,16 @@ class WorldStateManager:
     #       For effectively unlimited, set to very large value (e.g., 10000)
     DEFAULT_MAX_TREE_DEPTH = 100
 
+    # Ordered schema migrations.  Each entry is (version, description, sql).
+    # Append-only: never modify existing entries, only add new ones.
+    _MIGRATIONS: list[tuple[int, str, str]] = [
+        (
+            1,
+            "Add location column to objects table",
+            "ALTER TABLE objects ADD COLUMN location TEXT DEFAULT NULL",
+        ),
+    ]
+
     def __init__(self, store: ContentStore, db_path: Path, max_tree_depth: int = 0):
         self.store = store
         self.db_path = db_path
@@ -131,6 +141,7 @@ class WorldStateManager:
         # Use same connection as store for simplicity
         self.conn = store.conn
         self._init_tables()
+        self._run_migrations()
 
     def _init_tables(self):
         self.conn.executescript("""
@@ -200,8 +211,39 @@ class WorldStateManager:
                 created_at REAL NOT NULL,
                 FOREIGN KEY (intent_id) REFERENCES intents(id)
             );
+
+            CREATE TABLE IF NOT EXISTS schema_version (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0,
+                updated_at REAL NOT NULL
+            );
         """)
         self.conn.commit()
+
+    def _run_migrations(self):
+        """Apply any pending schema migrations in order."""
+        row = self.conn.execute("SELECT version FROM schema_version WHERE id = 1").fetchone()
+        current = row[0] if row else 0
+
+        for version, description, sql in self._MIGRATIONS:
+            if version <= current:
+                continue
+            logger.info("Running migration %d: %s", version, description)
+            try:
+                self.conn.execute(sql)
+            except Exception as exc:
+                # Migration may already be applied (e.g. location column
+                # added by the old ad-hoc code in cas.py).  Log and continue.
+                if "duplicate column" in str(exc).lower():
+                    logger.debug("Migration %d already applied: %s", version, exc)
+                else:
+                    raise
+            self.conn.execute(
+                "INSERT OR REPLACE INTO schema_version (id, version, updated_at) VALUES (1, ?, ?)",
+                (version, time.time()),
+            )
+        if current < len(self._MIGRATIONS):
+            self.conn.commit()
 
     # ── World State Creation ──────────────────────────────────────
 

@@ -1451,33 +1451,33 @@ File permissions (mode bits) are preserved during snapshot and restored on mater
 
 ### Thread Safety
 
-Flanes is safe to use from multiple threads, enabling multi-threaded agent orchestrators:
+Flanes supports multi-threaded agent orchestrators using **one Repository instance per thread**. Multiple Repository instances safely share the same underlying database file:
 
 ```python
 from concurrent.futures import ThreadPoolExecutor
 from flanes.repo import Repository
 
-# Option 1: Share one Repository across threads
-repo = Repository.find("./my-project")
-with ThreadPoolExecutor(max_workers=4) as executor:
-    # Multiple threads can call repo methods concurrently
-    futures = [executor.submit(repo.status) for _ in range(4)]
-
-# Option 2: One Repository per thread (best performance)
 def worker():
     repo = Repository.find("./my-project")  # Each thread gets its own
-    # ... do work ...
-    repo.close()
+    try:
+        # ... do work ...
+        pass
+    finally:
+        repo.close()
+
+with ThreadPoolExecutor(max_workers=4) as executor:
+    futures = [executor.submit(worker) for _ in range(4)]
 ```
+
+**Important:** Do NOT share a single `Repository` instance across threads. The internal `ContentStore.batch()` mechanism uses an unsynchronized flag that is not thread-safe for concurrent access.
 
 **Implementation details:**
 
-- SQLite connection uses `check_same_thread=False`
-- WAL mode enables concurrent reads
-- 30-second busy timeout handles write contention
+- Each Repository opens its own SQLite connection
+- WAL mode enables concurrent reads across connections
+- 30-second busy timeout handles write contention between connections
 - Writes are serialized via SQLite's internal locking
-
-For highest throughput, create one `Repository` instance per thread. They safely share the same database file.
+- `check_same_thread=False` allows creating a Repository on one thread and passing it to another (but not using it from multiple threads concurrently)
 
 ---
 

@@ -56,11 +56,11 @@ class ContentStore:
     workloads and keeps the system self-contained.
 
     Thread Safety:
-        This class is safe to use from multiple threads. Each thread can call
-        methods concurrently. SQLite WAL mode handles concurrent reads, and
-        writes are serialized via SQLite's internal locking. For best performance
-        in multi-threaded orchestrators, consider creating one Repository per
-        thread (they safely share the same database file).
+        This class is NOT safe for concurrent use from multiple threads.
+        The batch() context manager uses an unsynchronized flag that can
+        race under concurrent access.  Create one Repository (and therefore
+        one ContentStore) per thread.  Multiple Repository instances safely
+        share the same database file via SQLite WAL mode + busy_timeout.
     """
 
     # Default: 100 MB max blob size
@@ -74,17 +74,19 @@ class ContentStore:
         # If max_blob_size is 0 or not provided, use default
         self.max_blob_size = max_blob_size if max_blob_size > 0 else self.DEFAULT_MAX_BLOB_SIZE
         self._blobs_dir = db_path.parent / "blobs" if blob_threshold > 0 else None
-        # check_same_thread=False allows multi-threaded orchestrators to share
-        # a Repository instance. SQLite WAL mode + busy_timeout handle concurrency.
+        # check_same_thread=False: allows Repository created on one thread
+        # to be used on another.  Does NOT make ContentStore thread-safe
+        # for concurrent multi-thread use.
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.execute("PRAGMA journal_mode=WAL")  # Better concurrency
         # 30s timeout for multi-threaded scenarios on slow CI runners
         self.conn.execute("PRAGMA busy_timeout = 30000")
         self.conn.execute("PRAGMA synchronous=NORMAL")
+        # WARNING: not thread-safe — one ContentStore per thread
         self._in_batch = False
         self._closed = False
         self._init_tables()
-        self._migrate_schema()
+        self._ensure_location_column()
 
     def _init_tables(self):
         self.conn.executescript("""
@@ -108,7 +110,13 @@ class ContentStore:
         """)
         self.conn.commit()
 
-    def _migrate_schema(self):
+    def _ensure_location_column(self):
+        """Add location column if missing (needed for filesystem blob storage).
+
+        This is also tracked by the schema migration framework in
+        WorldStateManager, but ContentStore must be self-contained so it
+        works when used standalone (e.g. in unit tests without a WSM).
+        """
         cols = {row[1] for row in self.conn.execute("PRAGMA table_info(objects)")}
         if "location" not in cols:
             self.conn.execute("ALTER TABLE objects ADD COLUMN location TEXT DEFAULT NULL")
