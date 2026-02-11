@@ -248,7 +248,7 @@ flanes lane delete feature-auth --force
 
 ```bash
 # Update feature workspace to latest main
-flanes workspace update feature-auth --state $(flanes head --lane main --json | jq -r .head)
+flanes workspace update feature-auth --state $(flanes status --json | jq -r '.lanes.main.head')
 
 # Restore to a previous state
 flanes restore abc123def --workspace main
@@ -333,7 +333,7 @@ flanes search "authentication"
 
 | Command | Description |
 |---------|-------------|
-| `flanes serve [--port PORT] [--host HOST]` | Start REST API server (default: 127.0.0.1:7654) |
+| `flanes serve [--port PORT] [--host HOST] [--token TOKEN] [--insecure] [--web]` | Start REST API server (default: 127.0.0.1:7654) |
 | `flanes mcp` | Start MCP tool server (stdio) |
 | `flanes completion SHELL` | Generate shell completion script (bash, zsh, fish) |
 
@@ -1172,10 +1172,47 @@ The REST API provides HTTP access to Flanes operations for web-based tools and r
 flanes serve
 
 # Custom host and port
-flanes serve --host 0.0.0.0 --port 8080
+flanes serve --host 0.0.0.0 --port 8080 --token my-secret
+
+# With web viewer
+flanes serve --web
+
+# Bind to all interfaces without auth (NOT recommended for production)
+flanes serve --host 0.0.0.0 --insecure
 ```
 
 The server uses `ThreadingHTTPServer` for concurrent request handling. A lock serializes SQLite access to ensure thread safety.
+
+### Authentication
+
+The REST API supports bearer token authentication via the `FLANES_API_TOKEN` environment variable or the `--token` CLI flag:
+
+```bash
+# Via environment variable
+export FLANES_API_TOKEN=my-secret-token
+flanes serve
+
+# Via CLI flag
+flanes serve --token my-secret-token
+
+# Clients send the token in the Authorization header
+curl -H "Authorization: Bearer my-secret-token" http://127.0.0.1:7654/status
+```
+
+When a token is set, all endpoints except `GET /health` require valid authentication. Unauthenticated requests receive a `401 Unauthorized` response.
+
+**Non-loopback safety:** If binding to a non-loopback address (e.g., `0.0.0.0`), Flanes requires an auth token or the `--insecure` flag. This prevents accidentally exposing an unauthenticated API to the network.
+
+### Web Viewer
+
+The `--web` flag enables a built-in web viewer at `/web/`:
+
+```bash
+flanes serve --web
+# Web viewer: http://127.0.0.1:7654/web/
+```
+
+Static files are served from the bundled `flanes/web/` directory. The web viewer does not require authentication.
 
 ### GET Endpoints
 
@@ -1304,6 +1341,17 @@ Lane names are validated to prevent path traversal and injection:
 
 Invalid names are rejected with a descriptive error message suggesting the correct format.
 
+### Workspace Name Validation
+
+Workspace names must match the pattern `^[a-zA-Z0-9][a-zA-Z0-9._-]*$`:
+
+- Must start with a letter or digit
+- May contain letters, digits, dots, hyphens, and underscores
+- No slashes, backslashes, spaces, or special characters
+- Additionally verified to not escape the workspaces directory (belt-and-suspenders path containment check)
+
+This strict regex prevents path traversal, directory injection, and platform-specific issues with special characters in directory names.
+
 ### Template Path Validation
 
 Template file paths are validated against path traversal:
@@ -1406,14 +1454,14 @@ from concurrent.futures import ThreadPoolExecutor
 from flanes.repo import Repository
 
 # Option 1: Share one Repository across threads
-repo = Repository.open("./my-project")
+repo = Repository.find("./my-project")
 with ThreadPoolExecutor(max_workers=4) as executor:
     # Multiple threads can call repo methods concurrently
     futures = [executor.submit(repo.status) for _ in range(4)]
 
 # Option 2: One Repository per thread (best performance)
 def worker():
-    repo = Repository.open("./my-project")  # Each thread gets its own
+    repo = Repository.find("./my-project")  # Each thread gets its own
     # ... do work ...
     repo.close()
 ```
