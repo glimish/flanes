@@ -976,11 +976,17 @@ Thumbs.db
         }
 
     def _apply_target_delta(self, workspace: str, target_delta: dict, target_head: str):
-        """Apply target lane's changes onto a workspace (non-conflicting rebase)."""
+        """Apply target lane's changes onto a workspace (non-conflicting rebase).
+
+        Uses mode-aware tree flattening so that file permissions (especially
+        the executable bit) are preserved -- matching the behavior of
+        WorkspaceManager.update() and materialize().
+        """
         target_state = self.wsm.get_state(target_head)
         if target_state is None:
             raise ValueError(f"Target state not found: {target_head}")
-        target_files = self.wsm._flatten_tree(target_state["root_tree"])
+        # Use mode-aware flattening so we can restore permissions
+        target_files = self.wsm._flatten_tree_with_modes(target_state["root_tree"])
         info = self.wm.get(workspace)
         if info is None:
             raise ValueError(f"Workspace '{workspace}' not found")
@@ -989,20 +995,32 @@ Thumbs.db
         # Remove files the target deleted
         for path in target_delta["removed"]:
             fp = ws_path / path
-            if fp.exists():
+            if fp.is_file():
                 fp.unlink()
+            elif fp.is_dir():
+                import shutil
+                shutil.rmtree(fp, ignore_errors=True)
 
         # Write files the target added or modified
         for path in list(target_delta["added"].keys()) + list(target_delta["modified"].keys()):
-            blob_hash = target_files.get(path)
-            if blob_hash is None:
+            entry = target_files.get(path)
+            if entry is None:
                 continue
+            blob_hash, mode = entry
             obj = self.store.retrieve(blob_hash)
             if obj is None:
                 continue
             fp = ws_path / path
+            # Handle "directory exists where file should be" edge case
+            if fp.is_dir():
+                import shutil
+                shutil.rmtree(fp)
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_bytes(obj.data)
+            try:
+                fp.chmod(mode)
+            except OSError:
+                pass  # Windows may not support all mode bits
 
         # Update workspace base to reflect new target head
         self.wm._update_meta(workspace, base_state=target_head)

@@ -161,10 +161,12 @@ class FlanesHandler(BaseHTTPRequestHandler):
         try:
             # Health endpoint doesn't need repo lock or auth
             if path == "/health":
+                from flanes import __version__
+
                 self._send_json(
                     {
                         "status": "healthy",
-                        "version": "0.3.1",
+                        "version": __version__,
                     }
                 )
                 return
