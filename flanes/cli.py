@@ -1224,7 +1224,14 @@ def cmd_serve(args):
     """Start the Flanes REST API server."""
     from .server import serve
 
-    serve(args.path or ".", host=args.host, port=args.port, web=args.web)
+    serve(
+        args.path or ".",
+        host=args.host,
+        port=args.port,
+        api_token=args.token,
+        web=args.web,
+        insecure=args.insecure,
+    )
 
 
 def cmd_mcp(args):
@@ -1882,6 +1889,8 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("serve", help="Start the Flanes REST API server")
     p.add_argument("--port", type=int, default=7654, help="Port (default: 7654)")
     p.add_argument("--host", default="127.0.0.1", help="Host (default: 127.0.0.1)")
+    p.add_argument("--token", default=None, help="Bearer token for API auth (or set FLA_API_TOKEN)")
+    p.add_argument("--insecure", action="store_true", help="Allow non-loopback binding without auth token")
     p.add_argument("--web", action="store_true", help="Serve web viewer at /web/")
     p.set_defaults(func=cmd_serve)
 
