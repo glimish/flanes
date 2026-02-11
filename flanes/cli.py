@@ -1890,11 +1890,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--port", type=int, default=7654, help="Port (default: 7654)")
     p.add_argument("--host", default="127.0.0.1", help="Host (default: 127.0.0.1)")
     p.add_argument(
-        "--token", default=None,
+        "--token",
+        default=None,
         help="Bearer token for API auth (or set FLANES_API_TOKEN)",
     )
     p.add_argument(
-        "--insecure", action="store_true",
+        "--insecure",
+        action="store_true",
         help="Allow non-loopback binding without auth token",
     )
     p.add_argument("--web", action="store_true", help="Serve web viewer at /web/")
