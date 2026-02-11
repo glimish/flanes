@@ -112,6 +112,15 @@ pip install flanes[gcs]   # Google Cloud Storage
 - **REST API:** `flanes serve` starts a multi-threaded HTTP API with optional token auth
 - **Garbage collection:** `flanes gc` removes rejected states and unreachable objects
 
+## Non-Goals
+
+Flanes is intentionally scoped. These are things it does **not** try to do:
+
+- **Replace git for human collaboration.** Git excels at code review, branching workflows, and ecosystem integration. Flanes complements git; use `flanes export-git` for the human-facing side.
+- **Content-level merge resolution.** Flanes detects path-level collisions and stops. It never guesses how to combine two edits to the same file.
+- **Distributed consensus.** Flanes uses SQLite, not a distributed database. For multi-machine workflows, use `flanes remote push/pull`.
+- **Package management or deployment.** Flanes tracks agent work. CI/CD remains your existing toolchain.
+
 ## Real-World Usage
 
 **[Laneswarm](https://github.com/glimish/laneswarm)** -- a multi-agent autonomous coding orchestrator -- uses Flanes as its version control backend. It decomposes a project brief into a dependency-aware task graph, then dispatches parallel coder/reviewer/integrator agents that each work in isolated Flanes lanes. Every agent iteration is tracked as a Flanes transition with full cost accounting, and code is promoted to main only after passing verification gates.
