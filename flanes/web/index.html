@@ -11,13 +11,19 @@
     <header class="header">
       <h1>Flanes</h1>
       <span class="status-pill">Connecting...</span>
+      <form id="search-form" class="search-form">
+        <input type="text" id="search-input" placeholder="Search prompts, tags..." autocomplete="off">
+        <button type="submit" class="search-btn">Search</button>
+      </form>
       <span class="header-stats" id="header-stats"></span>
     </header>
 
     <nav class="sidebar">
       <h3>Navigation</h3>
       <ul>
-        <li data-view="dashboard" onclick="showDashboardClick()">Dashboard</li>
+        <li data-view="dashboard" onclick="navigate('#/dashboard')">Dashboard</li>
+        <li data-view="timeline" onclick="navigate('#/timeline')">Timeline</li>
+        <li data-view="workspaces" onclick="navigate('#/workspaces')">Workspaces</li>
       </ul>
 
       <h3>Lanes</h3>
@@ -30,6 +36,8 @@
       <div class="loading">Loading...</div>
     </main>
   </div>
+
+  <div id="tooltip" class="tooltip hidden"></div>
 
   <script src="/web/app.js"></script>
 </body>
