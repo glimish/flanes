@@ -5,14 +5,14 @@ Uses stdlib http.server with ThreadingHTTPServer for concurrent request handling
 Each request acquires a repo lock to serialize SQLite access safely.
 
 Authentication:
-    When a token is configured (via FLA_API_TOKEN env var or "api_token" in config),
+    When a token is configured (via FLANES_API_TOKEN env var or "api_token" in config),
     all endpoints except /health require a Bearer token in the Authorization header.
     If no token is configured, the server runs without authentication (local-only use).
 
 Security:
     By default the server binds to 127.0.0.1 (localhost only).
     If you bind to a non-loopback address (e.g. 0.0.0.0), the server
-    requires either a token (FLA_API_TOKEN / --token) or --insecure to
+    requires either a token (FLANES_API_TOKEN / --token) or --insecure to
     explicitly acknowledge the risk.
 """
 
@@ -430,7 +430,7 @@ class FlanesServer(ThreadingHTTPServer):
     A lock serializes access to the Repository to ensure SQLite thread safety.
 
     Authentication:
-        Set FLA_API_TOKEN env var or pass api_token to enable bearer auth.
+        Set FLANES_API_TOKEN env var or pass api_token to enable bearer auth.
         Without a token, the server is unauthenticated (suitable for localhost only).
     """
 
@@ -449,7 +449,7 @@ class FlanesServer(ThreadingHTTPServer):
         web: bool = False,
     ):
         self._repo_lock = threading.Lock()
-        self._api_token = api_token or os.environ.get("FLA_API_TOKEN")
+        self._api_token = api_token or os.environ.get("FLANES_API_TOKEN")
         self._web_enabled = web
         if isinstance(repo_or_path, Repository):
             self.repo = repo_or_path
@@ -483,19 +483,19 @@ def serve(
 
     Args:
         api_token: Bearer token for authentication. If not provided, reads from
-                   FLA_API_TOKEN env var. If neither is set, runs without auth.
+                   FLANES_API_TOKEN env var. If neither is set, runs without auth.
         web: If True, serve the web viewer at /web/.
         insecure: If True, allow non-loopback binding without a token.
     """
     import signal
 
     # Resolve effective token early so we can check before binding
-    effective_token = api_token or os.environ.get("FLA_API_TOKEN")
+    effective_token = api_token or os.environ.get("FLANES_API_TOKEN")
 
     if not _is_loopback(host) and not effective_token and not insecure:
         raise SystemExit(
             f"Refusing to bind to non-loopback address '{host}' without authentication.\n"
-            f"  Use --token SECRET or set FLA_API_TOKEN to require bearer-token auth, or\n"
+            f"  Use --token SECRET or set FLANES_API_TOKEN to require bearer-token auth, or\n"
             f"  Use --insecure to acknowledge the risk and serve without auth."
         )
 
@@ -509,7 +509,7 @@ def serve(
     repo = Repository.find(Path(repo_path))
     server = FlanesServer(repo, host, port, api_token=api_token, web=web)
     actual_port = server.server_address[1]
-    auth_status = "with auth" if server._api_token else "without auth (set FLA_API_TOKEN to enable)"
+    auth_status = "with auth" if server._api_token else "without auth (set FLANES_API_TOKEN to enable)"
     print(f"Flanes server listening on {host}:{actual_port} ({auth_status})")
     if web:
         print(f"  Web viewer: http://{host}:{actual_port}/web/")
