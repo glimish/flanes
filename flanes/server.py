@@ -31,6 +31,10 @@ from .state import AgentIdentity
 
 logger = logging.getLogger(__name__)
 
+# Maximum request body size: 10 MB.
+# Protects against memory exhaustion from oversized POST requests.
+MAX_REQUEST_BODY = 10 * 1024 * 1024
+
 
 def _is_loopback(host: str) -> bool:
     """Check if a host string resolves to a loopback address."""
@@ -86,10 +90,16 @@ class FlanesHandler(BaseHTTPRequestHandler):
         self._send_json({"error": message}, status=status)
 
     def _read_body(self) -> dict | None:
-        """Read and parse JSON body. Returns None on malformed JSON (sends 400)."""
+        """Read and parse JSON body. Returns None on error (sends 4xx)."""
         length = int(self.headers.get("Content-Length", 0))
         if length == 0:
             return {}
+        if length > MAX_REQUEST_BODY:
+            self._send_error(
+                413,
+                f"Request body too large ({length} bytes, max {MAX_REQUEST_BODY} bytes)",
+            )
+            return None
         raw = self.rfile.read(length)
         try:
             return json.loads(raw.decode("utf-8"))

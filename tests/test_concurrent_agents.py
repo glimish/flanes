@@ -42,7 +42,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def repo(tmp_path):
-    """Create a test repository with initial content."""
+    """Create a test repository with initial content and fast limits."""
     # Create initial files
     (tmp_path / "main.py").write_text(
         'def main():\n    print("Hello, World!")\n\nif __name__ == "__main__":\n    main()\n'
@@ -51,8 +51,21 @@ def repo(tmp_path):
     (tmp_path / "lib").mkdir()
     (tmp_path / "lib" / "utils.py").write_text("def add(a, b):\n    return a + b\n")
 
-    repo = Repository.init(tmp_path)
-    return repo
+    r = Repository.init(tmp_path)
+    r.close()
+
+    # Override limits for fast tests: 1 MB blob size, 20-level tree depth.
+    # The default 100 MB max_blob_size forces the file-size-limit test to
+    # allocate ~400 MB across 4 threads; 1 MB gives identical coverage 100x faster.
+    import json as _json
+
+    cfg_path = tmp_path / ".flanes" / "config.json"
+    cfg = _json.loads(cfg_path.read_text())
+    cfg["max_blob_size"] = 1_000_000  # 1 MB
+    cfg["max_tree_depth"] = 20
+    cfg_path.write_text(_json.dumps(cfg, indent=2))
+
+    return Repository(tmp_path)
 
 
 def test_concurrent_proposals(repo):
