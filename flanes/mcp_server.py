@@ -14,6 +14,7 @@ import sys
 import threading
 from pathlib import Path
 
+from . import __version__
 from .repo import Repository
 from .state import AgentIdentity
 
@@ -171,7 +172,7 @@ class MCPServer:
                     },
                     "serverInfo": {
                         "name": "flanes-mcp",
-                        "version": "0.3.1",
+                        "version": __version__,
                     },
                 },
             }
