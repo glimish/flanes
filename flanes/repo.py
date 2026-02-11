@@ -999,6 +999,7 @@ Thumbs.db
                 fp.unlink()
             elif fp.is_dir():
                 import shutil
+
                 shutil.rmtree(fp, ignore_errors=True)
 
         # Write files the target added or modified
@@ -1014,6 +1015,7 @@ Thumbs.db
             # Handle "directory exists where file should be" edge case
             if fp.is_dir():
                 import shutil
+
                 shutil.rmtree(fp)
             fp.parent.mkdir(parents=True, exist_ok=True)
             fp.write_bytes(obj.data)
