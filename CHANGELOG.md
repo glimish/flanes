@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-02-11
+
 ### Added
 - Schema migration framework with `schema_version` table and ordered migrations
 - REST API request body size limit (10 MB, returns HTTP 413 on oversize)
@@ -84,7 +86,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 7 audit issues for correctness and security
 - Windows CI test failures (8.3 short path names, git committer identity)
 
-[Unreleased]: https://github.com/glimish/flanes/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/glimish/flanes/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/glimish/flanes/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/glimish/flanes/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/glimish/flanes/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/glimish/flanes/compare/v0.4.0...v0.4.1
